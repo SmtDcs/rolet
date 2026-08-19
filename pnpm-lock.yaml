@@ -13,6 +13,18 @@ importers:
       '@coral-xyz/anchor':
         specifier: ^0.32.1
         version: 0.32.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      '@metaplex-foundation/mpl-core':
+        specifier: 0.4.6
+        version: 0.4.6(@metaplex-foundation/umi@0.9.2)(@noble/hashes@1.4.0)
+      '@metaplex-foundation/umi':
+        specifier: 0.9.2
+        version: 0.9.2
+      '@metaplex-foundation/umi-bundle-defaults':
+        specifier: 0.9.2
+        version: 0.9.2(@metaplex-foundation/umi@0.9.2)(@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@5.9.3))
+      '@metaplex-foundation/umi-web3js-adapters':
+        specifier: 0.9.2
+        version: 0.9.2(@metaplex-foundation/umi@0.9.2)(@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@5.9.3))
       '@rolet/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -6775,6 +6787,11 @@ snapshots:
       - utf-8-validate
 
   '@mediapipe/tasks-vision@0.10.17': {}
+
+  '@metaplex-foundation/mpl-core@0.4.6(@metaplex-foundation/umi@0.9.2)(@noble/hashes@1.4.0)':
+    dependencies:
+      '@metaplex-foundation/umi': 0.9.2
+      '@noble/hashes': 1.4.0
 
   '@metaplex-foundation/mpl-core@0.4.6(@metaplex-foundation/umi@0.9.2)(@noble/hashes@2.2.0)':
     dependencies:

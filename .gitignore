@@ -23,3 +23,5 @@ apps/server/migrations/.reward-mint.json
 .vercel
 
 .worktrees/
+.player2.json
+.player-b.json

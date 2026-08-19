@@ -748,6 +748,30 @@ pub mod rolet {
     }
 
     // --------------------------------------------------------
+    // UPDATE_VAULT_PARAMS — vault authority adjusts economy knobs
+    // without redeploying (e.g. character price, per-match reward).
+    // --------------------------------------------------------
+    pub fn update_vault_params(
+        ctx: Context<UpdateVaultParams>,
+        reward_sol: Option<u64>,
+        character_price_sol: Option<u64>,
+    ) -> Result<()> {
+        let v = &mut ctx.accounts.vault;
+        if let Some(r) = reward_sol {
+            v.reward_sol = r;
+        }
+        if let Some(p) = character_price_sol {
+            v.character_price_sol = p;
+        }
+        emit!(VaultParamsUpdated {
+            authority: v.authority,
+            reward_sol: v.reward_sol,
+            character_price_sol: v.character_price_sol,
+        });
+        Ok(())
+    }
+
+    // --------------------------------------------------------
     // OPEN_LOBBY — host creates a waiting room PDA
     // --------------------------------------------------------
     pub fn open_lobby(
@@ -1367,9 +1391,30 @@ pub struct InitVault<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[derive(Accounts)]
+pub struct UpdateVaultParams<'info> {
+    #[account(
+        mut,
+        seeds = [b"vault"],
+        bump = vault.bump,
+        constraint = vault.authority == authority.key() @ RoletError::UnauthorizedActor,
+    )]
+    pub vault: Box<Account<'info, GameVault>>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
 // ============================================================
 // Events
 // ============================================================
+#[event]
+pub struct VaultParamsUpdated {
+    pub authority: Pubkey,
+    pub reward_sol: u64,
+    pub character_price_sol: u64,
+}
+
 #[event]
 pub struct MatchInitialized {
     pub match_id: u64,
