@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="https://rolet-web-server.vercel.app">Live Demo (Devnet)</a> ·
-  <a href="https://explorer.solana.com/address/2ePEUzCFcxD559Hy3irB2TGbYAwU2UD352sVj77QPrS7?cluster=devnet">On-chain Program</a>
+  <a href="https://explorer.solana.com/address/Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792?cluster=devnet">On-chain Program</a>
 </p>
 
 ---

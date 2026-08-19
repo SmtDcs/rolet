@@ -15,7 +15,7 @@ use mpl_core::types::Key as CoreKey;
 // (play_card, pull_trigger) execute there unchanged — the runtime is the
 // same Solana runtime, the SDK only mediates account ownership transitions.
 
-declare_id!("2ePEUzCFcxD559Hy3irB2TGbYAwU2UD352sVj77QPrS7");
+declare_id!("Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792");
 
 // ============================================================
 // Constants

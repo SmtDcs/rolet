@@ -16,7 +16,7 @@ import * as path from "path";
 // `proc-macro2`), so we build the client from the checked-in IDL instead of
 // importing `../target/types/rolet`.
 const PROGRAM_ID = new PublicKey(
-  "2ePEUzCFcxD559Hy3irB2TGbYAwU2UD352sVj77QPrS7",
+  "Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792",
 );
 
 function loadIdl(): any {

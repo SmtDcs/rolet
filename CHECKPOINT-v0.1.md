@@ -27,7 +27,7 @@
 
 | Resource          | Value                                                         |
 |-------------------|---------------------------------------------------------------|
-| Program ID        | `2ePEUzCFcxD559Hy3irB2TGbYAwU2UD352sVj77QPrS7`                |
+| Program ID        | `Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792`                |
 | Authority         | `9uJcwroPnjEAZPEv5nMuWX2df6vGptNUC2aGaNV6Pw2o`                |
 | Reward Mint       | `6q6aq9KXSo23xJpfmvDGrpHw4SQSGXb2MUwMjdLDUnZm` (6 dec)        |
 | Vault PDA         | `8Md5fzBfXU2EmPDnVgddrrygp2cHjoDBvkwC7tT4BFxb` (bump 253)     |
@@ -107,7 +107,7 @@ These files are gitignored but contain values you'd want if rebuilding from scra
 ```
 NEXT_PUBLIC_RPC_ENDPOINT=https://devnet.helius-rpc.com/?api-key=<REDACTED>
 NEXT_PUBLIC_SOLANA_NETWORK=devnet
-NEXT_PUBLIC_ROLET_PROGRAM_ID=2ePEUzCFcxD559Hy3irB2TGbYAwU2UD352sVj77QPrS7
+NEXT_PUBLIC_ROLET_PROGRAM_ID=Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792
 NEXT_PUBLIC_MAGICBLOCK_ER_ENDPOINT=https://devnet.magicblock.app
 ```
 
