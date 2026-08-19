@@ -1,101 +1,55 @@
-# ROLET Checkpoint v0.1 — Working Demo
+# ROLET Checkpoint v0.2 — Economy Core
 
-**Date:** 2026-05-07
-**Git tag:** `v0.1-working-demo`
-**Status:** End-to-end FOCG flow verified on devnet
+**Date:** 2026-08-20
+**Status:** Full economy loop verified end-to-end on devnet (SOL payouts, character NFT durability, treasury split)
 
 ---
 
 ## What works (verified on chain)
 
-1. **Profile enrollment** — `init_player_profile` stores SNS handle, durability 10, ELO 1000
-2. **Lobby create + ghost setup** — single-tx ghost SOL fund (0.02 SOL) + ghost profile init
-3. **Match init** — commit-reveal seeded RNG, deterministic chamber shuffle (5 Live, 3 Blank)
-4. **Session arming** — `register_session_key` (24h max) + 0.005 SOL fund to session keypair
-5. **Gasless turns** — session key signs play_card / pull_trigger on L1; no Phantom popup per turn
-6. **All 12 cards implemented** — HawkEye, BulletExtractor, Silence, Blocker, DoubleStrike, Healer, RestoreBullet, Shuffler, CardThief, RandomInsight, LastChance, HandOfFate
-7. **Ghost AI auto-play** — 1.5s "thinking" delay, 70% target opponent / 30% self, signs with stashed ghost keypair
-8. **Match completion** — HP→0 sets status Completed, winner recorded
-9. **Settle + reward transfer** — vault → winner ATA (auto-creates ATA if missing), 1 $ROLET payout
-10. **Durability decrement** — both profiles drop 1 durability post-settle
-11. **Match account close** — rent refund to caller via `close = rent_refund`
-12. **HTTP polling fallback** — 1.5s interval; UI stays in sync even when Helius WS rejects connections
-
----
+1. **Character purchase** — Metaplex Core V1 mint + `purchase_character` in one tx; program validates the asset (owner + update_authority == program), charges the configured price, and splits it **70% treasury / 30% ops** via system-program CPI
+2. **Durability burn on lobby entry** — `open_lobby` / `join_lobby` decrement exactly 1; `settle_match` does NOT (double-charge fixed)
+3. **NoDurability gate** — at 0 durability lobby open fails with `NoDurability` (code 6031); verified by exhausting all 9 remaining durability and hitting the wall on attempt #10
+4. **SOL payouts** — `settle_match` pays the winner from the treasury PDA (seeds-signed transfer); winner balance increased by exactly +0.02 SOL
+5. **Re-purchase flow** — after exhaustion, a new character purchase resets durability to 10 and the player can play again (verified: full second match after reset)
+6. **Stats accumulation** — wins / losses / matches_played / total_rewards_claimed persist across matches (A: 1W-1L, B: 1W-1L, both 0.02 SOL claimed)
+7. **Vault params live-update** — `update_vault_params` lets the vault authority change character price / reward without redeploy (devnet currently 0.1 SOL price, 0.02 SOL reward)
+8. **Anti-refill** — re-equipping the same NFT does NOT refill durability; re-purchasing the same NFT is rejected (`CharacterNftInUse`)
 
 ## Devnet on-chain state (as of checkpoint)
 
-| Resource          | Value                                                         |
-|-------------------|---------------------------------------------------------------|
-| Program ID        | `Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792`                |
-| Authority         | `9uJcwroPnjEAZPEv5nMuWX2df6vGptNUC2aGaNV6Pw2o`                |
-| Reward Mint       | `6q6aq9KXSo23xJpfmvDGrpHw4SQSGXb2MUwMjdLDUnZm` (6 dec)        |
-| Vault PDA         | `8Md5fzBfXU2EmPDnVgddrrygp2cHjoDBvkwC7tT4BFxb` (bump 253)     |
-| Treasury ATA      | `6GWmHFsdrFXefage8pvvLrsvnWwkpbibENifS8JE1CWt`                |
-| Treasury balance  | 999 $ROLET (1 paid out so far)                                |
-| Matches settled   | 1                                                             |
-| RPC               | `https://devnet.helius-rpc.com/?api-key=…` (free tier)        |
-| ER endpoint       | `https://devnet.magicblock.app` (configured but not used yet) |
+| Resource            | Value                                              |
+|---------------------|----------------------------------------------------|
+| Program ID          | `Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792`      |
+| Vault PDA           | `8tJ7bo9b92GFbFAHKTjYk8q6uHRya4cGwuBSAuBHg33z`      |
+| Treasury SOL PDA    | `4xck81pxoELvZsCm94JshR7X6QtKthZhRjfyo88ua3e9`      |
+| Ops wallet          | `CeoeQQj6233aJ1SMKzrdVrVeLZVJ8C5zwXT7JNdfj8f4`      |
+| Character price     | 0.1 SOL (test value; production target 1 SOL)      |
+| Reward per match    | 0.02 SOL (test value; production target 0.12 SOL)  |
+| Treasury balance    | ~0.85 SOL (growing from purchases)                 |
+| Matches settled     | 2                                                  |
 
----
+> The old `2ePEU…` program (checkpoint v0.1) is abandoned: its upgrade authority keypair is lost and its state layout predates the economy core. The devnet program now lives at `Gwh17…`.
 
-## Architectural state
+## E2E test script
 
-### PLAN_B in effect (intentional)
-- `ephemeral-rollups-sdk` (Rust) NOT linked due to `dlp_api` / `solana-instruction` version split with Anchor 0.30.1
-- ER delegation moved to client side via `@magicblock-labs/ephemeral-rollups-sdk` (TS) — but client-only call fails with "Missing signature for PDA" because delegation needs owner-program CPI
-- Gracefully degrades: `delegateMatch` toast says "ER delegation unavailable", match runs on L1
-- L1 path is fully functional — gasless via session keys, ~400ms slot latency, all instructions work
+`apps/server/scripts/devnet-e2e.ts` runs the whole loop: two wallets → two character purchases → lobby → match → pull loop → settle → balance report. Run with:
 
-### Routing decisions
-- All instructions route to `programL1` (devnet RPC). The dual-program (`programL1` / `programER`) infrastructure is in place but ER routing is currently disabled in `playCard` / `pullTrigger`.
-- `commitAndUndelegateMatch` gracefully no-ops when match was never delegated (catches "read-only" error)
-- WebSocket subscribe is a no-op (Helius free tier blocks WS; HTTP polling covers updates)
-
----
-
-## Files that matter (in order of importance)
-
-| File                                                  | Lines | Purpose                          |
-|-------------------------------------------------------|------:|----------------------------------|
-| `apps/server/programs/rolet/src/lib.rs`               | ~1200 | THE Anchor program               |
-| `apps/web/hooks/useRolet.ts`                          | ~700  | Web3 integration layer           |
-| `apps/web/idl/rolet.json`                             | ~500  | Hand-written IDL (no auto-gen)   |
-| `apps/web/app/duel/page.tsx`                          | ~900  | Duel UI + Lobby + ghost AI       |
-| `apps/web/app/profile/page.tsx`                       | ~200  | Enrollment / stats               |
-| `apps/web/app/page.tsx`                               | ~190  | Main menu                        |
-| `apps/web/app/layout.tsx`                             | ~60   | CRT overlay + SolanaProvider     |
-| `apps/web/components/SolanaProvider.tsx`              | ~30   | Wallet adapter setup             |
-| `apps/web/.env.local`                                 | ~15   | RPC + program ID + Helius key    |
-| `apps/server/scripts/bootstrap-vault.ts`              | ~110  | Standalone vault init            |
-| `apps/server/Anchor.toml`                             | ~35   | Anchor config                    |
-| `apps/server/programs/rolet/Cargo.toml`               | ~25   | Rust deps                        |
-| `HANDOFF.md`                                          | ~400  | Full project handoff doc         |
-
----
-
-## How to roll back
-
-```bash
-cd /home/sametether/projects/rolet-web
-git status                    # see what's changed since checkpoint
-git diff v0.1-working-demo    # see all diffs since this snapshot
-
-# Roll EVERYTHING back to this checkpoint:
-git reset --hard v0.1-working-demo
-
-# Or just one file:
-git checkout v0.1-working-demo -- apps/server/programs/rolet/src/lib.rs
-
-# Or branch off this checkpoint to experiment:
-git checkout -b experiment-er-delegation v0.1-working-demo
+```fish
+cd apps/server
+env RPC_URL=https://api.devnet.solana.com \
+    ANCHOR_WALLET=~/.config/solana/id.json \
+    PLAYER_B_KEY=~/.config/solana/player-b.json \
+    npx tsx scripts/devnet-e2e.ts
 ```
 
-After roll-back, you may need to:
-- `cd apps/server && rm -f Cargo.lock && anchor build --no-idl` — rebuild Rust
-- `solana program deploy ...` — redeploy if Rust changed
-- `pnpm install` — restore deps if package.json changed
-- The `.env.local` file is NOT in git (intentional — has API keys). Keep it backed up separately.
+Both wallets need ~1 SOL (fees + 0.1 purchase each).
+
+## Known MVP limitations (unchanged from the code review)
+
+- **Self-attested NFT authority** — the program trusts the Core asset's `update_authority` field written by the minter; a program-signed mint (CPI) or program-owned collection check is the production fix (documented in README Known Limitations)
+- **Commit-reveal griefing** — `join_lobby` submits `guest_secret` in plain text; a 3-step commit → init → reveal flow is the post-hackathon fix
+- **Ops-share observation artifact** — in the E2E script the ops wallet IS player A's wallet, so the "ops delta" prints as negative (the purchase price includes what player A receives back). In production the ops wallet is separate.
 
 ---
 
@@ -111,20 +65,5 @@ NEXT_PUBLIC_ROLET_PROGRAM_ID=Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792
 NEXT_PUBLIC_MAGICBLOCK_ER_ENDPOINT=https://devnet.magicblock.app
 ```
 
-### `apps/server/migrations/.reward-mint.json`
-```
-{"mint":"6q6aq9KXSo23xJpfmvDGrpHw4SQSGXb2MUwMjdLDUnZm"}
-```
-
 ### `apps/server/target/deploy/rolet-keypair.json`
-The program-ID keypair. **DO NOT LOSE** — losing it means the program at `2ePEUz…QPrS7` becomes unupgradeable. If lost, you must deploy with a new keypair (new program ID), update IDL `address` field, update `.env.local`, and re-bootstrap vault.
-
----
-
-## Next steps from here (priority order for hackathon)
-
-1. **Real MagicBlock ER delegation** — Rust manual CPI (no SDK macro) → sub-second turns
-2. **Real 2-player matchmaking** — replace ghost with on-chain rendezvous lobby
-3. **Character NFT mint flow** — Metaplex Core, durability bar UI
-4. **SNS resolution** — `@bonfida/spl-name-service` ownership check
-5. **Demo screencast + README polish** — submission package
+The program-ID keypair for `Gwh17…`. **DO NOT LOSE** — losing it means the program becomes unupgradeable. If lost, deploy with a new keypair (new program ID), update IDL `address` field, update `.env.local`, and re-bootstrap vault.
