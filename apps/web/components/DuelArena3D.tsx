@@ -10,8 +10,9 @@ import {
   Pixelation,
   Noise,
 } from "@react-three/postprocessing";
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { CharacterRig, type CharacterState } from "./CharacterRig";
 
 const MODEL_TABLE = "/models/table.glb";
 const MODEL_REVOLVER = "/models/revolver.glb";
@@ -34,7 +35,7 @@ function LoadingText() {
           whiteSpace: "nowrap",
         }}
       >
-        // YÜKLENİYOR…
+        // LOADING…
       </div>
     </Html>
   );
@@ -78,6 +79,162 @@ function GLBModel({
   }, [scene, castShadow, receiveShadow]);
 
   return <primitive object={model} position={position} rotation={rotation} scale={scale} />;
+}
+
+// ── Deterministic hue from a base58 pubkey ─────────────────────────────────────
+function hueFromPubkey(pubkey: string): number {
+  let h = 0;
+  for (let i = 0; i < Math.min(pubkey.length, 8); i++) {
+    h = (h * 31 + pubkey.charCodeAt(i)) % 360;
+  }
+  return h;
+}
+
+// ── Chamber bullets laid out on the table — live = hot, blank = cold ──────────
+type BulletKind = "live" | "blank";
+type BulletItem = {
+  key: number;
+  kind: BulletKind;
+  retiring?: boolean;
+  slot: number; // target row slot (frozen when retiring so it shrinks in place)
+  slotCount: number; // layout width the slot was computed against (frozen too)
+};
+
+const BULLET_BASE_SCALE = 0.3;
+const BULLET_SPACING = 0.13;
+const BULLET_RETIRE_MS = 420;
+
+function bulletSlotX(slot: number, slotCount: number): number {
+  return slotCount === 1 ? 0 : -((slotCount - 1) / 2) * BULLET_SPACING + slot * BULLET_SPACING;
+}
+
+function Bullet({ item }: { item: BulletItem }) {
+  const group = useRef<THREE.Group>(null);
+  const { scene } = useGLTF(MODEL_BULLET);
+
+  const model = useMemo(() => {
+    const cloned = scene.clone(true);
+    cloned.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.castShadow = true;
+      mesh.receiveShadow = false;
+      // GLBModel darkens shared materials; here we want per-bullet emissive,
+      // so clone materials once per bullet before tinting.
+      const mats = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(
+        (mat) => (mat as THREE.Material).clone(),
+      );
+      mesh.material = Array.isArray(mesh.material) ? mats : mats[0];
+      mats.forEach((mat) => {
+        const m = mat as THREE.MeshStandardMaterial;
+        if (item.kind === "live") {
+          m.color = new THREE.Color("#5c0d05");
+          m.emissive = new THREE.Color("#ff4422");
+          m.emissiveIntensity = 1.2;
+          m.roughness = 0.45;
+          m.metalness = 0.15;
+        } else {
+          m.color = new THREE.Color("#8a8a8a");
+          m.emissive = new THREE.Color("#333333");
+          m.emissiveIntensity = 0.2;
+          m.roughness = 0.6;
+          m.metalness = 0.7;
+        }
+      });
+    });
+    return cloned;
+  }, [scene, item.kind]);
+
+  const targetX = bulletSlotX(item.slot, item.slotCount);
+  const yaw = item.slot * 0.62;
+
+  useFrame((_, delta) => {
+    const g = group.current;
+    if (!g) return;
+    const k = Math.min(1, delta * 8);
+    // New bullets grow in from 0; retiring bullets shrink to 0 before unmount.
+    const targetScale = item.retiring ? 0 : BULLET_BASE_SCALE;
+    g.scale.setScalar(g.scale.x + (targetScale - g.scale.x) * k);
+    g.position.x += (targetX - g.position.x) * k;
+  });
+
+  return (
+    <group
+      ref={group}
+      position={[targetX, 0.14, 0]}
+      rotation={[Math.PI / 2, 0, yaw]}
+      scale={0}
+    >
+      <primitive object={model} />
+    </group>
+  );
+}
+
+function BulletSet({ liveCount, blankCount }: { liveCount: number; blankCount: number }) {
+  const idRef = useRef(0);
+  const [items, setItems] = useState<BulletItem[]>([]);
+
+  useFrame((_, delta) => {
+    if (delta <= 0) return; // wait for a real frame
+
+    const live = Math.max(0, liveCount);
+    const blank = Math.max(0, blankCount);
+    const total = Math.min(8, live + blank);
+    const targetLive = Math.min(live, total);
+    const targetBlank = total - targetLive;
+
+    const active = items.filter((i) => !i.retiring);
+    const activeLive = active.filter((i) => i.kind === "live");
+    const activeBlank = active.filter((i) => i.kind === "blank");
+
+    if (activeLive.length === targetLive && activeBlank.length === targetBlank) {
+      return; // already reconciled
+    }
+
+    const keepLive = activeLive.slice(0, targetLive);
+    const keepBlank = activeBlank.slice(0, targetBlank);
+    // Frozen at their current slot/slotCount → they shrink in place.
+    const retiring: BulletItem[] = [
+      ...activeLive.slice(targetLive),
+      ...activeBlank.slice(targetBlank),
+    ].map((i) => ({ ...i, retiring: true }));
+
+    const freshLive: BulletItem[] = [];
+    for (let i = 0; i < targetLive - keepLive.length; i++) {
+      freshLive.push({ key: ++idRef.current, kind: "live", slot: 0, slotCount: 0 });
+    }
+    const freshBlank: BulletItem[] = [];
+    for (let i = 0; i < targetBlank - keepBlank.length; i++) {
+      freshBlank.push({ key: ++idRef.current, kind: "blank", slot: 0, slotCount: 0 });
+    }
+
+    // Active bullets occupy a contiguous row: live first, then blank. Copy kept
+    // items so their slot assignment doesn't mutate existing state.
+    const activeSequence = [...keepLive, ...freshLive, ...keepBlank, ...freshBlank];
+    const activeCount = activeSequence.length;
+    const nextActive = activeSequence.map((it, i) => ({
+      ...it,
+      slot: i,
+      slotCount: activeCount,
+    }));
+
+    if (retiring.length > 0) {
+      const keys = new Set(retiring.map((r) => r.key));
+      window.setTimeout(() => {
+        setItems((cur) => cur.filter((c) => !keys.has(c.key)));
+      }, BULLET_RETIRE_MS);
+    }
+
+    setItems([...nextActive, ...retiring]);
+  });
+
+  return (
+    <group>
+      {items.map((item) => (
+        <Bullet key={item.key} item={item} />
+      ))}
+    </group>
+  );
 }
 
 // ── Flickering spotlight — calmed down, no more nuclear glow ─────────────────
@@ -315,17 +472,53 @@ function FPSGun({
 }
 
 // ── Scene contents ────────────────────────────────────────────────────────────
+// Floor sits at Y=-0.5 and the KayKit character's feet are at its local Y=0, so
+// character position.y = -0.5 plants the feet exactly on the floor. At scale
+// 0.62 the ~2.17m rig becomes ~1.34m — torso visible above the table top
+// (table top ≈ Y=0.16). The camera is at +Z looking -Z, so:
+//   • PlayerOne (you) stands on the camera side and faces the opponent (-Z) → rotationY = π
+//   • PlayerTwo (opponent) stands on the far side and faces you (+Z) → rotationY = 0
+const CHARACTER_Y = -0.5;
+const CHARACTER_SCALE = 0.62;
+
+type DuelArenaProps = {
+  isYourTurn: boolean;
+  gunHeld: boolean;
+  setGunHeld: (v: boolean) => void;
+  target: GunTarget;
+  firing: FireKind;
+  playerOneHp?: number;
+  playerTwoHp?: number;
+  playerOnePubkey?: string;
+  playerTwoPubkey?: string;
+  playerOneHitSignal?: number;
+  playerTwoHitSignal?: number;
+  liveCount?: number;
+  blankCount?: number;
+};
+
 function Scene({
   gunHeld,
   setGunHeld,
   target,
   firing,
-}: {
-  gunHeld: boolean;
-  setGunHeld: (v: boolean) => void;
-  target: GunTarget;
-  firing: FireKind;
-}) {
+  isYourTurn,
+  playerOneHp = 4,
+  playerTwoHp = 4,
+  playerOnePubkey = "",
+  playerTwoPubkey = "",
+  playerOneHitSignal = 0,
+  playerTwoHitSignal = 0,
+  liveCount = 5,
+  blankCount = 3,
+}: DuelArenaProps) {
+  const matchOver = playerOneHp <= 0 || playerTwoHp <= 0;
+
+  const playerOneState: CharacterState =
+    playerOneHp <= 0 ? "dead" : matchOver ? "win" : "idle";
+  const playerTwoState: CharacterState =
+    playerTwoHp <= 0 ? "dead" : matchOver ? "win" : "idle";
+
   return (
     <>
       <CameraInit firing={firing === "live"} />
@@ -341,6 +534,28 @@ function Scene({
 
       <GLBModel src={MODEL_TABLE} position={[0, -0.5, 0]} scale={0.78} receiveShadow />
 
+      {/* PlayerOne (you) — camera side, faces the opponent across the table */}
+      <CharacterRig
+        hue={hueFromPubkey(playerOnePubkey)}
+        state={playerOneState}
+        isTurn={isYourTurn && !matchOver}
+        hitSignal={playerOneHitSignal}
+        position={[0, CHARACTER_Y, 0.95]}
+        rotationY={Math.PI}
+        scale={CHARACTER_SCALE}
+      />
+
+      {/* PlayerTwo (opponent) — far side, faces you / the camera */}
+      <CharacterRig
+        hue={hueFromPubkey(playerTwoPubkey)}
+        state={playerTwoState}
+        isTurn={!isYourTurn && !matchOver}
+        hitSignal={playerTwoHitSignal}
+        position={[0, CHARACTER_Y, -1.35]}
+        rotationY={0}
+        scale={CHARACTER_SCALE}
+      />
+
       <FPSGun
         held={gunHeld}
         target={target}
@@ -351,11 +566,8 @@ function Scene({
       {/* Hanging lantern — swings gently, visible above the table */}
       <SwingingLantern />
 
-      {/* Bullets scattered on the table */}
-      <GLBModel src={MODEL_BULLET} position={[-0.45, 0.14, 0.2]} rotation={[Math.PI / 2, 0, 0.3]} scale={0.25} />
-      <GLBModel src={MODEL_BULLET} position={[0.55, 0.14, 0.1]} rotation={[Math.PI / 2, 0, -0.7]} scale={0.25} />
-      <GLBModel src={MODEL_BULLET} position={[-0.18, 0.14, 0.4]} rotation={[Math.PI / 2, 0, 1.4]} scale={0.25} />
-      <GLBModel src={MODEL_BULLET} position={[0.35, 0.14, 0.35]} rotation={[Math.PI / 2, 0, -0.2]} scale={0.25} />
+      {/* Dynamic chamber bullets — live (hot) + blank (cold), animated in/out */}
+      <BulletSet liveCount={liveCount} blankCount={blankCount} />
     </>
   );
 }
@@ -367,15 +579,15 @@ export default function DuelArena3D({
   setGunHeld,
   target,
   firing,
-}: {
-  isYourTurn: boolean;
-  gunHeld: boolean;
-  setGunHeld: (v: boolean) => void;
-  target: GunTarget;
-  firing: FireKind;
-}) {
-  // Reference isYourTurn so it's not "unused" — could drive scene mood later
-  void isYourTurn;
+  playerOneHp = 4,
+  playerTwoHp = 4,
+  playerOnePubkey = "",
+  playerTwoPubkey = "",
+  playerOneHitSignal = 0,
+  playerTwoHitSignal = 0,
+  liveCount = 5,
+  blankCount = 3,
+}: DuelArenaProps) {
   return (
     <Canvas
       shadows="basic"
@@ -400,7 +612,21 @@ export default function DuelArena3D({
       <color attach="background" args={["#000000"]} />
 
       <Suspense fallback={<LoadingText />}>
-        <Scene gunHeld={gunHeld} setGunHeld={setGunHeld} target={target} firing={firing} />
+        <Scene
+          isYourTurn={isYourTurn}
+          gunHeld={gunHeld}
+          setGunHeld={setGunHeld}
+          target={target}
+          firing={firing}
+          playerOneHp={playerOneHp}
+          playerTwoHp={playerTwoHp}
+          playerOnePubkey={playerOnePubkey}
+          playerTwoPubkey={playerTwoPubkey}
+          playerOneHitSignal={playerOneHitSignal}
+          playerTwoHitSignal={playerTwoHitSignal}
+          liveCount={liveCount}
+          blankCount={blankCount}
+        />
       </Suspense>
 
       <EffectComposer>
