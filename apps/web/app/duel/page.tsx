@@ -194,6 +194,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
   const [hitFlash, setHitFlash] = useState<"player" | "opponent" | null>(null);
   const [damageNums, setDamageNums] = useState<DamageNum[]>([]);
   const [showTurnBanner, setShowTurnBanner] = useState(false);
+  const [deathBeat, setDeathBeat] = useState(false);
   const prevPlayerHpRef = useRef<number | null>(null);
   const prevOpponentHpRef = useRef<number | null>(null);
   const prevTurnRef = useRef<boolean | null>(null);
@@ -201,6 +202,10 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
   // ── Gun state ──────────────────────────────────────────────────────────────
   const [gunHeld, setGunHeld] = useState(false);
   const [firing, setFiring] = useState<"live" | "blank" | null>(null);
+  const [playerHitSignal, setPlayerHitSignal] = useState(0);
+  const [opponentHitSignal, setOpponentHitSignal] = useState(0);
+  const [lastPlayedSlot, setLastPlayedSlot] = useState<number | null>(null);
+  const [lastPlayedSignal, setLastPlayedSignal] = useState(0);
   const { play, muted, toggleMute } = useSound();
 
   const youKey = wallet.publicKey?.toBase58() ?? null;
@@ -267,6 +272,9 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
         ? decoded.playerOne === youKey
         : decoded.playerTwo === youKey;
       play(youWon ? "matchWin" : "matchLose");
+      setDeathBeat(true);
+      setTimeout(() => setDeathBeat(false), 500);
+      setFiring(null);
     }
   }, [decoded, committed, rolet, matchId, youKey, play]);
 
@@ -286,6 +294,8 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       currentTurnAuthority: new PublicKey(decoded.currentTurn),
     });
     if (cardResult) play("cardPlay");
+    setLastPlayedSlot(selectedSlot);
+    setLastPlayedSignal(Date.now());
     setSelectedSlot(null);
     // Immediate refetch so the HUD reflects the new state without waiting
     // for the 1.5s poll tick.
@@ -352,6 +362,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
     if (prevPlayerHpRef.current !== null && playerHp < prevPlayerHpRef.current) {
       const diff = prevPlayerHpRef.current - playerHp;
       setHitFlash("player");
+      setPlayerHitSignal(Date.now());
       setDamageNums((prev) => [...prev, { id: ++dmgSeq, value: -diff, x: 48 }]);
       triggerShake();
       play("playerHit");
@@ -364,7 +375,10 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
     if (opponentHp === null) return;
     if (prevOpponentHpRef.current !== null && opponentHp < prevOpponentHpRef.current) {
       const diff = prevOpponentHpRef.current - opponentHp;
+      setHitFlash("opponent");
+      setOpponentHitSignal(Date.now());
       setDamageNums((prev) => [...prev, { id: ++dmgSeq, value: -diff, x: 52 }]);
+      setTimeout(() => setHitFlash(null), 450);
     }
     prevOpponentHpRef.current = opponentHp;
   }, [opponentHp]);
@@ -410,6 +424,14 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
         setGunHeld={setGunHeld}
         target={target}
         firing={firing}
+        playerOneHp={decoded?.playerOneHp ?? 4}
+        playerTwoHp={decoded?.playerTwoHp ?? 4}
+        playerOnePubkey={decoded?.playerOne ?? ""}
+        playerTwoPubkey={decoded?.playerTwo ?? ""}
+        playerOneHitSignal={playerHitSignal}
+        playerTwoHitSignal={opponentHitSignal}
+        liveCount={decoded?.liveCount ?? 0}
+        blankCount={decoded?.blankCount ?? 0}
       />
 
       {/* Hit flash overlay (red, when player takes damage) */}
@@ -427,6 +449,21 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
         )}
       </AnimatePresence>
 
+      {/* Opponent damage flash (red, when opponent takes damage) */}
+      <AnimatePresence>
+        {hitFlash === "opponent" && (
+          <motion.div
+            key="opponent-hit-flash"
+            className="pointer-events-none fixed inset-0 z-[100]"
+            initial={{ opacity: 0.3 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            style={{ background: "radial-gradient(ellipse at 50% 10%, rgba(180,30,30,0.5) 0%, rgba(90,0,0,0.3) 40%, transparent 70%)" }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Muzzle FLASH overlay — only fires for LIVE chambers */}
       <AnimatePresence>
         {firing === "live" && (
@@ -438,6 +475,21 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
             style={{ background: "radial-gradient(circle at 50% 55%, rgba(255,240,180,0.85) 0%, rgba(255,140,40,0.45) 25%, transparent 60%)" }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Death beat overlay */}
+      <AnimatePresence>
+        {deathBeat && (
+          <motion.div
+            key="death-beat"
+            className="pointer-events-none fixed inset-0 z-[97] mix-blend-multiply"
+            initial={{ opacity: 0.7 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            style={{ background: "radial-gradient(ellipse at 50% 60%, rgba(120,0,0,0.8) 0%, rgba(40,0,0,0.55) 45%, transparent 75%)" }}
           />
         )}
       </AnimatePresence>
@@ -626,6 +678,8 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
                 selectedSlot={selectedSlot}
                 onSelect={(i) => { setSelectedSlot(i); if (i !== null) play("uiSelect"); }}
                 disabled={!turnIsYours || !!decoded?.silencedYou || rolet.busy}
+                playedSlot={lastPlayedSlot}
+                playSignal={lastPlayedSignal}
               />
               {/* Floating PLAY button — appears when a card is selected */}
               {selectedSlot !== null && decoded?.yourHand[selectedSlot] && (
@@ -942,8 +996,11 @@ function HpBar({
             {/* Pixelated cell grid */}
             <div className="absolute inset-0 grid grid-rows-2 grid-cols-4 gap-px p-px">
               {Array.from({ length: cells }).map((_, j) => (
-                <div
+                <motion.div
                   key={j}
+                  initial={false}
+                  animate={{ scale: alive ? 1 : 0, opacity: alive ? 1 : 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 24 }}
                   style={{
                     backgroundColor: alive ? aliveColor : "#0e0606",
                     boxShadow: alive ? `inset 0 0 2px ${aliveGlow}` : "none",

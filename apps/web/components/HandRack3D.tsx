@@ -2,7 +2,7 @@
 "use client";
 
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { RoletCard } from "@/hooks/useRolet";
 
@@ -211,6 +211,7 @@ function Card3D({
   selected,
   disabled,
   onSelect,
+  consuming = false,
 }: {
   card: RoletCard | null;
   slotIndex: number;
@@ -218,9 +219,12 @@ function Card3D({
   selected: boolean;
   disabled: boolean;
   onSelect: () => void;
+  consuming?: boolean;
 }) {
   const ref = useRef<THREE.Group>(null);
   const frontMat = useRef<THREE.MeshStandardMaterial>(null);
+  const backMat = useRef<THREE.MeshStandardMaterial>(null);
+  const scaleRef = useRef(1);
   const [hovered, setHovered] = useState(false);
 
   const frontTex = useMemo(() => (card ? makeFrontTexture(card) : null), [card]);
@@ -235,6 +239,29 @@ function Card3D({
 
   useFrame((_, delta) => {
     if (!ref.current) return;
+
+    // Consume animation: rise, scale up, fade out — skip normal hover/selected logic
+    if (consuming) {
+      const consumeLerp = Math.min(1, delta * 7);
+      ref.current.position.x += (baseX - ref.current.position.x) * consumeLerp;
+      ref.current.position.y += (baseY + 1.2 - ref.current.position.y) * consumeLerp;
+      ref.current.position.z += (baseZ - ref.current.position.z) * consumeLerp;
+      ref.current.rotation.x += (0 - ref.current.rotation.x) * consumeLerp;
+      ref.current.rotation.y += (0 - ref.current.rotation.y) * consumeLerp;
+      ref.current.rotation.z += (baseRotZ - ref.current.rotation.z) * consumeLerp;
+
+      scaleRef.current += (1.15 - scaleRef.current) * consumeLerp;
+      ref.current.scale.setScalar(scaleRef.current);
+
+      if (frontMat.current) {
+        frontMat.current.opacity += (0 - frontMat.current.opacity) * consumeLerp;
+      }
+      if (backMat.current) {
+        backMat.current.opacity += (0 - backMat.current.opacity) * consumeLerp;
+      }
+      return;
+    }
+
     const lerp = Math.min(1, delta * 8);
     // Bigger lift on hover/selected — more dramatic FPS card feel
     const lift = selected ? 0.55 : hovered && !disabled ? 0.32 : 0;
@@ -250,6 +277,9 @@ function Card3D({
     ref.current.rotation.y += (flipY - ref.current.rotation.y) * lerp;
     ref.current.rotation.z += (baseRotZ - ref.current.rotation.z) * lerp;
 
+    scaleRef.current += (1 - scaleRef.current) * lerp;
+    ref.current.scale.setScalar(scaleRef.current);
+
     // Strong selected glow pulse
     if (frontMat.current) {
       const target = selected
@@ -260,6 +290,8 @@ function Card3D({
       frontMat.current.emissiveIntensity += (target - frontMat.current.emissiveIntensity) * lerp;
     }
   });
+
+  if (!card) return null;
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
@@ -302,6 +334,7 @@ function Card3D({
       <mesh rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[0.95, 1.34]} />
         <meshStandardMaterial
+          ref={backMat}
           map={backTex}
           side={THREE.FrontSide}
           transparent
@@ -318,12 +351,34 @@ export default function HandRack3D({
   selectedSlot,
   onSelect,
   disabled,
+  playedSlot = null,
+  playSignal,
 }: {
   hand: (RoletCard | null)[];
   selectedSlot: number | null;
   onSelect: (i: number | null) => void;
   disabled: boolean;
+  playedSlot?: number | null;
+  playSignal?: number;
 }) {
+  const [consumedSlots, setConsumedSlots] = useState<Set<number>>(new Set());
+  const [consuming, setConsuming] = useState<{slot: number; startedAt: number} | null>(null);
+
+  useEffect(() => {
+    if (playSignal !== undefined && playedSlot != null) {
+      setConsuming({ slot: playedSlot, startedAt: Date.now() });
+    }
+  }, [playSignal, playedSlot]);
+
+  useEffect(() => {
+    if (!consuming) return;
+    const timer = setTimeout(() => {
+      setConsumedSlots((prev) => new Set(prev).add(consuming.slot));
+      setConsuming(null);
+    }, 550);
+    return () => clearTimeout(timer);
+  }, [consuming]);
+
   return (
     <Canvas
       camera={{ position: [0, 0.15, 2.05], fov: 42 }}
@@ -338,11 +393,12 @@ export default function HandRack3D({
       {hand.slice(0, 4).map((card, i) => (
         <Card3D
           key={i}
-          card={card}
+          card={consumedSlots.has(i) ? null : card}
           slotIndex={i}
           totalSlots={4}
           selected={selectedSlot === i}
           disabled={disabled || !card}
+          consuming={consuming?.slot === i}
           onSelect={() => onSelect(i === selectedSlot ? null : i)}
         />
       ))}
