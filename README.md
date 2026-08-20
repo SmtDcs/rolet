@@ -199,3 +199,9 @@ rolet-web/
 ## License
 
 MIT
+
+## Asset Credits
+
+- **Character model** — [KayKit Skeleton Character Pack](https://kaylousberg.itch.io/kaykit-skeletons) by Kay Lousberg, licensed CC0 1.0 (free for personal and commercial use, no attribution required). Optimized with gltf-transform (meshopt + WebP).
+- **Table, revolver, lantern, bullet models** — Quaternius (CC0).
+- **Sound effects** — CC0/free-license sources bundled in `public/sounds/`.
