@@ -540,7 +540,7 @@ function Scene({
         state={playerOneState}
         isTurn={isYourTurn && !matchOver}
         hitSignal={playerOneHitSignal}
-        position={[0, CHARACTER_Y, 0.95]}
+        position={[-0.6, CHARACTER_Y, 0.8]}
         rotationY={Math.PI}
         scale={CHARACTER_SCALE}
       />
@@ -551,7 +551,7 @@ function Scene({
         state={playerTwoState}
         isTurn={!isYourTurn && !matchOver}
         hitSignal={playerTwoHitSignal}
-        position={[0, CHARACTER_Y, -1.35]}
+        position={[0, CHARACTER_Y, -1.15]}
         rotationY={0}
         scale={CHARACTER_SCALE}
       />

@@ -57,6 +57,10 @@ export function CharacterRig({
     cloned.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (!mesh.isMesh) return;
+      // meshopt quantization bakes a corrective scale into the inverse-bind
+      // matrices but leaves stale (tiny) bounding spheres on the meshes —
+      // disable frustum culling so the character is never wrongly clipped.
+      mesh.frustumCulled = false;
       mesh.castShadow = true;
       // `scene.clone(true)` shares material instances across every clone — two
       // CharacterRig instances would otherwise bleed hue into each other.
