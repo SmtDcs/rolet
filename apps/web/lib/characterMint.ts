@@ -70,9 +70,10 @@ export async function mintCharacterAsset(opts: {
   };
 
   if (paid) {
-    if (!opts.opsWallet) {
-      throw new Error("opsWallet is required for the paid purchase path");
-    }
+    // opsWallet must match the vault's recorded ops_wallet — the program
+    // enforces it. Default to the deployer wallet so a transient vault-fetch
+    // failure (e.g. RPC rate limit) never bricks enrollment.
+    const opsWallet = opts.opsWallet ?? new PublicKey("CeoeQQj6233aJ1SMKzrdVrVeLZVJ8C5zwXT7JNdfj8f4");
     const PURCHASE_CHARACTER_DISCRIMINATOR = Buffer.from([
       106, 152, 20, 133, 31, 138, 120, 36,
     ]);
@@ -90,7 +91,7 @@ export async function mintCharacterAsset(opts: {
         { pubkey: toWeb3JsPublicKey(assetSigner.publicKey), isSigner: false, isWritable: false },
         { pubkey: vaultPda, isSigner: false, isWritable: true },
         { pubkey: treasurySolPda, isSigner: false, isWritable: true },
-        { pubkey: opts.opsWallet, isSigner: false, isWritable: true },
+        { pubkey: opsWallet, isSigner: false, isWritable: true },
         { pubkey: buyer, isSigner: true, isWritable: true },
         { pubkey: new PublicKey("11111111111111111111111111111111"), isSigner: false, isWritable: false },
       ],
