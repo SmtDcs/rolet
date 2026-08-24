@@ -34,8 +34,8 @@ export default function ProfilePage() {
   // Pull existing profile + match history on mount / wallet change.
   useEffect(() => {
     if (!rolet.program || !wallet.publicKey) {
-      setProfile(null);
-      setHistory([]);
+      setProfile((prev) => (prev === null ? prev : null));
+      setHistory((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     let alive = true;
