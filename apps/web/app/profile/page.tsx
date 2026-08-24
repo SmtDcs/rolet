@@ -15,6 +15,12 @@ import { mintCharacterAsset } from "@/lib/characterMint";
 import { CHARACTER_DURABILITY } from "@/lib/economy";
 const ROLET_PROGRAM_ID = new PublicKey(idl.address);
 
+function resolveRpc(raw: string): string {
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (typeof window !== "undefined") return `${window.location.origin}${raw}`;
+  return "https://api.devnet.solana.com";
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ProfileSnapshot = any;
 
@@ -34,8 +40,8 @@ export default function ProfilePage() {
   // Pull existing profile + match history on mount / wallet change.
   useEffect(() => {
     if (!rolet.program || !wallet.publicKey) {
-      setProfile((prev) => (prev === null ? prev : null));
-      setHistory((prev) => (prev.length === 0 ? prev : []));
+      setProfile((prev: ProfileSnapshot | null) => (prev === null ? prev : null));
+      setHistory((prev: unknown[]) => (prev.length === 0 ? prev : []));
       return;
     }
     let alive = true;
@@ -90,7 +96,7 @@ export default function ProfilePage() {
         opsWallet: vault?.opsWallet,
       });
       const conn = new Connection(
-        process.env.NEXT_PUBLIC_RPC_ENDPOINT ?? "https://api.devnet.solana.com",
+        resolveRpc(process.env.NEXT_PUBLIC_RPC_ENDPOINT ?? "https://api.devnet.solana.com"),
       );
       const signed = await wallet.signTransaction!(tx);
       const sig = await conn.sendRawTransaction(signed.serialize());
