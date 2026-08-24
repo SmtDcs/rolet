@@ -3,7 +3,10 @@
 import { ReactNode, useMemo } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
+import {
+  SolflareWalletAdapter,
+  PhantomWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
 import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
 
@@ -37,7 +40,10 @@ export function SolanaProvider({ children }: { children: ReactNode }) {
   }, [network]);
 
   const wallets = useMemo(
-    () => [new SolflareWalletAdapter({ network })],
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter({ network }),
+    ],
     [network]
   );
 
