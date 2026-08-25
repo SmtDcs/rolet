@@ -9,10 +9,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { useRolet, useToasts, emitToast, type RoletCard } from "@/hooks/useRolet";
 import { useSound } from "@/hooks/useSound";
-import { REWARD_SOL } from "@/lib/economy";
 
 const DuelArena3D = dynamic(() => import("@/components/DuelArena3D"), { ssr: false });
 const HandRack3D = dynamic(() => import("@/components/HandRack3D"), { ssr: false });
@@ -206,6 +206,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
   const [opponentHitSignal, setOpponentHitSignal] = useState(0);
   const [lastPlayedSlot, setLastPlayedSlot] = useState<number | null>(null);
   const [lastPlayedSignal, setLastPlayedSignal] = useState(0);
+  const [vaultRewardSol, setVaultRewardSol] = useState<string>("0.12");
   const { play, muted, toggleMute } = useSound();
 
   const youKey = wallet.publicKey?.toBase58() ?? null;
@@ -226,6 +227,12 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       if (alive && initial) {
         setState(initial);
         setLog((l) => ["// match snapshot loaded", ...l].slice(0, 24));
+      }
+      // Pull the on-chain reward so the claim banner shows the real amount.
+      const vault = await rolet.fetchVault();
+      if (alive && vault) {
+        const sol = (vault.rewardSol.toNumber() / 1e9).toFixed(3);
+        setVaultRewardSol(sol.replace(/0+$/, "").replace(/\.$/, ""));
       }
       unsub = rolet.subscribeMatch(matchId, (next) => {
         if (!alive) return;
@@ -626,6 +633,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               decoded={decoded}
               youKey={youKey}
               busy={rolet.busy}
+              rewardSol={vaultRewardSol}
               onSettle={async () => {
                 const sig = await rolet.settleMatch(matchId);
                 if (sig) setSettled(true);
@@ -1019,12 +1027,14 @@ function CompletedBanner({
   decoded,
   youKey,
   busy,
+  rewardSol,
   onSettle,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   decoded: any;
   youKey: string | null;
   busy: boolean;
+  rewardSol: string;
   onSettle: () => Promise<unknown>;
 }) {
   const youWon =
@@ -1059,7 +1069,7 @@ function CompletedBanner({
         </div>
         <div className="mt-1 text-[10px] tracking-[0.3em] text-zinc-600">
           {youWon
-            ? `claim your reward · ${REWARD_SOL} SOL will be transferred`
+            ? `claim your reward · ${rewardSol} SOL will be transferred`
             : "match closed · no reward · character durability decremented"}
         </div>
       </div>
@@ -1258,9 +1268,12 @@ function Lobby() {
         )}
 
         {!wallet.connected && (
-          <span className="text-[10px] tracking-[0.4em] text-rust mt-2">
-            // CONNECT A WALLET FROM THE NAV BAR
-          </span>
+          <div className="flex flex-col items-center gap-2 mt-2">
+            <span className="text-[10px] tracking-[0.4em] text-rust">
+              // CONNECT A WALLET TO ENTER THE ARENA
+            </span>
+            <WalletMultiButton className="!bg-red-950/60 !border !border-red-700 !text-red-300 hover:!bg-red-900/50" />
+          </div>
         )}
       </div>
     </LobbyShell>
