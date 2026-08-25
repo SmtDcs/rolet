@@ -595,8 +595,18 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
           } · ${sig.slice(0, 6)}…`
         );
         return sig;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+      } catch (err: unknown) {
+        // Anchor errors arrive as nested objects ({ error: { errorCode: … } })
+        // or plain Error — extract the most readable message either way.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyErr = err as any;
+        const msg =
+          anyErr?.error?.errorMessage ??
+          anyErr?.error?.errorMsg ??
+          (anyErr?.error?.errorCode?.number
+            ? `error code ${anyErr.error.errorCode.number}`
+            : undefined) ??
+          (err instanceof Error ? err.message : String(err));
         emitToast("error", `pull_trigger failed · ${msg}`);
         return null;
       } finally {
@@ -764,8 +774,12 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("does not exist") || msg.includes("has no data")) {
-          emitToast("info", "Match already settled");
-          return null;
+          // The match account is closed after settle — someone (the winner,
+          // or the loser's ACKNOWLEDGE path) already settled it. That is a
+          // SUCCESS for the caller: the reward is paid, stats are written.
+          // Return a sentinel so the UI can dismiss the claim banner.
+          emitToast("info", "Match already settled — reward paid");
+          return "already-settled";
         }
         emitToast("error", `settle_match failed · ${msg}`);
         return null;

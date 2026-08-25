@@ -635,8 +635,10 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               busy={rolet.busy}
               rewardSol={vaultRewardSol}
               onSettle={async () => {
-                const sig = await rolet.settleMatch(matchId);
-                if (sig) setSettled(true);
+                // "already-settled" = the match account is closed (someone
+                // settled first) — reward is paid either way, dismiss banner.
+                const result = await rolet.settleMatch(matchId);
+                if (result) setSettled(true);
               }}
             />
           )}
@@ -1541,9 +1543,12 @@ function GuestLobby({ matchId, autoJoin = false }: { matchId: BN, autoJoin?: boo
       )}
 
       {!wallet.connected && (
-        <span className="text-[10px] tracking-[0.4em] text-rust mt-8">
-          // CONNECT A WALLET FROM THE NAV BAR
-        </span>
+        <div className="flex flex-col items-center gap-2 mt-8">
+          <span className="text-[10px] tracking-[0.4em] text-rust">
+            // CONNECT A WALLET TO JOIN
+          </span>
+          <WalletMultiButton className="!bg-red-950/60 !border !border-red-700 !text-red-300 hover:!bg-red-900/50" />
+        </div>
       )}
     </LobbyShell>
   );
