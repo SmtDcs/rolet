@@ -97,6 +97,12 @@ export default function ProfilePage() {
       });
       const conn = new Connection(
         resolveRpc(process.env.NEXT_PUBLIC_RPC_ENDPOINT ?? "https://api.devnet.solana.com"),
+        // The /api/rpc proxy can't upgrade WebSocket connections — without an
+        // explicit wsEndpoint, web3.js derives ws://host:3001 and every
+        // confirmTransaction times out even though the tx lands on chain.
+        // Poll-based confirmation (wsEndpoint: "") is not supported, so point
+        // the WS directly at public devnet.
+        { wsEndpoint: "wss://api.devnet.solana.com" },
       );
       const signed = await wallet.signTransaction!(tx);
       const sig = await conn.sendRawTransaction(signed.serialize());
