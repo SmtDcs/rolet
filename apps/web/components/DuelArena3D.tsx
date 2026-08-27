@@ -100,8 +100,8 @@ type BulletItem = {
   slotCount: number; // layout width the slot was computed against (frozen too)
 };
 
-const BULLET_BASE_SCALE = 0.3;
-const BULLET_SPACING = 0.13;
+const BULLET_BASE_SCALE = 0.22;
+const BULLET_SPACING = 0.11;
 const BULLET_RETIRE_MS = 420;
 
 function bulletSlotX(slot: number, slotCount: number): number {
@@ -161,8 +161,10 @@ function Bullet({ item }: { item: BulletItem }) {
   return (
     <group
       ref={group}
-      position={[targetX, 0.14, 0]}
-      rotation={[Math.PI / 2, 0, yaw]}
+      // The bullet GLB is already upright (long axis = +Y, ~0.33 tall) — only
+      // yaw it slightly so the row doesn't look stamped from a mold.
+      position={[targetX, 0.165, 0.28]}
+      rotation={[0, yaw, 0]}
       scale={0}
     >
       <primitive object={model} />
@@ -237,37 +239,40 @@ function BulletSet({ liveCount, blankCount }: { liveCount: number; blankCount: n
   );
 }
 
-// ── Flickering spotlight — calmed down, no more nuclear glow ─────────────────
+// ── Flickering overhead light — the single hero light above the table,
+// like a bare bulb in a basement. Warm amber, slow nervous flicker. ──────────
 function HangingSpot() {
   const light = useRef<THREE.SpotLight>(null);
   const target = useRef<THREE.Object3D>(new THREE.Object3D());
-  const baseIntensity = 12;
+  const baseIntensity = 16;
 
   useFrame(({ clock }) => {
     if (!light.current) return;
     const t = clock.elapsedTime;
+    // Slow irregular flicker — feels like a dying bulb, not a strobe.
     const flicker =
-      0.94 +
-      Math.sin(t * 53.7) * 0.04 +
-      Math.sin(t * 17.1) * 0.03 +
-      (Math.random() < 0.01 ? -0.35 : 0);
+      0.92 +
+      Math.sin(t * 9.3) * 0.05 +
+      Math.sin(t * 23.7) * 0.03 +
+      Math.sin(t * 3.1) * 0.02 +
+      (Math.random() < 0.008 ? -0.3 : 0);
     light.current.intensity = Math.max(0.1, baseIntensity * flicker);
-    light.current.position.x = Math.sin(t * 0.6) * 0.04;
-    light.current.position.z = Math.cos(t * 0.5) * 0.03;
+    light.current.position.x = Math.sin(t * 0.4) * 0.05;
+    light.current.position.z = Math.cos(t * 0.35) * 0.04;
   });
 
   return (
     <>
-      <primitive object={target.current} position={[0, 0, 0]} />
+      <primitive object={target.current} position={[0, 0.2, -0.3]} />
       <spotLight
         ref={light}
-        position={[0, 2.0, 0]}
+        position={[0, 2.6, 0.2]}
         target={target.current}
-        angle={0.7}
-        penumbra={0.4}
+        angle={0.6}
+        penumbra={0.55}
         intensity={baseIntensity}
-        distance={5}
-        decay={1.8}
+        distance={9}
+        decay={1.6}
         color="#ffb072"
         castShadow
         shadow-mapSize-width={1024}
@@ -275,11 +280,17 @@ function HangingSpot() {
         shadow-bias={-0.0008}
         shadow-radius={1}
       />
+      {/* Warm fill on the table surface — keeps it from dissolving to black */}
+      <pointLight position={[0, 0.9, 0.3]} intensity={2.2} distance={3.5} decay={2} color="#b3501e" />
+      {/* Blood-red rim behind the opponent — separates it from the void */}
+      <pointLight position={[0, 0.7, -1.9]} intensity={1.6} distance={3} decay={2} color="#7a1608" />
     </>
   );
 }
 
 // ── Swinging lantern — hangs above the table, gentle pendulum motion ─────────
+// The GLB ships with scale=100 baked into its node transforms, so the visual
+// model scale multiplies by 100. Effective lantern size ≈ 0.22m wide at 1.15.
 function SwingingLantern() {
   const ref = useRef<THREE.Group>(null);
   const { scene } = useGLTF(MODEL_LANTERN);
@@ -297,22 +308,24 @@ function SwingingLantern() {
     if (!ref.current) return;
     const t = clock.elapsedTime;
     // Pivot at the top of the lantern → swings like a pendulum
-    ref.current.rotation.z = Math.sin(t * 0.7) * 0.09;
-    ref.current.rotation.x = Math.cos(t * 0.5) * 0.04;
+    ref.current.rotation.z = Math.sin(t * 0.7) * 0.12;
+    ref.current.rotation.x = Math.cos(t * 0.5) * 0.05;
   });
 
   return (
     // Pivot point is where the cord attaches; lantern body hangs BELOW (-Y)
-    <group ref={ref} position={[0, 1.5, 0]}>
+    <group ref={ref} position={[0.15, 2.05, -0.25]}>
       {/* Cord going up off-screen */}
-      <mesh position={[0, 0.4, 0]}>
-        <cylinderGeometry args={[0.008, 0.008, 0.8, 6]} />
+      <mesh position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[0.008, 0.008, 1.0, 6]} />
         <meshStandardMaterial color="#0a0604" roughness={1} />
       </mesh>
       {/* Lantern body — offset down from pivot so it swings naturally */}
-      <group position={[0, -0.3, 0]}>
-        <primitive object={model} scale={0.4} />
+      <group position={[0, -0.4, 0]}>
+        <primitive object={model} scale={1.15} />
       </group>
+      {/* Warm glow pooling on the table under the lantern */}
+      <pointLight position={[0, -0.5, 0]} intensity={2.4} distance={2.2} decay={2} color="#ff9a4d" />
     </group>
   );
 }
@@ -322,12 +335,12 @@ function CameraInit({ firing }: { firing: boolean }) {
   useFrame(({ camera, clock }, delta) => {
     const lerp = Math.min(1, delta * 3);
     const sway = Math.sin(clock.elapsedTime * 0.4) * 0.006;
-    // Eye-level view: lower the camera, look across the table not steeply down.
+    // Eye-level view: sit at the player's chair, look across the table.
     camera.position.x += (0.0 + sway - camera.position.x) * lerp;
-    camera.position.y += (0.55 - camera.position.y) * lerp;
-    camera.position.z += (1.25 - camera.position.z) * lerp;
-    // Look toward the far edge of the table, slight downward angle.
-    camera.lookAt(0, 0.1, -0.6);
+    camera.position.y += (1.05 - camera.position.y) * lerp;
+    camera.position.z += (1.7 - camera.position.z) * lerp;
+    // Look across the table at the opponent's chest height.
+    camera.lookAt(0, 0.45, -1.0);
 
     if ("fov" in camera) {
       const persp = camera as THREE.PerspectiveCamera;
@@ -389,9 +402,10 @@ function FPSGun({
   const BASE_EUL_OPP = useMemo(() => new THREE.Euler(0, 0, 0), []);
   const BASE_EUL_SELF = useMemo(() => new THREE.Euler(0, Math.PI, 0), []);
 
-  // Position targets — resting on the table top, no clipping into wood.
-  const BASE_POS_OPP = useMemo(() => new THREE.Vector3(0.15, 0.28, 0.55), []);
-  const BASE_POS_SELF = useMemo(() => new THREE.Vector3(0.15, 0.28, 0.55), []);
+  // Position targets — held low-right in the player's view, between the
+  // camera (y≈1.05, z≈1.7) and the table, like a classic FPS weapon.
+  const BASE_POS_OPP = useMemo(() => new THREE.Vector3(0.42, 0.5, 0.95), []);
+  const BASE_POS_SELF = useMemo(() => new THREE.Vector3(0.42, 0.5, 0.95), []);
 
   const fireStartedAt = useRef<number | null>(null);
   const fireKindAtStart = useRef<FireKind>(null);
@@ -455,7 +469,7 @@ function FPSGun({
   return (
     <group
       ref={group}
-      position={[0.15, 0.28, 0.55]}
+      position={[0.42, 0.5, 0.95]}
       rotation={[0, 0, 0]}
       scale={[0.2, 0.2, 0.2]}
       onClick={handleClick}
@@ -476,10 +490,13 @@ function FPSGun({
 // character position.y = -0.5 plants the feet exactly on the floor. At scale
 // 0.62 the ~2.17m rig becomes ~1.34m — torso visible above the table top
 // (table top ≈ Y=0.16). The camera is at +Z looking -Z, so:
-//   • PlayerOne (you) stands on the camera side and faces the opponent (-Z) → rotationY = π
-//   • PlayerTwo (opponent) stands on the far side and faces you (+Z) → rotationY = 0
-const CHARACTER_Y = -0.5;
-const CHARACTER_SCALE = 0.62;
+//   • PlayerOne (you) sits on the camera side facing the opponent (-Z) → rotationY = π
+//   • PlayerTwo (opponent) sits on the far side facing you (+Z) → rotationY = 0
+// Seated pose: legs hidden under the table, torso + head above the wood.
+// Character is ~1.09m tall at scale 0.5; table top is ~Y=0.16. Feet at -0.45
+// → head at +0.64, torso reads as "sitting behind the table".
+const CHARACTER_Y = -0.45;
+const CHARACTER_SCALE = 0.42;
 
 type DuelArenaProps = {
   isYourTurn: boolean;
@@ -523,7 +540,7 @@ function Scene({
     <>
       <CameraInit firing={firing === "live"} />
       {/* Very low ambient — keeps the dark-room mood */}
-      <ambientLight intensity={0.04} color="#1a0c04" />
+      <ambientLight intensity={0.14} color="#2a1408" />
       <HangingSpot />
 
       {/* Floor — nearly black, catches the shadow pool */}
@@ -545,13 +562,13 @@ function Scene({
         scale={CHARACTER_SCALE}
       />
 
-      {/* PlayerTwo (opponent) — far side, faces you / the camera */}
+      {/* PlayerTwo (opponent) — seated at the far side, head + torso above the table */}
       <CharacterRig
         hue={hueFromPubkey(playerTwoPubkey)}
         state={playerTwoState}
         isTurn={!isYourTurn && !matchOver}
         hitSignal={playerTwoHitSignal}
-        position={[0, CHARACTER_Y, -1.15]}
+        position={[0, CHARACTER_Y, -1.05]}
         rotationY={0}
         scale={CHARACTER_SCALE}
       />
@@ -591,12 +608,12 @@ export default function DuelArena3D({
   return (
     <Canvas
       shadows="basic"
-      camera={{ position: [0.0, 0.55, 1.25], fov: 52 }}
+      camera={{ position: [0.0, 1.05, 1.7], fov: 52 }}
       gl={{
         antialias: false,
         alpha: false,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 0.55,
+        toneMappingExposure: 0.75,
       }}
       style={{
         position: "absolute",

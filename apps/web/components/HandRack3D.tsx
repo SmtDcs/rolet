@@ -72,8 +72,8 @@ const isRed = (suit: string) => suit === "♥" || suit === "♦";
 // ── Canvas-texture factory: card front (rank + suit + glyph + name) ─────────
 function makeFrontTexture(card: RoletCard): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 358;
+  canvas.width = 512;
+  canvas.height = 716;
   const ctx = canvas.getContext("2d")!;
 
   const rank = CARD_RANK[card];
@@ -82,61 +82,59 @@ function makeFrontTexture(card: RoletCard): THREE.CanvasTexture {
 
   // Background — aged ivory
   ctx.fillStyle = "#ede0c4";
-  ctx.fillRect(0, 0, 256, 358);
-  const grad = ctx.createLinearGradient(0, 0, 0, 358);
-  grad.addColorStop(0, "#f0e0c0");
+  ctx.fillRect(0, 0, 512, 716);
+  const grad = ctx.createLinearGradient(0, 0, 0, 716);
+  grad.addColorStop(0, "#f4e6c8");
   grad.addColorStop(1, "#d8c5a0");
   ctx.fillStyle = grad;
-  ctx.fillRect(10, 10, 236, 338);
+  ctx.fillRect(20, 20, 472, 676);
 
   // Border
   ctx.strokeStyle = "#3a2418";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(6, 6, 244, 346);
+  ctx.lineWidth = 8;
+  ctx.strokeRect(12, 12, 488, 692);
 
   // Top-left corner: rank + suit
   ctx.fillStyle = suitColor;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.font = "bold 42px monospace";
-  ctx.fillText(rank, 18, 18);
-  ctx.font = "bold 34px monospace";
-  ctx.fillText(suit, 18, 64);
+  ctx.font = "bold 84px monospace";
+  ctx.fillText(rank, 36, 36);
+  ctx.font = "bold 68px monospace";
+  ctx.fillText(suit, 36, 128);
 
   // Center glyph
-  ctx.font = "bold 115px monospace";
+  ctx.font = "bold 230px monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#8b3a1a";
-  ctx.fillText(CARD_GLYPH[card], 128, 170);
+  ctx.fillText(CARD_GLYPH[card], 256, 340);
 
   // Card label (name)
-  ctx.font = "bold 14px monospace";
-  ctx.fillStyle = "#3a2418";
-  ctx.fillText(CARD_LABEL[card].toUpperCase(), 128, 268);
+  ctx.font = "bold 30px monospace";
+  ctx.fillStyle = "#2a180e";
+  ctx.fillText(CARD_LABEL[card].toUpperCase(), 256, 536);
 
   // Subtle "ROLET" wordmark below label
-  ctx.font = "9px monospace";
+  ctx.font = "bold 20px monospace";
   ctx.fillStyle = "#6b4a30";
-  ctx.fillText("/ ROLET /", 128, 290);
+  ctx.fillText("/ ROLET /", 256, 580);
 
   // Bottom-right corner (rotated 180°)
   ctx.save();
-  ctx.translate(238, 340);
+  ctx.translate(476, 680);
   ctx.rotate(Math.PI);
   ctx.fillStyle = suitColor;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.font = "bold 42px monospace";
+  ctx.font = "bold 84px monospace";
   ctx.fillText(rank, 0, 0);
-  ctx.font = "bold 34px monospace";
-  ctx.fillText(suit, 0, 46);
+  ctx.font = "bold 68px monospace";
+  ctx.fillText(suit, 0, 92);
   ctx.restore();
 
   const tex = new THREE.CanvasTexture(canvas);
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
   return tex;
 }
 
@@ -327,7 +325,7 @@ function Card3D({
           emissive="#cc1818"
           emissiveIntensity={0}
           transparent
-          opacity={card ? 0.78 : 0.4}
+          opacity={card ? 0.96 : 0.4}
         />
       </mesh>
       {/* Back face */}

@@ -12,6 +12,7 @@ export type CharacterState = "idle" | "hit" | "dead" | "win";
 
 // KayKit skeleton clip names — verified from the GLB (95 clips shipped).
 const IDLE_CLIPS = ["Idle", "Idle_B", "T-Pose"];
+const SIT_CLIPS = ["Sit_Chair_Pose", "Sit_Chair_Idle", "Sit_Floor_Pose"];
 const DEATH_CLIPS = ["Death_A", "Death_B", "Death_C"];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -87,12 +88,14 @@ export function CharacterRig({
     return cloned;
   }, [scene, hue]);
 
-  // ── Clip management: idle always, death crossfade once ──────────────
+  // ── Clip management: seated pose by default, death crossfade once ─────
   useEffect(() => {
     if (!actions) return;
-    const idle = pickAction(actions, IDLE_CLIPS);
-    if (idle && !idle.isRunning()) {
-      idle.reset().fadeIn(0.7).play();
+    // The character sits at the table: prefer a baked sit pose over the
+    // standing idle. If none is present, fall back to standing idle.
+    const base = pickAction(actions, SIT_CLIPS) ?? pickAction(actions, IDLE_CLIPS);
+    if (base && !base.isRunning()) {
+      base.reset().fadeIn(0.7).play();
     }
   }, [actions]);
 
@@ -105,8 +108,9 @@ export function CharacterRig({
     if (state === "dead") {
       const death = pickAction(actions, DEATH_CLIPS);
       if (death) {
-        const idle = pickAction(actions, IDLE_CLIPS);
-        idle?.fadeOut(0.35);
+        const base =
+          pickAction(actions, SIT_CLIPS) ?? pickAction(actions, IDLE_CLIPS);
+        base?.fadeOut(0.35);
         death.reset().fadeIn(0.35).setLoop(THREE.LoopOnce, 1);
         death.clampWhenFinished = true;
         death.play();
@@ -114,8 +118,9 @@ export function CharacterRig({
     } else if (wasDead || state === "win") {
       const death = pickAction(actions, DEATH_CLIPS);
       death?.fadeOut(0.4);
-      const idle = pickAction(actions, IDLE_CLIPS);
-      idle?.reset().fadeIn(0.6).play();
+      const base =
+        pickAction(actions, SIT_CLIPS) ?? pickAction(actions, IDLE_CLIPS);
+      base?.reset().fadeIn(0.6).play();
     }
   }, [state, actions]);
 

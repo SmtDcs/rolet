@@ -608,9 +608,9 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
         </div>
       </div>
 
-      <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-rows-[auto_1fr_auto] gap-3 px-6 pt-16 pb-4 overflow-hidden">
+      <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-rows-[auto_1fr_auto] gap-1.5 px-6 pt-12 pb-2 overflow-hidden">
         {/* OPPONENT HUD ONLY (HP bar + status) — 3D shows through behind */}
-        <section className="relative flex justify-center pt-2">
+        <section className="relative flex justify-center pt-1">
           <OpponentHud hp={opponentHp} maxHp={4} status={opponentStatus} />
         </section>
 
@@ -627,7 +627,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
         </section>
 
         {/* PLAYER HUD */}
-        <section className="relative flex flex-col gap-4 pt-2">
+        <section className="relative flex flex-col gap-2 pt-1">
           {decoded?.status === "completed" && !settled && (
             <CompletedBanner
               decoded={decoded}
@@ -681,8 +681,8 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               </div>
             </div>
 
-            {/* 3D card hand — taller container so the bigger cards fit */}
-            <div className="col-span-7 relative h-44">
+            {/* 3D card hand — shorter container so the action panel stays on-screen */}
+            <div className="col-span-7 relative h-36">
               <HandRack3D
                 hand={decoded?.yourHand ?? [null, null, null, null]}
                 selectedSlot={selectedSlot}
@@ -815,7 +815,7 @@ function CCTVViewport({
           pointer-events-none on the outer wrapper so clicks pass to the
           Canvas behind (gun is interactive). */}
       <div
-        className="relative aspect-[16/8] border border-rust/40 bg-transparent"
+        className="relative aspect-[16/6] max-h-[38vh] border border-rust/40 bg-transparent"
         style={{
           boxShadow:
             "inset 0 0 30px rgba(120,30,10,0.18), 0 0 16px rgba(60,10,5,0.4)",
@@ -880,47 +880,8 @@ function CCTVViewport({
             })}
           </div>
 
-          {/* Ghost eyes — float just below the chamber row */}
-          <div
-            className="mt-3 pointer-events-none flex items-center gap-10 animate-float"
-            style={{ opacity: 0.38, filter: "drop-shadow(0 0 18px rgba(220,0,0,1))" }}
-          >
-            {([0, 1] as const).map((i) => (
-              <div key={i} style={{ position: "relative", width: 88, height: 38 }}>
-                <svg width="88" height="38" viewBox="0 0 88 38" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Sclera */}
-                  <ellipse cx="44" cy="19" rx="42" ry="17" fill="#0c0202" stroke="#4a0a0a" strokeWidth="1"/>
-                  {/* Iris — blood red, glowing */}
-                  <ellipse
-                    cx="44" cy="19" rx="14" ry="14"
-                    fill="#1c0000" stroke="#cc0000" strokeWidth="1.5"
-                    style={{
-                      animation: "rolet-eye-glow 2.8s ease-in-out infinite",
-                      animationDelay: `${i * 0.5}s`,
-                    }}
-                  />
-                  {/* Slit pupil — demon/cat style */}
-                  <ellipse cx="44" cy="19" rx="3" ry="12" fill="#000"/>
-                  {/* Bloodshot veins */}
-                  <line x1="5"  y1="13" x2="30" y2="17" stroke="rgba(160,0,0,0.55)" strokeWidth="0.8"/>
-                  <line x1="6"  y1="24" x2="28" y2="21" stroke="rgba(160,0,0,0.45)" strokeWidth="0.6"/>
-                  <line x1="58" y1="12" x2="82" y2="9"  stroke="rgba(160,0,0,0.55)" strokeWidth="0.8"/>
-                  <line x1="59" y1="25" x2="83" y2="28" stroke="rgba(160,0,0,0.45)" strokeWidth="0.6"/>
-                  <line x1="14" y1="10" x2="32" y2="15" stroke="rgba(140,0,0,0.3)"  strokeWidth="0.5"/>
-                  <line x1="55" y1="22" x2="75" y2="27" stroke="rgba(140,0,0,0.3)"  strokeWidth="0.5"/>
-                </svg>
-                {/* Blink lid */}
-                <div style={{
-                  position: "absolute", inset: 0,
-                  background: "#0a0807",
-                  transformOrigin: "top center",
-                  transform: "scaleY(0)",
-                  animation: "rolet-blink-lid 7s ease-in-out infinite",
-                  animationDelay: `${i * 0.3}s`,
-                }} />
-              </div>
-            ))}
-          </div>
+          {/* Ghost eyes removed — the 3D characters now carry the presence.
+              Keeping the chamber row clean and readable. */}
         </div>
 
         {/* Bottom-status strip */}
