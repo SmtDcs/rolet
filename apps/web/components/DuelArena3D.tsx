@@ -69,22 +69,35 @@ function Bulb() {
 function Table() {
   return (
     <group position={[0, -0.5, 0]}>
-      <mesh position={[0, 0.4, 0]} castShadow>
-        <cylinderGeometry args={[0.2, 0.38, 0.8, 24]} />
+      {/* pedestal column */}
+      <mesh position={[0, 0.38, 0]} castShadow>
+        <cylinderGeometry args={[0.18, 0.36, 0.76, 20]} />
         <meshStandardMaterial color="#241208" roughness={0.9} />
       </mesh>
-      <mesh position={[0, 0.95, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[1.05, 1.05, 0.1, 40]} />
-        <meshStandardMaterial color="#3a2316" roughness={0.82} metalness={0.05} />
+      {/* base foot */}
+      <mesh position={[0, 0.02, 0]} castShadow>
+        <cylinderGeometry args={[0.44, 0.5, 0.06, 24]} />
+        <meshStandardMaterial color="#1c0e06" roughness={0.95} />
       </mesh>
-      <mesh position={[0, 0.89, 0]} receiveShadow>
-        <cylinderGeometry args={[1.07, 1.07, 0.035, 40]} />
+      {/* table top — thick with a subtle beveled rim */}
+      <mesh position={[0, 0.93, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.06, 1.02, 0.1, 40]} />
+        <meshStandardMaterial color="#4a2c18" roughness={0.75} metalness={0.08} />
+      </mesh>
+      {/* rim band — darker, defines the edge */}
+      <mesh position={[0, 0.87, 0]} receiveShadow>
+        <cylinderGeometry args={[1.08, 1.08, 0.03, 40]} />
         <meshStandardMaterial color="#1d0d06" roughness={0.95} />
       </mesh>
-      {/* felt runner */}
-      <mesh position={[0, 1.005, 0]} receiveShadow>
-        <boxGeometry args={[1.45, 0.02, 0.55]} />
-        <meshStandardMaterial color="#54100c" roughness={0.9} />
+      {/* felt runner — dark red with a gold-ish trim line */}
+      <mesh position={[0, 0.985, 0]} receiveShadow>
+        <boxGeometry args={[1.5, 0.018, 0.6]} />
+        <meshStandardMaterial color="#5c120c" roughness={0.88} />
+      </mesh>
+      {/* felt trim — thin gold line around the runner */}
+      <mesh position={[0, 0.998, 0]}>
+        <boxGeometry args={[1.52, 0.012, 0.62]} />
+        <meshStandardMaterial color="#8a6a3a" roughness={0.6} metalness={0.4} />
       </mesh>
     </group>
   );
@@ -143,6 +156,15 @@ function Revolver({ firing }: { firing: FireKind }) {
       }),
     [],
   );
+  const gripPlate = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#1c0d05",
+        metalness: 0.2,
+        roughness: 0.6,
+      }),
+    [],
+  );
 
   useFrame((_, delta) => {
     if (muzzle.current) {
@@ -152,32 +174,57 @@ function Revolver({ firing }: { firing: FireKind }) {
 
   return (
     <group>
-      {/* barrel — long, forward (-Z) */}
-      <mesh position={[0, 0.03, -0.32]} castShadow material={steel}>
-        <cylinderGeometry args={[0.04, 0.045, 0.6, 20]} />
+      {/* barrel — long, forward (-Z), slightly tapered muzzle */}
+      <mesh position={[0, 0.03, -0.34]} rotation={[Math.PI / 2, 0, 0]} castShadow material={steel}>
+        <cylinderGeometry args={[0.038, 0.05, 0.6, 18]} />
       </mesh>
-      {/* sight ridge */}
-      <mesh position={[0, 0.075, -0.32]} material={steel}>
-        <boxGeometry args={[0.05, 0.025, 0.6]} />
+      {/* front sight post */}
+      <mesh position={[0.035, 0.07, -0.6]} material={steel}>
+        <boxGeometry args={[0.015, 0.03, 0.02]} />
       </mesh>
-      {/* frame — connects barrel to grip */}
-      <mesh position={[0, 0.08, 0.02]} castShadow material={steel}>
-        <boxGeometry args={[0.12, 0.07, 0.22]} />
+      {/* frame — the top strap connecting barrel to grip */}
+      <mesh position={[0, 0.085, 0.04]} castShadow material={steel}>
+        <boxGeometry args={[0.1, 0.06, 0.24]} />
       </mesh>
-      {/* cylinder / drum — the iconic rotating part, upright */}
-      <mesh position={[0, 0.03, -0.02]} rotation={[0, 0, 0]} castShadow material={steel}>
-        <cylinderGeometry args={[0.1, 0.1, 0.18, 24]} />
+      {/* cylinder / drum — 6 chambers, the iconic rotating part */}
+      <mesh position={[0, 0.03, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow material={steel}>
+        <cylinderGeometry args={[0.095, 0.095, 0.16, 24]} />
       </mesh>
-      {/* grip — angled down, wood tone */}
-      <mesh position={[0, -0.1, 0.1]} rotation={[0.2, 0, 0]} castShadow material={grip}>
-        <cylinderGeometry args={[0.055, 0.075, 0.24, 8]} />
+      {/* cylinder chambers — small dark circles on the drum face */}
+      {[0, 1, 2, 3, 4, 5].map((i) => {
+        const a = (i / 6) * Math.PI * 2;
+        return (
+          <mesh key={i} position={[Math.sin(a) * 0.06, 0.03, 0.02 + Math.cos(a) * 0.06]}>
+            <cylinderGeometry args={[0.014, 0.014, 0.03, 10]} />
+            <meshStandardMaterial color="#11161b" roughness={0.6} metalness={0.5} />
+          </mesh>
+        );
+      })}
+      {/* trigger guard — a partial torus */}
+      <mesh position={[0, -0.05, 0.13]} rotation={[0, 0, 0]} material={steel}>
+        <torusGeometry args={[0.055, 0.012, 8, 16, Math.PI * 1.5]} />
+      </mesh>
+      {/* trigger */}
+      <mesh position={[0, -0.06, 0.13]} material={steel}>
+        <boxGeometry args={[0.02, 0.05, 0.015]} />
+      </mesh>
+      {/* grip — wood, angled, with finger-groove plates */}
+      <mesh position={[0, -0.12, 0.13]} rotation={[0.25, 0, 0]} castShadow material={grip}>
+        <cylinderGeometry args={[0.045, 0.075, 0.22, 8]} />
+      </mesh>
+      {/* grip plates — two thin dark slabs */}
+      <mesh position={[-0.025, -0.13, 0.13]} rotation={[0.25, 0, 0.5]} material={gripPlate}>
+        <boxGeometry args={[0.015, 0.2, 0.06]} />
+      </mesh>
+      <mesh position={[0.025, -0.13, 0.13]} rotation={[0.25, 0, -0.5]} material={gripPlate}>
+        <boxGeometry args={[0.015, 0.2, 0.06]} />
       </mesh>
       {/* hammer */}
-      <mesh position={[0, 0.1, 0.17]} material={grip}>
-        <boxGeometry args={[0.04, 0.08, 0.04]} />
+      <mesh position={[0, 0.1, 0.2]} material={steel}>
+        <boxGeometry args={[0.035, 0.07, 0.035]} />
       </mesh>
       {/* muzzle flash light */}
-      <pointLight ref={muzzle} position={[0, 0.03, -0.65]} color="#ffbb44" intensity={0} distance={4} decay={2} />
+      <pointLight ref={muzzle} position={[0, 0.03, -0.68]} color="#ffbb44" intensity={0} distance={4} decay={2} />
     </group>
   );
 }
@@ -225,6 +272,29 @@ function Silhouette({
       }),
     [],
   );
+  // Bone tone — lighter than the dark robe so the skeleton reads clearly
+  const bone = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#8a6a50",
+        roughness: 0.7,
+        metalness: 0.1,
+        emissive: "#2a1a0d",
+        emissiveIntensity: 0.3,
+      }),
+    [],
+  );
+  const boneDark = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#5d4433",
+        roughness: 0.75,
+        metalness: 0.1,
+        emissive: "#1c1108",
+        emissiveIntensity: 0.3,
+      }),
+    [],
+  );
 
   useFrame(({ clock }, delta) => {
     const g = torso.current;
@@ -249,35 +319,47 @@ function Silhouette({
 
   return (
     <group position={isSelf ? [-0.6, -0.5, 0.9] : [0.0, -0.5, -1.2]} rotation={[0, facing, 0]} scale={isSelf ? 1.05 : 1.35}>
-      {/* legs */}
-      <mesh position={[0, 0.25, 0]} castShadow material={body}>
-        <cylinderGeometry args={[0.16, 0.2, 0.5, 12]} />
+      {/* hips/legs — a single dark tapered column under the table */}
+      <mesh position={[0, 0.2, 0]} castShadow material={body}>
+        <cylinderGeometry args={[0.14, 0.19, 0.4, 10]} />
       </mesh>
       <group ref={torso}>
-        <mesh position={[0, 0.75, 0]} castShadow material={body}>
-          <cylinderGeometry args={[0.28, 0.4, 0.55, 14]} />
+        {/* ribcage — tapered, reads as a skeleton torso */}
+        <mesh position={[0, 0.66, 0]} castShadow material={bone}>
+          <cylinderGeometry args={[0.26, 0.18, 0.42, 12]} />
         </mesh>
-        <mesh position={[0, 1.0, 0]} castShadow material={body}>
-          <boxGeometry args={[0.85, 0.22, 0.4]} />
+        {/* ribs — horizontal bands */}
+        {[0.52, 0.6, 0.68, 0.76].map((y, i) => (
+          <mesh key={i} position={[0, y, 0]} material={boneDark}>
+            <torusGeometry args={[0.235 - i * 0.018, 0.018, 8, 20]} />
+          </mesh>
+        ))}
+        {/* shoulders — broad dark slab */}
+        <mesh position={[0, 0.95, 0]} castShadow material={body}>
+          <boxGeometry args={[0.9, 0.18, 0.38]} />
         </mesh>
-        {/* arms */}
-        <mesh position={[-0.5, 0.86, 0.1]} castShadow material={body}>
-          <cylinderGeometry args={[0.07, 0.07, 0.6, 10]} />
+        {/* arms — thin bones resting on the table edge */}
+        <mesh position={[-0.48, 0.78, 0.12]} rotation={[0.2, 0, 0.35]} castShadow material={bone}>
+          <cylinderGeometry args={[0.045, 0.045, 0.55, 8]} />
         </mesh>
-        <mesh position={[0.5, 0.86, 0.1]} castShadow material={body}>
-          <cylinderGeometry args={[0.07, 0.07, 0.6, 10]} />
+        <mesh position={[0.48, 0.78, 0.12]} rotation={[0.2, 0, -0.35]} castShadow material={bone}>
+          <cylinderGeometry args={[0.045, 0.045, 0.55, 8]} />
         </mesh>
-        {/* head */}
-        <mesh position={[0, 1.28, 0]} castShadow material={head}>
-          <boxGeometry args={[0.3, 0.4, 0.3]} />
+        {/* skull — sphere, the menacing centerpiece */}
+        <mesh position={[0, 1.3, 0]} castShadow material={bone}>
+          <sphereGeometry args={[0.17, 18, 14]} />
         </mesh>
-        {/* eyes */}
-        <mesh position={[-0.07, 1.32, 0.152]}>
-          <boxGeometry args={[0.06, 0.045, 0.02]} />
+        {/* jaw — lower half of the skull */}
+        <mesh position={[0, 1.17, 0.02]} castShadow material={bone}>
+          <boxGeometry args={[0.22, 0.1, 0.2]} />
+        </mesh>
+        {/* glowing eyes — sunken into the sockets */}
+        <mesh position={[-0.07, 1.32, 0.145]}>
+          <boxGeometry args={[0.055, 0.04, 0.02]} />
           <meshBasicMaterial color={eyeColor} toneMapped={false} />
         </mesh>
-        <mesh position={[0.07, 1.32, 0.152]}>
-          <boxGeometry args={[0.06, 0.045, 0.02]} />
+        <mesh position={[0.07, 1.32, 0.145]}>
+          <boxGeometry args={[0.055, 0.04, 0.02]} />
           <meshBasicMaterial color={eyeColor} toneMapped={false} />
         </mesh>
       </group>
