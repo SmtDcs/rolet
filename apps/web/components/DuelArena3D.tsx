@@ -39,7 +39,7 @@ function Bulb() {
     const t = clock.elapsedTime;
     const flicker =
       0.92 + Math.sin(t * 9.3) * 0.05 + Math.sin(t * 23.7) * 0.03 + (Math.random() < 0.008 ? -0.3 : 0);
-    if (light.current) light.current.intensity = Math.max(0.2, 10 * flicker);
+    if (light.current) light.current.intensity = Math.max(0.3, 16 * flicker);
     if (moving.current) moving.current.rotation.z = Math.sin(t * 0.6) * 0.06;
   });
   return (
@@ -54,11 +54,13 @@ function Bulb() {
         <sphereGeometry args={[0.09, 16, 12]} />
         <meshStandardMaterial color="#ffdfb0" emissive="#ffc080" emissiveIntensity={2.5} toneMapped={false} />
       </mesh>
-      <pointLight ref={light} position={[0, -0.1, 0]} intensity={14} distance={10} decay={1.6} color="#ffb072" castShadow />
-      {/* Soft fill from below-front so the table/gun don't sink to black */}
-      <pointLight position={[0, 0.3, 1.4]} intensity={2.5} distance={4} decay={2} color="#ff8a4d" />
+      <pointLight ref={light} position={[0, -0.1, 0]} intensity={16} distance={12} decay={1.4} color="#ffb072" castShadow />
+      {/* Warm fill — keeps the table/gun/opponent readable, no more black hole */}
+      <pointLight position={[0, 0.5, 1.3]} intensity={4} distance={5} decay={1.8} color="#ff8a4d" />
+      {/* Cool key from the front-left — models read as 3D, not flat silhouettes */}
+      <pointLight position={[-1.5, 1.2, 1.8]} intensity={3} distance={6} decay={1.8} color="#d8c8b0" />
       {/* Rim behind the opponent — separates silhouette from void */}
-      <pointLight position={[0, 0.8, -2.0]} intensity={1.8} distance={3.5} decay={2} color="#7a1608" />
+      <pointLight position={[0, 0.8, -2.0]} intensity={3} distance={4} decay={2} color="#a0200a" />
     </group>
   );
 }
@@ -200,9 +202,29 @@ function Silhouette({
   const hitAt = useRef<number>(-999);
   if (hitSignal > 0) hitAt.current = -1;
 
-  const eyeColor = useMemo(() => new THREE.Color().setHSL(hue / 360, 0.9, 0.6), [hue]);
-  const body = useMemo(() => new THREE.MeshStandardMaterial({ color: "#050302", roughness: 1, metalness: 0 }), []);
-  const head = useMemo(() => new THREE.MeshStandardMaterial({ color: "#080604", roughness: 0.95, metalness: 0 }), []);
+  const eyeColor = useMemo(() => new THREE.Color().setHSL(hue / 360, 0.9, 0.62), [hue]);
+  const body = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#241009",
+        roughness: 0.9,
+        metalness: 0.05,
+        emissive: "#0d0502",
+        emissiveIntensity: 0.4,
+      }),
+    [],
+  );
+  const head = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#2b140a",
+        roughness: 0.85,
+        metalness: 0.05,
+        emissive: "#0f0603",
+        emissiveIntensity: 0.4,
+      }),
+    [],
+  );
 
   useFrame(({ clock }, delta) => {
     const g = torso.current;
@@ -250,12 +272,12 @@ function Silhouette({
           <boxGeometry args={[0.3, 0.4, 0.3]} />
         </mesh>
         {/* eyes */}
-        <mesh position={[-0.065, 1.32, 0.151]}>
-          <boxGeometry args={[0.05, 0.035, 0.02]} />
+        <mesh position={[-0.07, 1.32, 0.152]}>
+          <boxGeometry args={[0.06, 0.045, 0.02]} />
           <meshBasicMaterial color={eyeColor} toneMapped={false} />
         </mesh>
-        <mesh position={[0.065, 1.32, 0.151]}>
-          <boxGeometry args={[0.05, 0.035, 0.02]} />
+        <mesh position={[0.07, 1.32, 0.152]}>
+          <boxGeometry args={[0.06, 0.045, 0.02]} />
           <meshBasicMaterial color={eyeColor} toneMapped={false} />
         </mesh>
       </group>
@@ -315,7 +337,17 @@ export default function DuelArena3D({
       {/* Floor — hard, catches the light pool */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
         <planeGeometry args={[14, 14]} />
-        <meshStandardMaterial color="#020101" roughness={1} />
+        <meshStandardMaterial color="#0a0705" roughness={0.95} />
+      </mesh>
+      {/* Back wall — a dimly lit room, not an infinite void */}
+      <mesh position={[0, 1.6, -3.2]}>
+        <planeGeometry args={[12, 5]} />
+        <meshStandardMaterial color="#1a100a" roughness={1} />
+      </mesh>
+      {/* Wall light band — the room has depth behind the opponent */}
+      <mesh position={[0, 2.3, -3.15]}>
+        <planeGeometry args={[8, 1.4]} />
+        <meshBasicMaterial color="#3a2414" toneMapped={false} />
       </mesh>
 
       <CameraRig firing={firing} />
