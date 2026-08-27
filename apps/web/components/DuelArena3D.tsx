@@ -1,502 +1,19 @@
-/// <reference types="@react-three/fiber" />
 "use client";
+/// <reference types="@react-three/fiber" />
 
-import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
-import { useGLTF, Html } from "@react-three/drei";
-import {
-  EffectComposer,
-  Bloom,
-  Vignette,
-  Pixelation,
-  Noise,
-} from "@react-three/postprocessing";
-import { Suspense, useMemo, useRef, useState } from "react";
+// ROLET v2 — pure-procedural arena. NO GLB imports: external assets arrive
+// with broken origins/scales, so everything (table, bullets, revolver,
+// bulb, character silhouettes) is built from three.js primitives and
+// normalized right here. Minimal animation: breathing sway + hit reaction.
+// Characters are black silhouettes with glowing eyes — the "Dealer across
+// the table" look; in PvP the opponent is the other player's silhouette.
+
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
-import { CharacterRig, type CharacterState } from "./CharacterRig";
-
-const MODEL_TABLE = "/models/table.glb";
-const MODEL_REVOLVER = "/models/revolver.glb";
-const MODEL_LANTERN = "/models/lantern.glb";
-const MODEL_BULLET = "/models/mermi.glb";
 
 export type GunTarget = "self" | "opponent";
-
-// ── Loading fallback ──────────────────────────────────────────────────────────
-function LoadingText() {
-  return (
-    <Html center>
-      <div
-        style={{
-          fontFamily: "monospace",
-          letterSpacing: "0.4em",
-          fontSize: 11,
-          color: "#6b4a30",
-          textShadow: "0 0 12px rgba(180,40,20,0.6)",
-          whiteSpace: "nowrap",
-        }}
-      >
-        // LOADING…
-      </div>
-    </Html>
-  );
-}
-
-// ── Generic GLB loader that darkens materials for the dim room ────────────────
-function GLBModel({
-  src,
-  position,
-  rotation = [0, 0, 0],
-  scale = 1,
-  castShadow = true,
-  receiveShadow = true,
-}: {
-  src: string;
-  position: [number, number, number];
-  rotation?: [number, number, number];
-  scale?: number | [number, number, number];
-  castShadow?: boolean;
-  receiveShadow?: boolean;
-}) {
-  const { scene } = useGLTF(src);
-  const model = useMemo(() => {
-    const cloned = scene.clone(true);
-    cloned.traverse((obj) => {
-      if ((obj as THREE.Mesh).isMesh) {
-        const m = obj as THREE.Mesh;
-        m.castShadow = castShadow;
-        m.receiveShadow = receiveShadow;
-        const mats = Array.isArray(m.material) ? m.material : [m.material];
-        mats.forEach((mat) => {
-          if (mat instanceof THREE.MeshStandardMaterial) {
-            mat.roughness = Math.min(mat.roughness + 0.15, 1);
-            mat.metalness = Math.min(mat.metalness + 0.05, 1);
-            mat.envMapIntensity = 0.5;
-          }
-        });
-      }
-    });
-    return cloned;
-  }, [scene, castShadow, receiveShadow]);
-
-  return <primitive object={model} position={position} rotation={rotation} scale={scale} />;
-}
-
-// ── Deterministic hue from a base58 pubkey ─────────────────────────────────────
-function hueFromPubkey(pubkey: string): number {
-  let h = 0;
-  for (let i = 0; i < Math.min(pubkey.length, 8); i++) {
-    h = (h * 31 + pubkey.charCodeAt(i)) % 360;
-  }
-  return h;
-}
-
-// ── Chamber bullets laid out on the table — live = hot, blank = cold ──────────
-type BulletKind = "live" | "blank";
-type BulletItem = {
-  key: number;
-  kind: BulletKind;
-  retiring?: boolean;
-  slot: number; // target row slot (frozen when retiring so it shrinks in place)
-  slotCount: number; // layout width the slot was computed against (frozen too)
-};
-
-const BULLET_BASE_SCALE = 0.22;
-const BULLET_SPACING = 0.11;
-const BULLET_RETIRE_MS = 420;
-
-function bulletSlotX(slot: number, slotCount: number): number {
-  return slotCount === 1 ? 0 : -((slotCount - 1) / 2) * BULLET_SPACING + slot * BULLET_SPACING;
-}
-
-function Bullet({ item }: { item: BulletItem }) {
-  const group = useRef<THREE.Group>(null);
-  const { scene } = useGLTF(MODEL_BULLET);
-
-  const model = useMemo(() => {
-    const cloned = scene.clone(true);
-    cloned.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      mesh.castShadow = true;
-      mesh.receiveShadow = false;
-      // GLBModel darkens shared materials; here we want per-bullet emissive,
-      // so clone materials once per bullet before tinting.
-      const mats = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(
-        (mat) => (mat as THREE.Material).clone(),
-      );
-      mesh.material = Array.isArray(mesh.material) ? mats : mats[0];
-      mats.forEach((mat) => {
-        const m = mat as THREE.MeshStandardMaterial;
-        if (item.kind === "live") {
-          m.color = new THREE.Color("#5c0d05");
-          m.emissive = new THREE.Color("#ff4422");
-          m.emissiveIntensity = 1.2;
-          m.roughness = 0.45;
-          m.metalness = 0.15;
-        } else {
-          m.color = new THREE.Color("#8a8a8a");
-          m.emissive = new THREE.Color("#333333");
-          m.emissiveIntensity = 0.2;
-          m.roughness = 0.6;
-          m.metalness = 0.7;
-        }
-      });
-    });
-    return cloned;
-  }, [scene, item.kind]);
-
-  const targetX = bulletSlotX(item.slot, item.slotCount);
-  const yaw = item.slot * 0.62;
-
-  useFrame((_, delta) => {
-    const g = group.current;
-    if (!g) return;
-    const k = Math.min(1, delta * 8);
-    // New bullets grow in from 0; retiring bullets shrink to 0 before unmount.
-    const targetScale = item.retiring ? 0 : BULLET_BASE_SCALE;
-    g.scale.setScalar(g.scale.x + (targetScale - g.scale.x) * k);
-    g.position.x += (targetX - g.position.x) * k;
-  });
-
-  return (
-    <group
-      ref={group}
-      // The bullet GLB is already upright (long axis = +Y, ~0.33 tall) — only
-      // yaw it slightly so the row doesn't look stamped from a mold.
-      position={[targetX, 0.165, 0.28]}
-      rotation={[0, yaw, 0]}
-      scale={0}
-    >
-      <primitive object={model} />
-    </group>
-  );
-}
-
-function BulletSet({ liveCount, blankCount }: { liveCount: number; blankCount: number }) {
-  const idRef = useRef(0);
-  const [items, setItems] = useState<BulletItem[]>([]);
-
-  useFrame((_, delta) => {
-    if (delta <= 0) return; // wait for a real frame
-
-    const live = Math.max(0, liveCount);
-    const blank = Math.max(0, blankCount);
-    const total = Math.min(8, live + blank);
-    const targetLive = Math.min(live, total);
-    const targetBlank = total - targetLive;
-
-    const active = items.filter((i) => !i.retiring);
-    const activeLive = active.filter((i) => i.kind === "live");
-    const activeBlank = active.filter((i) => i.kind === "blank");
-
-    if (activeLive.length === targetLive && activeBlank.length === targetBlank) {
-      return; // already reconciled
-    }
-
-    const keepLive = activeLive.slice(0, targetLive);
-    const keepBlank = activeBlank.slice(0, targetBlank);
-    // Frozen at their current slot/slotCount → they shrink in place.
-    const retiring: BulletItem[] = [
-      ...activeLive.slice(targetLive),
-      ...activeBlank.slice(targetBlank),
-    ].map((i) => ({ ...i, retiring: true }));
-
-    const freshLive: BulletItem[] = [];
-    for (let i = 0; i < targetLive - keepLive.length; i++) {
-      freshLive.push({ key: ++idRef.current, kind: "live", slot: 0, slotCount: 0 });
-    }
-    const freshBlank: BulletItem[] = [];
-    for (let i = 0; i < targetBlank - keepBlank.length; i++) {
-      freshBlank.push({ key: ++idRef.current, kind: "blank", slot: 0, slotCount: 0 });
-    }
-
-    // Active bullets occupy a contiguous row: live first, then blank. Copy kept
-    // items so their slot assignment doesn't mutate existing state.
-    const activeSequence = [...keepLive, ...freshLive, ...keepBlank, ...freshBlank];
-    const activeCount = activeSequence.length;
-    const nextActive = activeSequence.map((it, i) => ({
-      ...it,
-      slot: i,
-      slotCount: activeCount,
-    }));
-
-    if (retiring.length > 0) {
-      const keys = new Set(retiring.map((r) => r.key));
-      window.setTimeout(() => {
-        setItems((cur) => cur.filter((c) => !keys.has(c.key)));
-      }, BULLET_RETIRE_MS);
-    }
-
-    setItems([...nextActive, ...retiring]);
-  });
-
-  return (
-    <group>
-      {items.map((item) => (
-        <Bullet key={item.key} item={item} />
-      ))}
-    </group>
-  );
-}
-
-// ── Flickering overhead light — the single hero light above the table,
-// like a bare bulb in a basement. Warm amber, slow nervous flicker. ──────────
-function HangingSpot() {
-  const light = useRef<THREE.SpotLight>(null);
-  const target = useRef<THREE.Object3D>(new THREE.Object3D());
-  const baseIntensity = 16;
-
-  useFrame(({ clock }) => {
-    if (!light.current) return;
-    const t = clock.elapsedTime;
-    // Slow irregular flicker — feels like a dying bulb, not a strobe.
-    const flicker =
-      0.92 +
-      Math.sin(t * 9.3) * 0.05 +
-      Math.sin(t * 23.7) * 0.03 +
-      Math.sin(t * 3.1) * 0.02 +
-      (Math.random() < 0.008 ? -0.3 : 0);
-    light.current.intensity = Math.max(0.1, baseIntensity * flicker);
-    light.current.position.x = Math.sin(t * 0.4) * 0.05;
-    light.current.position.z = Math.cos(t * 0.35) * 0.04;
-  });
-
-  return (
-    <>
-      <primitive object={target.current} position={[0, 0.2, -0.3]} />
-      <spotLight
-        ref={light}
-        position={[0, 2.6, 0.2]}
-        target={target.current}
-        angle={0.6}
-        penumbra={0.55}
-        intensity={baseIntensity}
-        distance={9}
-        decay={1.6}
-        color="#ffb072"
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-bias={-0.0008}
-        shadow-radius={1}
-      />
-      {/* Warm fill on the table surface — keeps it from dissolving to black */}
-      <pointLight position={[0, 0.9, 0.3]} intensity={2.2} distance={3.5} decay={2} color="#b3501e" />
-      {/* Blood-red rim behind the opponent — separates it from the void */}
-      <pointLight position={[0, 0.7, -1.9]} intensity={1.6} distance={3} decay={2} color="#7a1608" />
-    </>
-  );
-}
-
-// ── Swinging lantern — hangs above the table, gentle pendulum motion ─────────
-// The GLB ships with scale=100 baked into its node transforms, so the visual
-// model scale multiplies by 100. Effective lantern size ≈ 0.22m wide at 1.15.
-function SwingingLantern() {
-  const ref = useRef<THREE.Group>(null);
-  const { scene } = useGLTF(MODEL_LANTERN);
-  const model = useMemo(() => {
-    const cloned = scene.clone(true);
-    cloned.traverse((obj) => {
-      if ((obj as THREE.Mesh).isMesh) {
-        (obj as THREE.Mesh).castShadow = false;
-      }
-    });
-    return cloned;
-  }, [scene]);
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const t = clock.elapsedTime;
-    // Pivot at the top of the lantern → swings like a pendulum
-    ref.current.rotation.z = Math.sin(t * 0.7) * 0.12;
-    ref.current.rotation.x = Math.cos(t * 0.5) * 0.05;
-  });
-
-  return (
-    // Pivot point is where the cord attaches; lantern body hangs BELOW (-Y)
-    <group ref={ref} position={[0.15, 2.05, -0.25]}>
-      {/* Cord going up off-screen */}
-      <mesh position={[0, 0.5, 0]}>
-        <cylinderGeometry args={[0.008, 0.008, 1.0, 6]} />
-        <meshStandardMaterial color="#0a0604" roughness={1} />
-      </mesh>
-      {/* Lantern body — offset down from pivot so it swings naturally */}
-      <group position={[0, -0.4, 0]}>
-        <primitive object={model} scale={1.15} />
-      </group>
-      {/* Warm glow pooling on the table under the lantern */}
-      <pointLight position={[0, -0.5, 0]} intensity={2.4} distance={2.2} decay={2} color="#ff9a4d" />
-    </group>
-  );
-}
-
-// ── Camera — sitting at the table, looking across it, not down on it ────────
-function CameraInit({ firing }: { firing: boolean }) {
-  useFrame(({ camera, clock }, delta) => {
-    const lerp = Math.min(1, delta * 3);
-    const sway = Math.sin(clock.elapsedTime * 0.4) * 0.006;
-    // Eye-level view: sit at the player's chair, look across the table.
-    camera.position.x += (0.0 + sway - camera.position.x) * lerp;
-    camera.position.y += (1.05 - camera.position.y) * lerp;
-    camera.position.z += (1.7 - camera.position.z) * lerp;
-    // Look across the table at the opponent's chest height.
-    camera.lookAt(0, 0.45, -1.0);
-
-    if ("fov" in camera) {
-      const persp = camera as THREE.PerspectiveCamera;
-      const targetFov = firing ? 60 : 52;
-      persp.fov += (targetFov - persp.fov) * lerp;
-      persp.updateProjectionMatrix();
-    }
-  });
-  return null;
-}
-
-// ── World-space gun — centered geometry, live/blank-aware effects ───────────
 export type FireKind = "live" | "blank" | null;
-
-function FPSGun({
-  held,
-  target,
-  firing,
-  onPickup,
-}: {
-  held: boolean;
-  target: GunTarget;
-  firing: FireKind;
-  onPickup: () => void;
-}) {
-  const group = useRef<THREE.Group>(null);
-  const muzzleFlash = useRef<THREE.PointLight>(null);
-  const { scene } = useGLTF(MODEL_REVOLVER);
-
-  // Center the geometry AND rotate it 90° on Y so the barrel aligns with
-  // the gun group's local -Z axis. After this, the outer group's rotation
-  // becomes intuitive: [0,0,0] → barrel forward (into scene), [0,π,0] →
-  // barrel toward camera.
-  const model = useMemo(() => {
-    const cloned = scene.clone(true);
-
-    // 1) Rotate the model so the barrel ends up along the group's -Z axis.
-    //    Quaternius revolver's barrel is along its local +X by default.
-    //    +π/2 Y rotation maps +X → -Z (forward, into the scene).
-    cloned.rotation.y = Math.PI / 2;
-
-    // 2) Compute bbox AFTER the rotation, recenter to parent origin.
-    const box = new THREE.Box3().setFromObject(cloned);
-    const center = box.getCenter(new THREE.Vector3());
-    cloned.position.sub(center);
-
-    cloned.traverse((obj) => {
-      if ((obj as THREE.Mesh).isMesh) {
-        const m = obj as THREE.Mesh;
-        m.castShadow = true;
-      }
-    });
-    return cloned;
-  }, [scene]);
-
-  // After the inner rotation, barrel direction in OUTER local space is -Z.
-  // Opponent: outer rotation [0, 0, 0] — barrel world -Z, away from camera.
-  // Self:     outer rotation [0, π, 0] — barrel world +Z, toward camera.
-  const BASE_EUL_OPP = useMemo(() => new THREE.Euler(0, 0, 0), []);
-  const BASE_EUL_SELF = useMemo(() => new THREE.Euler(0, Math.PI, 0), []);
-
-  // Position targets — held low-right in the player's view, between the
-  // camera (y≈1.05, z≈1.7) and the table, like a classic FPS weapon.
-  const BASE_POS_OPP = useMemo(() => new THREE.Vector3(0.42, 0.5, 0.95), []);
-  const BASE_POS_SELF = useMemo(() => new THREE.Vector3(0.42, 0.5, 0.95), []);
-
-  const fireStartedAt = useRef<number | null>(null);
-  const fireKindAtStart = useRef<FireKind>(null);
-
-  useFrame(({ clock }, delta) => {
-    if (!group.current) return;
-    const t = clock.elapsedTime;
-    const lerp = Math.min(1, delta * 6);
-
-    const tgtEul = target === "self" ? BASE_EUL_SELF : BASE_EUL_OPP;
-    const tgtPos = target === "self" ? BASE_POS_SELF : BASE_POS_OPP;
-
-    group.current.position.lerp(tgtPos, lerp);
-    group.current.rotation.x += (tgtEul.x - group.current.rotation.x) * lerp;
-    group.current.rotation.y += (tgtEul.y - group.current.rotation.y) * lerp;
-    group.current.rotation.z += (tgtEul.z - group.current.rotation.z) * lerp;
-
-    // Extremely subtle aim sway — barely noticeable, no more swinging
-    if (held) {
-      group.current.position.x += Math.sin(t * 0.8) * 0.0006;
-      group.current.position.y += Math.cos(t * 1.0) * 0.0006;
-    }
-
-    // Fire — different intensity for live vs blank
-    if (firing && fireStartedAt.current === null) {
-      fireStartedAt.current = t;
-      fireKindAtStart.current = firing;
-    }
-    if (fireStartedAt.current !== null) {
-      const elapsed = t - fireStartedAt.current;
-      const kind = fireKindAtStart.current;
-      const duration = kind === "live" ? 0.6 : 0.25;
-      if (elapsed < duration) {
-        const e = Math.max(0, 1 - elapsed / duration);
-        if (kind === "live") {
-          // Full recoil + flash
-          group.current.position.z += e * 0.22;
-          group.current.position.y += e * 0.06;
-          group.current.rotation.x -= e * 0.35 * delta * 6;
-          if (muzzleFlash.current) muzzleFlash.current.intensity = e * 36;
-        } else {
-          // Blank — gentle mechanical click, no flash
-          group.current.position.z += e * 0.04;
-          if (muzzleFlash.current) muzzleFlash.current.intensity = 0;
-        }
-      } else {
-        fireStartedAt.current = null;
-        fireKindAtStart.current = null;
-        if (muzzleFlash.current) muzzleFlash.current.intensity = 0;
-      }
-    } else if (muzzleFlash.current) {
-      muzzleFlash.current.intensity = 0;
-    }
-  });
-
-  const handleClick = (e: ThreeEvent<MouseEvent>) => {
-    e.stopPropagation();
-    if (!held) onPickup();
-  };
-
-  return (
-    <group
-      ref={group}
-      position={[0.42, 0.5, 0.95]}
-      rotation={[0, 0, 0]}
-      scale={[0.2, 0.2, 0.2]}
-      onClick={handleClick}
-      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = "pointer"; }}
-      onPointerOut={() => { document.body.style.cursor = "default"; }}
-    >
-      <primitive object={model} />
-      {/* Local fill light — keeps gun lit against the dark void */}
-      <pointLight position={[0.3, 0.5, 0.3]} color="#ffd9a0" intensity={1.8} distance={2} decay={2} />
-      {/* Muzzle flash — placed at barrel tip (outer local -Z = barrel direction) */}
-      <pointLight ref={muzzleFlash} position={[0, 0.1, -0.65]} color="#ffaa22" intensity={0} distance={6} decay={2} />
-    </group>
-  );
-}
-
-// ── Scene contents ────────────────────────────────────────────────────────────
-// Floor sits at Y=-0.5 and the KayKit character's feet are at its local Y=0, so
-// character position.y = -0.5 plants the feet exactly on the floor. At scale
-// 0.62 the ~2.17m rig becomes ~1.34m — torso visible above the table top
-// (table top ≈ Y=0.16). The camera is at +Z looking -Z, so:
-//   • PlayerOne (you) sits on the camera side facing the opponent (-Z) → rotationY = π
-//   • PlayerTwo (opponent) sits on the far side facing you (+Z) → rotationY = 0
-// Seated pose: legs hidden under the table, torso + head above the wood.
-// Character is ~1.09m tall at scale 0.5; table top is ~Y=0.16. Feet at -0.45
-// → head at +0.64, torso reads as "sitting behind the table".
-const CHARACTER_Y = -0.45;
-const CHARACTER_SCALE = 0.42;
 
 type DuelArenaProps = {
   isYourTurn: boolean;
@@ -514,87 +31,258 @@ type DuelArenaProps = {
   blankCount?: number;
 };
 
-function Scene({
-  gunHeld,
-  setGunHeld,
-  target,
-  firing,
-  isYourTurn,
-  playerOneHp = 4,
-  playerTwoHp = 4,
-  playerOnePubkey = "",
-  playerTwoPubkey = "",
-  playerOneHitSignal = 0,
-  playerTwoHitSignal = 0,
-  liveCount = 5,
-  blankCount = 3,
-}: DuelArenaProps) {
-  const matchOver = playerOneHp <= 0 || playerTwoHp <= 0;
-
-  const playerOneState: CharacterState =
-    playerOneHp <= 0 ? "dead" : matchOver ? "win" : "idle";
-  const playerTwoState: CharacterState =
-    playerTwoHp <= 0 ? "dead" : matchOver ? "win" : "idle";
-
+// ── Single hanging bulb — the one light source ──────────────────────────────
+function Bulb() {
+  const light = useRef<THREE.PointLight>(null);
+  const moving = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    const flicker =
+      0.92 + Math.sin(t * 9.3) * 0.05 + Math.sin(t * 23.7) * 0.03 + (Math.random() < 0.008 ? -0.3 : 0);
+    if (light.current) light.current.intensity = Math.max(0.2, 10 * flicker);
+    if (moving.current) moving.current.rotation.z = Math.sin(t * 0.6) * 0.06;
+  });
   return (
-    <>
-      <CameraInit firing={firing === "live"} />
-      {/* Very low ambient — keeps the dark-room mood */}
-      <ambientLight intensity={0.14} color="#2a1408" />
-      <HangingSpot />
-
-      {/* Floor — nearly black, catches the shadow pool */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
-        <planeGeometry args={[12, 12]} />
-        <meshStandardMaterial color="#050302" roughness={1} metalness={0} />
+    <group ref={moving} position={[0, 2.25, 0]}>
+      {/* cord */}
+      <mesh position={[0, 0.6, 0]}>
+        <cylinderGeometry args={[0.012, 0.012, 1.1, 6]} />
+        <meshStandardMaterial color="#0a0604" />
       </mesh>
-
-      <GLBModel src={MODEL_TABLE} position={[0, -0.5, 0]} scale={0.78} receiveShadow />
-
-      {/* PlayerOne (you) — camera side, faces the opponent across the table */}
-      <CharacterRig
-        hue={hueFromPubkey(playerOnePubkey)}
-        state={playerOneState}
-        isTurn={isYourTurn && !matchOver}
-        hitSignal={playerOneHitSignal}
-        position={[-0.6, CHARACTER_Y, 0.8]}
-        rotationY={Math.PI}
-        scale={CHARACTER_SCALE}
-      />
-
-      {/* PlayerTwo (opponent) — seated at the far side, head + torso above the table */}
-      <CharacterRig
-        hue={hueFromPubkey(playerTwoPubkey)}
-        state={playerTwoState}
-        isTurn={!isYourTurn && !matchOver}
-        hitSignal={playerTwoHitSignal}
-        position={[0, CHARACTER_Y, -1.05]}
-        rotationY={0}
-        scale={CHARACTER_SCALE}
-      />
-
-      <FPSGun
-        held={gunHeld}
-        target={target}
-        firing={firing}
-        onPickup={() => setGunHeld(true)}
-      />
-
-      {/* Hanging lantern — swings gently, visible above the table */}
-      <SwingingLantern />
-
-      {/* Dynamic chamber bullets — live (hot) + blank (cold), animated in/out */}
-      <BulletSet liveCount={liveCount} blankCount={blankCount} />
-    </>
+      {/* bulb */}
+      <mesh position={[0, -0.02, 0]}>
+        <sphereGeometry args={[0.09, 16, 12]} />
+        <meshStandardMaterial color="#ffdfb0" emissive="#ffc080" emissiveIntensity={2.5} toneMapped={false} />
+      </mesh>
+      <pointLight ref={light} position={[0, -0.1, 0]} intensity={14} distance={10} decay={1.6} color="#ffb072" castShadow />
+      {/* Soft fill from below-front so the table/gun don't sink to black */}
+      <pointLight position={[0, 0.3, 1.4]} intensity={2.5} distance={4} decay={2} color="#ff8a4d" />
+      {/* Rim behind the opponent — separates silhouette from void */}
+      <pointLight position={[0, 0.8, -2.0]} intensity={1.8} distance={3.5} decay={2} color="#7a1608" />
+    </group>
   );
 }
 
-// ── Main canvas ───────────────────────────────────────────────────────────────
+// ── Round wooden gambler's table ────────────────────────────────────────────
+function Table() {
+  return (
+    <group position={[0, -0.5, 0]}>
+      <mesh position={[0, 0.4, 0]} castShadow>
+        <cylinderGeometry args={[0.2, 0.38, 0.8, 24]} />
+        <meshStandardMaterial color="#241208" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.95, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.05, 1.05, 0.1, 40]} />
+        <meshStandardMaterial color="#3a2316" roughness={0.82} metalness={0.05} />
+      </mesh>
+      <mesh position={[0, 0.89, 0]} receiveShadow>
+        <cylinderGeometry args={[1.07, 1.07, 0.035, 40]} />
+        <meshStandardMaterial color="#1d0d06" roughness={0.95} />
+      </mesh>
+      {/* felt runner */}
+      <mesh position={[0, 1.005, 0]} receiveShadow>
+        <boxGeometry args={[1.45, 0.02, 0.55]} />
+        <meshStandardMaterial color="#54100c" roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
+// ── Bullets on the felt: live = warm glow, blank = cold steel ───────────────
+function bulletX(i: number, n: number) {
+  return n === 1 ? 0 : -((n - 1) / 2) * 0.11 + i * 0.11;
+}
+function BulletRow({ live, blank }: { live: number; blank: number }) {
+  const items: { x: number; live: boolean }[] = [];
+  const total = Math.max(1, live + blank);
+  let idx = 0;
+  for (let i = 0; i < live; i++) items.push({ x: bulletX(idx++, total), live: true });
+  for (let i = 0; i < blank; i++) items.push({ x: bulletX(idx++, total), live: false });
+  return (
+    <group>
+      {items.map((it, i) => (
+        <mesh key={i} position={[it.x, 0.51, 0.3]} castShadow>
+          <cylinderGeometry args={[0.03, 0.03, 0.12, 14]} />
+          <meshStandardMaterial
+            color={it.live ? "#5c0d05" : "#8a8a8a"}
+            emissive={it.live ? "#ff4422" : "#222222"}
+            emissiveIntensity={it.live ? 1.3 : 0.15}
+            metalness={it.live ? 0.2 : 0.7}
+            roughness={it.live ? 0.4 : 0.5}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ── Revolver-like gun (pure primitives) ─────────────────────────────────────
+function Revolver({ firing }: { firing: FireKind }) {
+  const muzzle = useRef<THREE.PointLight>(null);
+  const steel = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#7a8d9e",
+        metalness: 0.85,
+        roughness: 0.3,
+        emissive: "#1a2229",
+        emissiveIntensity: 0.35,
+      }),
+    [],
+  );
+  const grip = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#4a2512",
+        metalness: 0.15,
+        roughness: 0.7,
+        emissive: "#120804",
+        emissiveIntensity: 0.4,
+      }),
+    [],
+  );
+
+  useFrame((_, delta) => {
+    if (muzzle.current) {
+      muzzle.current.intensity += (firing === "live" ? 30 : 0 - muzzle.current.intensity) * Math.min(1, delta * 20);
+    }
+  });
+
+  return (
+    <group>
+      {/* barrel — long, forward (-Z) */}
+      <mesh position={[0, 0.03, -0.32]} castShadow material={steel}>
+        <cylinderGeometry args={[0.04, 0.045, 0.6, 20]} />
+      </mesh>
+      {/* sight ridge */}
+      <mesh position={[0, 0.075, -0.32]} material={steel}>
+        <boxGeometry args={[0.05, 0.025, 0.6]} />
+      </mesh>
+      {/* frame — connects barrel to grip */}
+      <mesh position={[0, 0.08, 0.02]} castShadow material={steel}>
+        <boxGeometry args={[0.12, 0.07, 0.22]} />
+      </mesh>
+      {/* cylinder / drum — the iconic rotating part, upright */}
+      <mesh position={[0, 0.03, -0.02]} rotation={[0, 0, 0]} castShadow material={steel}>
+        <cylinderGeometry args={[0.1, 0.1, 0.18, 24]} />
+      </mesh>
+      {/* grip — angled down, wood tone */}
+      <mesh position={[0, -0.1, 0.1]} rotation={[0.2, 0, 0]} castShadow material={grip}>
+        <cylinderGeometry args={[0.055, 0.075, 0.24, 8]} />
+      </mesh>
+      {/* hammer */}
+      <mesh position={[0, 0.1, 0.17]} material={grip}>
+        <boxGeometry args={[0.04, 0.08, 0.04]} />
+      </mesh>
+      {/* muzzle flash light */}
+      <pointLight ref={muzzle} position={[0, 0.03, -0.65]} color="#ffbb44" intensity={0} distance={4} decay={2} />
+    </group>
+  );
+}
+
+// ── Character: black silhouette, glowing eyes, breathing + hit sway ─────────
+function Silhouette({
+  hue,
+  facing,
+  alive,
+  isTurn,
+  isSelf,
+  hitSignal = 0,
+}: {
+  hue: number;
+  facing: number;
+  alive: boolean;
+  isTurn: boolean;
+  isSelf: boolean;
+  hitSignal?: number;
+}) {
+  const torso = useRef<THREE.Group>(null);
+  const hitAt = useRef<number>(-999);
+  if (hitSignal > 0) hitAt.current = -1;
+
+  const eyeColor = useMemo(() => new THREE.Color().setHSL(hue / 360, 0.9, 0.6), [hue]);
+  const body = useMemo(() => new THREE.MeshStandardMaterial({ color: "#050302", roughness: 1, metalness: 0 }), []);
+  const head = useMemo(() => new THREE.MeshStandardMaterial({ color: "#080604", roughness: 0.95, metalness: 0 }), []);
+
+  useFrame(({ clock }, delta) => {
+    const g = torso.current;
+    if (!g) return;
+    const t = clock.elapsedTime;
+    const damp = Math.min(1, delta * 5);
+    if (hitAt.current === -1) hitAt.current = t;
+
+    let hitPitch = 0;
+    if (hitAt.current > -900) {
+      const el = t - hitAt.current;
+      if (el < 1) hitPitch = -Math.exp(-el * 6) * Math.cos(el * 16) * 0.22;
+      else hitAt.current = -999;
+    }
+
+    const breathe = Math.sin(t * 1.6) * 0.02;
+    const sway = Math.sin(t * 0.8) * 0.03;
+    const targetPitch = (alive ? 0 : 0.5) + (isTurn ? 0.07 : 0) + breathe + hitPitch;
+    g.rotation.x += (targetPitch - g.rotation.x) * damp;
+    g.rotation.z += (sway - g.rotation.z) * damp;
+  });
+
+  return (
+    <group position={isSelf ? [-0.6, -0.5, 0.9] : [0.0, -0.5, -1.2]} rotation={[0, facing, 0]} scale={isSelf ? 1.05 : 1.35}>
+      {/* legs */}
+      <mesh position={[0, 0.25, 0]} castShadow material={body}>
+        <cylinderGeometry args={[0.16, 0.2, 0.5, 12]} />
+      </mesh>
+      <group ref={torso}>
+        <mesh position={[0, 0.75, 0]} castShadow material={body}>
+          <cylinderGeometry args={[0.28, 0.4, 0.55, 14]} />
+        </mesh>
+        <mesh position={[0, 1.0, 0]} castShadow material={body}>
+          <boxGeometry args={[0.85, 0.22, 0.4]} />
+        </mesh>
+        {/* arms */}
+        <mesh position={[-0.5, 0.86, 0.1]} castShadow material={body}>
+          <cylinderGeometry args={[0.07, 0.07, 0.6, 10]} />
+        </mesh>
+        <mesh position={[0.5, 0.86, 0.1]} castShadow material={body}>
+          <cylinderGeometry args={[0.07, 0.07, 0.6, 10]} />
+        </mesh>
+        {/* head */}
+        <mesh position={[0, 1.28, 0]} castShadow material={head}>
+          <boxGeometry args={[0.3, 0.4, 0.3]} />
+        </mesh>
+        {/* eyes */}
+        <mesh position={[-0.065, 1.32, 0.151]}>
+          <boxGeometry args={[0.05, 0.035, 0.02]} />
+          <meshBasicMaterial color={eyeColor} toneMapped={false} />
+        </mesh>
+        <mesh position={[0.065, 1.32, 0.151]}>
+          <boxGeometry args={[0.05, 0.035, 0.02]} />
+          <meshBasicMaterial color={eyeColor} toneMapped={false} />
+        </mesh>
+      </group>
+      {/* Red rim light behind the opponent — cuts the silhouette out of the void */}
+      {!isSelf && <pointLight position={[0, 0.9, -0.4]} intensity={2.2} distance={2.5} decay={2} color="#8a1a0a" />}
+    </group>
+  );
+}
+
+// ── Camera: seated eye-level, looking across at the opponent ────────────────
+function CameraRig({ firing }: { firing: FireKind }) {
+  useFrame(({ camera, clock }, delta) => {
+    const lerp = Math.min(1, delta * 3);
+    const sway = Math.sin(clock.elapsedTime * 0.4) * 0.006;
+    camera.position.x += (0.0 + sway - camera.position.x) * lerp;
+    camera.position.y += (1.05 - camera.position.y) * lerp;
+    camera.position.z += (1.7 - camera.position.z) * lerp;
+    // Firing kicks the camera back slightly for impact
+    const kick = firing === "live" ? 0.06 : 0;
+    camera.lookAt(0, 0.55 - kick, -1.1);
+  });
+  return null;
+}
+
+// ── Main canvas ──────────────────────────────────────────────────────────────
 export default function DuelArena3D({
   isYourTurn,
-  gunHeld,
-  setGunHeld,
-  target,
   firing,
   playerOneHp = 4,
   playerTwoHp = 4,
@@ -605,16 +293,15 @@ export default function DuelArena3D({
   liveCount = 5,
   blankCount = 3,
 }: DuelArenaProps) {
+  const hue1 = hueOf(playerOnePubkey);
+  const hue2 = hueOf(playerTwoPubkey);
+
   return (
     <Canvas
       shadows="basic"
-      camera={{ position: [0.0, 1.05, 1.7], fov: 52 }}
-      gl={{
-        antialias: false,
-        alpha: false,
-        toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 0.75,
-      }}
+      camera={{ position: [0, 1.05, 1.7], fov: 48 }}
+      gl={{ antialias: true }}
+      onCreated={(state) => console.log("[CANVAS-OK] webgl2=", state.gl.capabilities.isWebGL2)}
       style={{
         position: "absolute",
         top: 0,
@@ -622,46 +309,38 @@ export default function DuelArena3D({
         width: "100%",
         height: "100%",
         pointerEvents: "auto",
-        background: "#000000",
         zIndex: 5,
       }}
     >
-      <color attach="background" args={["#000000"]} />
+      {/* Floor — hard, catches the light pool */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
+        <planeGeometry args={[14, 14]} />
+        <meshStandardMaterial color="#020101" roughness={1} />
+      </mesh>
 
-      <Suspense fallback={<LoadingText />}>
-        <Scene
-          isYourTurn={isYourTurn}
-          gunHeld={gunHeld}
-          setGunHeld={setGunHeld}
-          target={target}
-          firing={firing}
-          playerOneHp={playerOneHp}
-          playerTwoHp={playerTwoHp}
-          playerOnePubkey={playerOnePubkey}
-          playerTwoPubkey={playerTwoPubkey}
-          playerOneHitSignal={playerOneHitSignal}
-          playerTwoHitSignal={playerTwoHitSignal}
-          liveCount={liveCount}
-          blankCount={blankCount}
-        />
-      </Suspense>
+      <CameraRig firing={firing} />
+      <Bulb />
+      <Table />
+      <BulletRow live={liveCount} blank={blankCount} />
 
-      <EffectComposer>
-        <Pixelation granularity={4} />
-        <Bloom
-          intensity={0.45}
-          luminanceThreshold={0.85}
-          luminanceSmoothing={0.5}
-          mipmapBlur
-        />
-        <Noise opacity={0.04} />
-        <Vignette eskil={false} offset={0.28} darkness={0.85} />
-      </EffectComposer>
+      {/* Opponent — across the table, facing you */}
+      <Silhouette hue={hue2} facing={0} alive={playerTwoHp > 0} isTurn={!isYourTurn} isSelf={false} hitSignal={playerTwoHitSignal} />
+      {/* You — not rendered: the camera IS your eyes (Buckshot POV).
+          Your silhouette would block the whole table at z=0.9. */}
+
+      {/* Revolver — rests ON the table, center of the felt, lying flat.
+          Barrel points diagonally toward the opponent. */}
+      <group position={[0.0, 0.47, 0.28]} rotation={[-Math.PI / 2, 0, 0.6]} scale={[1.8, 1.8, 1.8]}>
+        <Revolver firing={firing} />
+        {/* Dedicated light so the gun reads clearly against the dark table */}
+        <pointLight position={[0.1, 0.5, 0.2]} intensity={6} distance={2} decay={1.4} color="#ffe0b0" />
+      </group>
     </Canvas>
   );
 }
 
-useGLTF.preload(MODEL_TABLE);
-useGLTF.preload(MODEL_REVOLVER);
-useGLTF.preload(MODEL_LANTERN);
-useGLTF.preload(MODEL_BULLET);
+function hueOf(pubkey: string): number {
+  let h = 0;
+  for (let i = 0; i < Math.min(pubkey.length, 8); i++) h = (h * 31 + pubkey.charCodeAt(i)) % 360;
+  return h;
+}
