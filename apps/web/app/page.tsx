@@ -147,7 +147,7 @@ function Hero() {
         </div>
 
         <div className="mt-8 text-[9px] tracking-[0.5em] text-zinc-700 crt-text">
-          MAGICBLOCK · ER ACTIVE · DEVNET
+          SOLANA L1 · DEVNET · SESSION KEYS
         </div>
       </div>
 

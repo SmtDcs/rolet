@@ -14,8 +14,8 @@ import { keccak_256 } from "@noble/hashes/sha3.js";
 import { useRolet, useToasts, emitToast, type RoletCard } from "@/hooks/useRolet";
 import { useSound } from "@/hooks/useSound";
 
-const DuelArena3D = dynamic(() => import("@/components/DuelArena3D"), { ssr: false });
-const HandRack3D = dynamic(() => import("@/components/HandRack3D"), { ssr: false });
+const DuelBoard2D = dynamic(() => import("@/components/DuelBoard2D"), { ssr: false });
+const HandRack2D = dynamic(() => import("@/components/HandRack2D"), { ssr: false });
 
 // ============================================================
 // Domain types
@@ -24,7 +24,7 @@ type Chamber = "live" | "blank" | "empty";
 type Target = "self" | "opponent";
 
 // CARD_LABEL stays here — needed for the floating PLAY button label.
-// Glyph + blurb live in HandRack3D (where the card faces are drawn).
+// Glyph + blurb live in HandRack2D (where the card faces are drawn).
 const CARD_LABEL: Record<RoletCard, string> = {
   restoreBullet: "RestoreBullet",
   hawkEye: "HawkEye",
@@ -178,14 +178,14 @@ let dmgSeq = 0;
 
 function ActiveDuel({ matchId }: { matchId: BN }) {
   const wallet = useWallet();
-  const rolet = useRolet({ ephemeral: true });
+  const rolet = useRolet({ ephemeral: false });
   const toasts = useToasts();
 
   const [state, setState] = useState<any>(null);
   const [target, setTarget] = useState<Target>("opponent");
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [log, setLog] = useState<string[]>([
-    "// signal acquired — ER://magicblock-edge",
+    "// signal acquired — L1://solana-devnet",
     "// awaiting wallet handshake…",
   ]);
 
@@ -202,7 +202,6 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
   // ── Gun state ──────────────────────────────────────────────────────────────
   const [gunHeld, setGunHeld] = useState(false);
   const [firing, setFiring] = useState<"live" | "blank" | null>(null);
-  const [playerHitSignal, setPlayerHitSignal] = useState(0);
   const [opponentHitSignal, setOpponentHitSignal] = useState(0);
   const [lastPlayedSlot, setLastPlayedSlot] = useState<number | null>(null);
   const [lastPlayedSignal, setLastPlayedSignal] = useState(0);
@@ -369,7 +368,6 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
     if (prevPlayerHpRef.current !== null && playerHp < prevPlayerHpRef.current) {
       const diff = prevPlayerHpRef.current - playerHp;
       setHitFlash("player");
-      setPlayerHitSignal(Date.now());
       setDamageNums((prev) => [...prev, { id: ++dmgSeq, value: -diff, x: 48 }]);
       triggerShake();
       play("playerHit");
@@ -424,19 +422,21 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       className="fixed inset-0 overflow-hidden"
       style={{ width: "100vw", height: "100vh" }}
     >
-      {/* 3D arena background — covers entire viewport, behind everything */}
-      <DuelArena3D
+      {/* 2D duel board — covers entire viewport, behind everything */}
+      <DuelBoard2D
         isYourTurn={turnIsYours}
         gunHeld={gunHeld}
-        setGunHeld={setGunHeld}
         target={target}
         firing={firing}
-        playerOneHp={decoded?.playerOneHp ?? 4}
-        playerTwoHp={decoded?.playerTwoHp ?? 4}
-        playerOnePubkey={decoded?.playerOne ?? ""}
-        playerTwoPubkey={decoded?.playerTwo ?? ""}
-        playerOneHitSignal={playerHitSignal}
-        playerTwoHitSignal={opponentHitSignal}
+        opponentPubkey={
+          decoded && youKey
+            ? youKey === decoded.playerOne
+              ? decoded.playerTwo
+              : decoded.playerOne
+            : ""
+        }
+        opponentHp={opponentHp}
+        opponentHitSignal={opponentHitSignal}
         liveCount={decoded?.liveCount ?? 0}
         blankCount={decoded?.blankCount ?? 0}
       />
@@ -590,13 +590,12 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       />
 
       {/* Top bar */}
-      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-6 py-4 border-b border-rust/40 bg-black/40 backdrop-blur-sm">
-        <Link href="/" className="text-[10px] tracking-[0.4em] text-rust hover:text-red-500 crt-text">
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-4 py-4 border-b border-rust/40 bg-black/40 backdrop-blur-sm sm:px-6">
+        <Link href="/" className="shrink-0 text-[10px] tracking-[0.4em] text-rust hover:text-red-500 crt-text">
           ◄ ABANDON ROOM
         </Link>
-        <span className="text-[10px] tracking-[0.4em] text-zinc-400 crt-text">
-          MATCH 0x{matchId.toString(16).toUpperCase()} · ER://magicblock-edge
-          {rolet.isEphemeral && <span className="ml-2 text-red-700">· ER ACTIVE</span>}
+        <span className="min-w-0 truncate px-2 text-[9px] tracking-[0.35em] text-zinc-400 crt-text sm:text-[10px]">
+          MATCH 0x{matchId.toString(16).toUpperCase()} · L1://solana-devnet
         </span>
         <div className="flex items-center gap-4">
           <button onClick={toggleMute} className="text-[10px] tracking-[0.4em] text-rust hover:text-red-500 crt-text">
@@ -664,9 +663,9 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
             </div>
           )}
 
-          <div className="grid grid-cols-12 gap-3 items-end">
+          <div className="grid grid-cols-2 gap-3 items-end lg:grid-cols-12">
             {/* Slim player vitals — Buckshot pixelated HP */}
-            <div className="col-span-2 crt-frame crt-grain border border-rust/60 bg-black/70 backdrop-blur-sm p-2">
+            <div className="order-2 col-span-1 crt-frame crt-grain border border-rust/60 bg-black/70 backdrop-blur-sm p-2 lg:order-1 lg:col-span-2">
               <div className="flex items-center justify-between text-[8px] tracking-[0.35em] text-rust crt-text">
                 <span>// SUBJECT_01</span>
                 <span className={turnIsYours ? "text-red-400 animate-pulse" : "text-zinc-600"}>
@@ -681,9 +680,9 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               </div>
             </div>
 
-            {/* 3D card hand — shorter container so the action panel stays on-screen */}
-            <div className="col-span-7 relative h-36">
-              <HandRack3D
+            {/* 2D card hand — shorter container so the action panel stays on-screen */}
+            <div className="order-1 col-span-2 lg:order-2 lg:col-span-7 relative h-36">
+              <HandRack2D
                 hand={decoded?.yourHand ?? [null, null, null, null]}
                 selectedSlot={selectedSlot}
                 onSelect={(i) => { setSelectedSlot(i); if (i !== null) play("uiSelect"); }}
@@ -704,7 +703,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
             </div>
 
             {/* Slim action panel — grain texture, pixelated border */}
-            <div className="col-span-3 crt-frame crt-grain border border-rust/60 bg-black/70 backdrop-blur-sm p-2 flex flex-col gap-2">
+            <div className="order-3 col-span-1 lg:col-span-3 crt-frame crt-grain border border-rust/60 bg-black/70 backdrop-blur-sm p-2 flex flex-col gap-2">
               <div className="text-[8px] tracking-[0.4em] text-rust crt-text">// FIRING SOLUTION</div>
               <div className="grid grid-cols-2 gap-1">
                 <TargetButton label="OPP" active={target === "opponent"} onClick={() => { setTarget("opponent"); play("uiSelect"); }} />
@@ -889,7 +888,7 @@ function CCTVViewport({
           <span className={turnIsYours ? "text-red-400" : "text-amber-200/85"}>
             {turnIsYours ? "▶ FIRING SOLUTION ARMED" : "◌ AWAITING OPPONENT"}
           </span>
-          <span className="text-amber-100/70">
+          <span className="hidden text-amber-100/70 sm:inline">
             FEED · 1280x720 · 30FPS · DEVNET
           </span>
         </div>

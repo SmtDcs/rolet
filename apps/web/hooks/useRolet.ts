@@ -911,8 +911,8 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const accountClient = (programL1.account as any).matchState;
     const [asPlayerOne, asPlayerTwo] = await Promise.all([
-      accountClient.all([{ memcmp: { offset: 8,  bytes: me.toBase58() } }]),
-      accountClient.all([{ memcmp: { offset: 40, bytes: me.toBase58() } }]),
+      accountClient.all([{ memcmp: { offset: 16, bytes: me.toBase58() } }]),
+      accountClient.all([{ memcmp: { offset: 48, bytes: me.toBase58() } }]),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const all = [...asPlayerOne, ...asPlayerTwo] as any[];
