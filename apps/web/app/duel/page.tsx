@@ -835,6 +835,17 @@ function CCTVViewport({
           }}
         />
 
+        {/* Transient tracking smear — the feed is not perfectly clean */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="absolute inset-x-0 h-14 animate-[rolet-track_8s_linear_infinite]"
+            style={{
+              background:
+                "linear-gradient(180deg, transparent, rgba(255,240,220,0.05) 45%, rgba(255,240,220,0.11) 50%, rgba(255,240,220,0.05) 55%, transparent)",
+            }}
+          />
+        </div>
+
         {/* CCTV chrome — top row */}
         <div className="absolute top-2 left-3 right-3 flex items-center justify-between text-[10px] tracking-[0.35em] font-mono font-bold drop-shadow-[0_0_4px_rgba(0,0,0,0.9)]">
           <div className="flex items-center gap-2">

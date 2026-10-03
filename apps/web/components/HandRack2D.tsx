@@ -111,7 +111,10 @@ export default function HandRack2D({
   }, [consuming]);
 
   return (
-    <div className="flex h-full w-full items-end justify-center gap-1.5 sm:gap-2.5">
+    <div
+      className="flex h-full w-full items-end justify-center gap-1.5 sm:gap-2.5"
+      style={{ perspective: "900px" }}
+    >
       {hand.slice(0, 4).map((card, i) => {
         const isConsuming = consuming?.slot === i;
         const shown: RoletCard | null = isConsuming && consuming
@@ -124,7 +127,7 @@ export default function HandRack2D({
           <div
             key={i}
             style={{
-              transform: `rotate(${offset * 2.4}deg) translateY(${Math.abs(offset) * 3}px)`,
+              transform: `rotate(${offset * 2.4}deg) rotateX(12deg) translateY(${Math.abs(offset) * 3}px)`,
             }}
           >
             <Card2D
@@ -211,8 +214,12 @@ function CardFace({
   label: string;
 }) {
   return (
-    <div className="absolute inset-0 overflow-hidden border border-[#3a2418] bg-[linear-gradient(180deg,#f4e6c8_0%,#d8c5a0_100%)] shadow-[0_6px_18px_rgba(0,0,0,0.55)]">
+    <div className="absolute inset-0 overflow-hidden border border-[#3a2418] bg-[linear-gradient(180deg,#f4e6c8_0%,#d8c5a0_100%)] shadow-[0_12px_24px_rgba(0,0,0,0.65)]">
       <div className="absolute inset-[3px] border border-[#3a2418]/70" />
+      <div
+        className="absolute inset-0 opacity-[0.12] mix-blend-multiply"
+        style={{ filter: "url(#rolet-noise)" }}
+      />
       {/* top-left corner */}
       <div
         className="absolute left-[6px] top-[4px] text-left leading-none"
@@ -249,7 +256,7 @@ function CardFace({
 
 function CardBack() {
   return (
-    <div className="absolute inset-0 overflow-hidden border border-[#3a1212] bg-[#280505] shadow-[0_6px_18px_rgba(0,0,0,0.55)]">
+    <div className="absolute inset-0 overflow-hidden border border-[#3a1212] bg-[#280505] shadow-[0_12px_24px_rgba(0,0,0,0.65)]">
       <div
         className="absolute inset-[3px] border border-[#5a1010]"
         style={{
