@@ -39,14 +39,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${cormorant.variable} ${syne.variable} ${spaceMono.variable} ${inter.variable}`}
     >
-      <body className="relative min-h-screen bg-[#070605] text-[#e6d7c3] font-sans antialiased overflow-x-hidden selection:bg-[#8c2727] selection:text-[#fff5ea]">
+      <body className="relative min-h-screen bg-[#060919] text-[#e2e8f0] font-sans antialiased overflow-x-hidden selection:bg-[#0077b6] selection:text-[#ffffff]">
         <SolanaProvider>{children}</SolanaProvider>
 
-        {/* Subtle Luxury Vignette & Candle Atmosphere */}
+        {/* Axie Infinity Ambient Cosmic Glows */}
         <div
-          className="pointer-events-none fixed inset-0 z-[60] opacity-40 mix-blend-multiply"
+          className="pointer-events-none fixed inset-0 z-0 opacity-40 mix-blend-screen"
           style={{
-            background: "radial-gradient(circle at 50% 30%, transparent 40%, rgba(5,4,3,0.95) 100%)",
+            background:
+              "radial-gradient(circle at 50% -10%, rgba(0, 180, 255, 0.18) 0%, transparent 50%), radial-gradient(circle at 90% 40%, rgba(139, 92, 246, 0.15) 0%, transparent 45%), radial-gradient(circle at 10% 70%, rgba(245, 158, 11, 0.12) 0%, transparent 40%)",
           }}
         />
       </body>

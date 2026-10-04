@@ -5,19 +5,19 @@
    become utility classes (animate-noise, animate-flicker, …).
    ────────────────────────────────────────────────────────────── */
 @theme {
-  --color-background: #070605;
-  --color-foreground: #e6d7c3;
+  --color-background: #060919;
+  --color-foreground: #e2e8f0;
 
-  --color-obsidian: #0b0907;
-  --color-mahogany: #1e1611;
-  --color-felt: #152b1e;
-  --color-brass: #c6a15b;
-  --color-brass-light: #e5c378;
-  --color-brass-dark: #8c6d31;
-  --color-crimson: #8c2727;
-  --color-crimson-bright: #b83232;
-  --color-parchment: #e6d7c3;
-  --color-parchment-dim: #b8a68f;
+  --color-obsidian: #080c1e;
+  --color-mahogany: #101935;
+  --color-felt: #0c2340;
+  --color-brass: #f59e0b;
+  --color-brass-light: #fbbf24;
+  --color-brass-dark: #b45309;
+  --color-crimson: #0284c7;
+  --color-crimson-bright: #38bdf8;
+  --color-parchment: #e2e8f0;
+  --color-parchment-dim: #94a3b8;
 
   --font-serif: var(--font-cormorant), Georgia, serif;
   --font-display: var(--font-syne), sans-serif;
@@ -39,6 +39,149 @@
   --animate-scan-line: rolet-scan-line 3s linear infinite;
   --animate-red-alert: rolet-red-alert 0.6s ease-in-out infinite;
   --animate-grain: rolet-grain 0.8s steps(8) infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Axie Infinity Signature 3D Tactile Buttons & Badges */
+@utility btn-axie-orange {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #ff9f1c 0%, #f77f00 48%, #d65000 100%);
+  border-top: 2px solid rgba(255, 255, 255, 0.5);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 0 #8f2d00, 0 12px 24px rgba(247, 127, 0, 0.45);
+  border-radius: 9999px;
+  color: #ffffff;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+  &:hover {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 #8f2d00, 0 8px 18px rgba(247, 127, 0, 0.55);
+    filter: brightness(1.05);
+  }
+  &:active {
+    transform: translateY(6px);
+    box-shadow: 0 0 0 #8f2d00, 0 2px 8px rgba(247, 127, 0, 0.4);
+  }
+}
+
+@utility btn-axie-blue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #00b4d8 0%, #0077b6 50%, #023e8a 100%);
+  border-top: 2px solid rgba(255, 255, 255, 0.5);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 0 #001845, 0 12px 24px rgba(0, 119, 182, 0.45);
+  border-radius: 9999px;
+  color: #ffffff;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+  &:hover {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 #001845, 0 8px 18px rgba(0, 119, 182, 0.55);
+    filter: brightness(1.05);
+  }
+  &:active {
+    transform: translateY(6px);
+    box-shadow: 0 0 0 #001845, 0 2px 8px rgba(0, 119, 182, 0.4);
+  }
+}
+
+@utility btn-axie-purple {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #a855f7 0%, #7e22ce 50%, #581c87 100%);
+  border-top: 2px solid rgba(255, 255, 255, 0.45);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 0 #3b0764, 0 12px 24px rgba(126, 34, 206, 0.4);
+  border-radius: 9999px;
+  color: #ffffff;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+  &:hover {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 #3b0764, 0 8px 16px rgba(126, 34, 206, 0.5);
+    filter: brightness(1.05);
+  }
+  &:active {
+    transform: translateY(6px);
+    box-shadow: 0 0 0 #3b0764, 0 2px 8px rgba(126, 34, 206, 0.3);
+  }
+}
+
+@utility btn-axie-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 4px 0 rgba(7, 12, 26, 0.8), 0 8px 20px rgba(0, 0, 0, 0.5);
+  border-radius: 9999px;
+  color: #e2e8f0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(12px);
+  transition: all 0.12s ease-in-out;
+  cursor: pointer;
+  user-select: none;
+  &:hover {
+    background: rgba(30, 41, 70, 0.85);
+    border-color: rgba(56, 189, 248, 0.65);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 rgba(7, 12, 26, 0.8), 0 6px 14px rgba(56, 189, 248, 0.2);
+  }
+  &:active {
+    transform: translateY(4px);
+    box-shadow: none;
+  }
+}
+
+@utility axie-card {
+  background: linear-gradient(180deg, rgba(16, 26, 56, 0.85) 0%, rgba(10, 16, 36, 0.95) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+  backdrop-filter: blur(16px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  &:hover {
+    border-color: rgba(56, 189, 248, 0.5);
+    box-shadow: 0 25px 50px -12px rgba(0, 150, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transform: translateY(-4px);
+  }
+}
+
+@utility axie-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(14, 28, 64, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
 }
 
 /* ──────────────────────────────────────────────────────────────
