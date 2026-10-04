@@ -24,7 +24,7 @@ Bu şartname, **ROLET** projesini ham bir Web3 prototipinden, **Axie Infinity** 
 5. **Solana Hackathon & Fuar Çarpanları:**
    * **MagicBlock Ephemeral Rollups (ER):** Alt-saniye (<50ms) gazsız hamleler.
    * **Dialect Solana Blinks:** X / Twitter üzerinden tek tıkla doğrudan düelloya lobi açma / katılma.
-   * **Metaplex Core NFT:** 10 Dayanıklılık (Durability) yaşam döngüsü ve %70 Kasa / %30 Ops gelir bölüşümü.
+   * **Metaplex Core NFT:** 10 Dayanıklılık (Durability) yaşam döngüsü ve %90 Hazine / %5 Sigorta / %5 Ops gelir bölüşümü.
    * **Bonfida SNS:** Masadaki pirinç plakada kazınmış doğrulanmış `.sol` kimliği.
 
 ---
@@ -120,9 +120,13 @@ flowchart LR
   * `Silence` (Rakibin bir sonraki tur kart oynamasını kilitle)
 * **Kart İnteraksiyonu:** Fare üzerine geldiğinde kart 3D perspektifle açılanır, altın mührü parlar ve on-chain strateji ipuçları açılır.
 
-### 4.5. Ekonomi & Provably Fair Güvencesi
-* **%70 Kasa / %30 Ops Gelir Şeması:** Karakter alımlarından toplanan SOL'un kasaya nasıl aktarıldığını ve kazananlara dağıtıldığını gösteren interaktif diyagram.
-* **Commit-Reveal Hilesizlik:** Host ve Guest tohumlarının `keccak256` ile kilitlenip manipüle edilemez RNG ürettiğinin basit şematik anlatımı.
+### 4.5. Ekonomi & Provably Fair Güvencesi (90 / 5 / 5 Modeli)
+* **Sürdürülebilir Gelir Bölüşümü:** Karakter alımlarından toplanan SOL'un dağılımı:
+  * 🏛️ **%90 Hazine (Treasury / Kazanan Ödül Havuzu):** Her düelloda kazanan oyuncuya doğrudan SOL olarak dağıtılır. Oyuncu riske ettiği tutarın neredeyse iki katını (+%80 net getiri) kazanır.
+  * 🛡️ **%5 Sigorta Fonu (Insurance / Safety Fund):** Olası uyuşmazlıklar, ağ kesintisi tazminatları ve büyük ikramiye (jackpot) birikimi için ayrılan koruma rezervi.
+  * ⚙️ **%5 Geliştirme & Operasyon (Ops Wallet):** Protokol bakımı, altyapı ve RPC maliyetleri.
+* **Commit-Reveal Hilesizlik Güvencesi:** Host ve Guest tohumlarının `keccak256` ile kilitlenip manipüle edilemez RNG ürettiğinin basit şematik anlatımı (Host'un tohumu önceden görmesini engelleyen güvenli taahhüt protokolü).
+* **Masa Güvencesi:** Lobi açıp iptal eden (`close_lobby`) oyuncunun dayanıklılığı (durability) eksiksiz iade edilir.
 
 ### 4.6. Liderlik Kürsüsü & Footer
 * En çok kazanan `.sol` (Bonfida SNS) sahipleri listesi.
@@ -181,7 +185,7 @@ Meshy MCP araçları (`meshy_text_to_3d`, `meshy_download_model`) ile `apps/web/
 * X / Twitter'da paylaşıldığında doğrudan tweet akışı içinde interaktif bir "Düelloya Katıl" butonuna dönüşür.
 
 ### 7.3. Metaplex Core & Bonfida SNS
-* Metaplex Core AssetV1 formatında Karakter NFT'si, 10 Dayanıklılık (durability) tüketimi ve %70 Kasa / %30 Ops kontrat split'i.
+* Metaplex Core AssetV1 formatında Karakter NFT'si, 10 Dayanıklılık (durability) tüketimi ve %90 Hazine / %5 Sigorta / %5 Ops kontrat split'i.
 * Bonfida SNS ile doğrulanmış `.sol` alan adının masadaki diegetik pirinç plakada gösterilmesi.
 
 ---
