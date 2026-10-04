@@ -605,12 +605,10 @@ pub mod rolet {
             RoletError::InvalidPurchaseAmount
         );
 
-        // Split: 70% treasury, 30% ops. The buyer is the transaction signer,
-        // so system transfers from their wallet are authorized via the
-        // system program CPI (a program cannot debit a system-owned account
-        // directly — that would raise ExternalAccountLamportSpend).
-        let vault_share = (price as u128 * 7000 / 10000) as u64;
-        let ops_share = price - vault_share;
+        // Split: 90% treasury (winner rewards pool), 5% ops (team maintenance),
+        // and 5% insurance reserve (held in treasury_sol).
+        let ops_share = (price as u128 * 500 / 10000) as u64; // 5% ops
+        let treasury_total = price - ops_share; // 95% (90% winner pool + 5% insurance reserve)
 
         anchor_lang::system_program::transfer(
             anchor_lang::context::CpiContext::new(
@@ -620,7 +618,7 @@ pub mod rolet {
                     to: ctx.accounts.treasury_sol.to_account_info(),
                 },
             ),
-            vault_share,
+            treasury_total,
         )?;
 
         anchor_lang::system_program::transfer(

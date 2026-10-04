@@ -4,8 +4,9 @@ import { PublicKey } from "@solana/web3.js";
 export const PRICE_SOL = 1;                    // character NFT price
 export const CHARACTER_DURABILITY = 10;        // matches per character
 export const REWARD_SOL = 0.12;                // winner reward per match
-export const VAULT_SHARE_BPS = 7000;           // 70% of NFT revenue to vault
-export const OPS_SHARE_BPS = 10000 - VAULT_SHARE_BPS; // 30% to ops
+export const VAULT_SHARE_BPS = 9000;           // 90% of NFT revenue to treasury
+export const OPS_SHARE_BPS = 500;              // 5% to ops / team
+export const INSURANCE_SHARE_BPS = 500;        // 5% to insurance reserve fund
 
 export const LAMPORTS_PER_SOL = 1_000_000_000;
 
