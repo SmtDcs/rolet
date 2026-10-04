@@ -12,9 +12,11 @@ import { PlayNavbar } from "@/components/play/PlayNavbar";
 import { LobbyOverlay } from "@/components/play/LobbyOverlay";
 import { CharacterDurabilityCard } from "@/components/play/CharacterDurabilityCard";
 
-// Dynamic imports for the board & cards
-const DuelBoard2D = dynamic(() => import("@/components/DuelBoard2D"), { ssr: false });
-const HandRack2D = dynamic(() => import("@/components/HandRack2D"), { ssr: false });
+// Dynamic import for the Diegetic 3D Arena (Zero 2D HUD)
+const DuelArenaDiegetic3D = dynamic(
+  () => import("@/components/play/DuelArenaDiegetic3D").then((m) => m.DuelArenaDiegetic3D),
+  { ssr: false }
+);
 
 function PlayContent() {
   const searchParams = useSearchParams();
@@ -30,6 +32,8 @@ function PlayContent() {
     fetchProfile,
     purchaseCharacter,
     generateCommitReveal,
+    pullTrigger,
+    playCard,
     sessionKey,
     busy,
   } = useRolet();
@@ -38,6 +42,18 @@ function PlayContent() {
   const [isHost, setIsHost] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [inMatch, setInMatch] = useState(false);
+
+  // In-Game Diegetic State
+  const [isYourTurn, setIsYourTurn] = useState(true);
+  const [gunHeld, setGunHeld] = useState(false);
+  const [target, setTarget] = useState<"self" | "opponent">("opponent");
+  const [firing, setFiring] = useState<"live" | "blank" | null>(null);
+  const [playerHp, setPlayerHp] = useState(3);
+  const [opponentHp, setOpponentHp] = useState(3);
+  const [liveCount, setLiveCount] = useState(2);
+  const [blankCount, setBlankCount] = useState(2);
+  const [handCards, setHandCards] = useState<string[]>(["HawkEye", "DoubleStrike"]);
+  const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
 
   // Profile & Durability
   const [durability, setDurability] = useState(10);
@@ -136,27 +152,94 @@ function PlayContent() {
     }
   };
 
+  // Handle Diegetic Trigger Pull
+  const handleFire = useCallback(async () => {
+    if (!isYourTurn || firing !== null) return;
+    sound.play("triggerCock");
+
+    // On-chain execution if in match
+    if (activeLobbyId && wallet.publicKey) {
+      const sig = await pullTrigger({
+        matchId: new BN(activeLobbyId),
+        targetSelf: target === "self",
+        currentTurnAuthority: wallet.publicKey,
+      });
+      if (sig) {
+        // Recoil simulation
+        setFiring("live");
+        sound.play("gunshotLive");
+        setTimeout(() => setFiring(null), 300);
+      }
+      return;
+    }
+
+    // Local duel simulation fallback
+    const isLive = Math.random() < liveCount / Math.max(1, liveCount + blankCount);
+    if (isLive) {
+      setFiring("live");
+      sound.play("gunshotLive");
+      if (target === "self") {
+        setPlayerHp((hp) => Math.max(0, hp - 1));
+      } else {
+        setOpponentHp((hp) => Math.max(0, hp - 1));
+      }
+      setLiveCount((c) => Math.max(0, c - 1));
+    } else {
+      setFiring("blank");
+      sound.play("clickBlank");
+      setBlankCount((c) => Math.max(0, c - 1));
+    }
+
+    setTimeout(() => {
+      setFiring(null);
+      // Turn switches if self shot was live or shot opponent
+      if (!(target === "self" && !isLive)) {
+        setIsYourTurn(false);
+        setTimeout(() => setIsYourTurn(true), 2000);
+      }
+    }, 400);
+  }, [isYourTurn, firing, activeLobbyId, wallet.publicKey, pullTrigger, target, liveCount, blankCount, sound]);
+
+  // Handle Card Play
+  const handleSelectCard = useCallback((index: number, cardName: string) => {
+    sound.play("cardPlay");
+    setSelectedCardIndex(index);
+    emitToast("info", `Tarot Oynandı: ${cardName}`);
+    setTimeout(() => {
+      setHandCards((cards) => cards.filter((_, i) => i !== index));
+      setSelectedCardIndex(null);
+    }, 600);
+  }, [sound]);
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#070605] text-[#e6d7c3]">
-      {/* Top in-game HUD bar */}
+      {/* Top in-game HUD bar (minimal: volume & durability) */}
       <PlayNavbar
         durabilityRemaining={durability}
         durabilityMax={10}
         hasSessionKey={Boolean(sessionKey)}
       />
 
-      {/* Main 3D / 2.5D Duel Stage Container */}
-      <div className="w-full h-full pt-16 flex items-center justify-center relative">
-        <DuelBoard2D
-          isYourTurn={false}
-          gunHeld={false}
-          target="opponent"
-          firing={null}
-          opponentPubkey=""
-          opponentHp={3}
-          opponentHitSignal={0}
-          liveCount={0}
-          blankCount={0}
+      {/* Main Diegetic 3D FPS Duel Arena (Zero 2D HUD on the play table) */}
+      <div className="w-full h-full pt-14 flex items-center justify-center relative">
+        <DuelArenaDiegetic3D
+          isYourTurn={isYourTurn}
+          gunHeld={gunHeld}
+          setGunHeld={setGunHeld}
+          target={target}
+          setTarget={setTarget}
+          firing={firing}
+          onFire={handleFire}
+          playerHp={playerHp}
+          opponentHp={opponentHp}
+          playerPubkey={wallet.publicKey?.toBase58() ?? "YOU"}
+          opponentPubkey="DEALER.SOL"
+          liveCount={liveCount}
+          blankCount={blankCount}
+          cards={handCards}
+          onSelectCard={handleSelectCard}
+          selectedCardIndex={selectedCardIndex}
+          disabled={busy}
         />
       </div>
 
@@ -189,7 +272,7 @@ function PlayContent() {
 
 export default function PlayPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#070605] flex items-center justify-center font-['Cinzel',serif] text-[#c6a15b]">Kumarhane Masası Yükleniyor...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#070605] flex items-center justify-center font-serif text-[#c6a15b]">Kutsal Masaya Giriliyor…</div>}>
       <PlayContent />
     </Suspense>
   );
