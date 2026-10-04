@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Special_Elite, VT323 } from "next/font/google";
+import { Special_Elite, VT323, Cinzel, Cinzel_Decorative } from "next/font/google";
 import { SolanaProvider } from "@/components/SolanaProvider";
 import "./globals.css";
 
@@ -15,15 +15,27 @@ const mono = VT323({
   variable: "--font-rolet-mono",
 });
 
+const cinzel = Cinzel({
+  weight: ["400", "600", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-cinzel",
+});
+
+const cinzelDec = Cinzel_Decorative({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-cinzel-dec",
+});
+
 export const metadata: Metadata = {
-  title: "ROLET // The Last Round",
-  description: "A cursed Russian Roulette protocol on Solana.",
+  title: "ROLET // The Occult Casino & Tactical Russian Roulette on Solana",
+  description: "Eight chambers. Twelve cards. One winner takes the vault. Fully on-chain PvP on Solana.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${mono.variable}`}>
-      <body className="relative min-h-screen bg-[#0a0807] text-zinc-200 antialiased overflow-x-hidden selection:bg-red-900 selection:text-zinc-100">
+    <html lang="en" className={`${display.variable} ${mono.variable} ${cinzel.variable} ${cinzelDec.variable}`}>
+      <body className="relative min-h-screen bg-[#070605] text-[#e6d7c3] antialiased overflow-x-hidden selection:bg-[#8c2727] selection:text-[#fff5ea]">
         {/* Inline SVG turbulence — film-grain noise source */}
         <svg className="hidden" aria-hidden>
           <filter id="rolet-noise">
