@@ -36,7 +36,7 @@ export function GildedButton({
     dark: "bg-gradient-to-b from-[#181310] to-[#0d0908] text-[#c7b59d] border-[#3d2e24] hover:border-[#c6a15b] hover:text-[#e6d7c3] shadow-[0_0_10px_rgba(0,0,0,0.5)] active:scale-[0.98]",
   }[variant];
 
-  const baseClasses = `relative inline-flex items-center justify-center font-['Cinzel',serif] uppercase transition-all duration-200 border rounded-sm select-none overflow-hidden group ${sizeClasses} ${variantClasses} ${
+  const baseClasses = `relative inline-flex items-center justify-center font-sans font-bold uppercase transition-all duration-200 border rounded-sm select-none overflow-hidden group ${sizeClasses} ${variantClasses} ${
     disabled ? "opacity-40 cursor-not-allowed pointer-events-none" : "cursor-pointer"
   } ${className}`;
 

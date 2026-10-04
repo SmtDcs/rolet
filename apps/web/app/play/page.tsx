@@ -77,7 +77,7 @@ function PlayContent() {
   // Handle Find Match (Join available lobby)
   const handleFindMatch = useCallback(async () => {
     if (!wallet.publicKey) {
-      emitToast("error", "Önce Solana cüzdanınızı bağlayın");
+      emitToast("error", "Connect your Solana wallet first");
       return;
     }
     if (durability <= 0) {
@@ -85,15 +85,15 @@ function PlayContent() {
       return;
     }
 
-    setStatusText("Açık lobi aranıyor...");
+    setStatusText("Searching for open tables...");
     const open = await findOpenLobby();
     if (!open) {
-      emitToast("info", "Açık masa bulunamadı. Yeni bir masa oluşturuluyor...");
+      emitToast("info", "No open tables found. Initializing a new table...");
       handleCreateMatch();
       return;
     }
 
-    setStatusText(`Masaya oturuluyor: ${open.matchId.toString()}...`);
+    setStatusText(`Sitting at table: ${open.matchId.toString()}...`);
     const { secret, commit } = generateCommitReveal();
     const sig = await joinLobby(open.matchId, commit, secret);
     if (sig) {
@@ -107,7 +107,7 @@ function PlayContent() {
   // Handle Create Match (Host lobby)
   const handleCreateMatch = useCallback(async () => {
     if (!wallet.publicKey) {
-      emitToast("error", "Önce Solana cüzdanınızı bağlayın");
+      emitToast("error", "Connect your Solana wallet first");
       return;
     }
     if (durability <= 0) {
@@ -116,28 +116,28 @@ function PlayContent() {
     }
 
     const newId = new BN(Date.now());
-    setStatusText("Masa Solana Devnet üzerinde açılıyor...");
+    setStatusText("Registering table on Solana Devnet...");
     const { commit } = generateCommitReveal();
     const sig = await openLobby(newId, commit);
     if (sig) {
       sound.play("triggerCock");
       setActiveLobbyId(newId.toString());
       setIsHost(true);
-      setStatusText("Masa açıldı. Karşı koltuğa misafir bekleniyor...");
+      setStatusText("Table ready. Waiting for challenger...");
     }
   }, [wallet.publicKey, durability, openLobby, generateCommitReveal, sound]);
 
   // Handle Cancel Match (Host cancels and gets durability back)
   const handleCancelMatch = useCallback(async () => {
     if (!activeLobbyId) return;
-    setStatusText("Masa kapatılıyor ve kira iade ediliyor...");
+    setStatusText("Closing table and refunding rent...");
     const sig = await closeLobby(new BN(activeLobbyId));
     if (sig) {
       sound.play("clickBlank");
       setActiveLobbyId(null);
       setIsHost(false);
       setStatusText("");
-      emitToast("info", "Masa iptal edildi");
+      emitToast("info", "Table cancelled");
     }
   }, [activeLobbyId, closeLobby, sound]);
 
@@ -204,7 +204,7 @@ function PlayContent() {
   const handleSelectCard = useCallback((index: number, cardName: string) => {
     sound.play("cardPlay");
     setSelectedCardIndex(index);
-    emitToast("info", `Tarot Oynandı: ${cardName}`);
+    emitToast("info", `Tarot Played: ${cardName}`);
     setTimeout(() => {
       setHandCards((cards) => cards.filter((_, i) => i !== index));
       setSelectedCardIndex(null);
@@ -272,7 +272,7 @@ function PlayContent() {
 
 export default function PlayPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#070605] flex items-center justify-center font-serif text-[#c6a15b]">Kutsal Masaya Giriliyor…</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#070605] flex items-center justify-center font-serif text-[#c6a15b]">Entering Occult Duel Arena…</div>}>
       <PlayContent />
     </Suspense>
   );

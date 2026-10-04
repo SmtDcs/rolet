@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
 import { ParchmentSeal } from "@/components/ui/ParchmentSeal";
 import { GildedButton } from "@/components/ui/GildedButton";
+import { Crown, Trophy, Swords, ExternalLink } from "lucide-react";
 
 interface TopDuelist {
   rank: number;
@@ -69,18 +69,19 @@ export function HallOfFameSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-14 gap-6">
           <div>
-            <ParchmentSeal label="Liderlik Kürsüsü" sublabel="Hall of Duelists" variant="gold" />
-            <h2 className="font-['Cinzel_Decorative',serif] text-3xl sm:text-4xl font-bold tracking-tight text-[#f5ecd8] mt-4">
-              MASANIN EFENDİLERİ
+            <ParchmentSeal label="Leaderboard" sublabel="Hall of Duelists" variant="gold" />
+            <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-[#f5ecd8] mt-4">
+              MASTERS OF THE CYLINDER
             </h2>
-            <p className="font-['Cinzel',serif] text-sm text-[#b8a68f] mt-2">
-              Bonfida SNS (.sol) ile doğrulanmış, Solana Devnet'te en çok SOL kazanan ve hayatta kalan kumarbazlar.
+            <p className="font-serif italic text-base text-[#b8a68f] mt-2">
+              Verified with Bonfida SNS (.sol) identities. The highest-earning, longest-surviving duelists on Solana Devnet.
             </p>
           </div>
 
           <div className="flex items-center gap-4">
             <GildedButton href="/play" variant="gold" size="sm">
-              Sıralamaya Meydan Oku
+              <Swords className="w-4 h-4 mr-2 text-[#c6a15b]" />
+              <span>Challenge the Ranks</span>
             </GildedButton>
           </div>
         </div>
@@ -88,72 +89,77 @@ export function HallOfFameSection() {
         {/* Table layout */}
         <div className="rounded-sm border border-[#3b2b1d] bg-[#110c08] overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.8)]">
           <div className="overflow-x-auto">
-            <table className="w-full text-left font-['Cinzel',serif] text-xs">
+            <table className="w-full text-left font-sans text-xs">
               <thead className="bg-[#1a120b] border-b border-[#3b2b1d] uppercase tracking-wider text-[#a68e72]">
                 <tr>
-                  <th className="py-4 px-6">Sıra</th>
-                  <th className="py-4 px-6">Düellocu / Kimlik</th>
-                  <th className="py-4 px-6">ELO Puanı</th>
-                  <th className="py-4 px-6 text-center">G / M Oranı</th>
-                  <th className="py-4 px-6 text-right">Toplam SOL Kazancı</th>
+                  <th className="py-4 px-6">Rank</th>
+                  <th className="py-4 px-6">Duelist / Identity</th>
+                  <th className="py-4 px-6">ELO Rating</th>
+                  <th className="py-4 px-6 text-center">W / L Record</th>
+                  <th className="py-4 px-6 text-right">Total SOL Claimed</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#261c14] text-[#d6c4ad]">
-                {TOP_DUELISTS.map((d) => {
-                  const winRate = Math.round((d.wins / (d.wins + d.losses)) * 100);
-                  const isTopThree = d.rank <= 3;
-
-                  return (
-                    <tr
-                      key={d.rank}
-                      className="hover:bg-[#1a120b]/60 transition-colors"
-                    >
-                      <td className="py-4 px-6">
-                        <span
-                          className={`inline-flex items-center justify-center w-7 h-7 rounded-sm font-['Cinzel_Decorative',serif] text-sm font-bold ${
-                            d.rank === 1
-                              ? "bg-[#c6a15b] text-[#120d09]"
-                              : d.rank === 2
-                              ? "bg-[#a68e72] text-[#120d09]"
-                              : d.rank === 3
-                              ? "bg-[#8c6d31] text-[#f5ecd8]"
-                              : "text-[#736352]"
-                          }`}
-                        >
-                          {d.rank}
+              <tbody className="divide-y divide-[#261c14] text-[#d8c8b0]">
+                {TOP_DUELISTS.map((d) => (
+                  <tr
+                    key={d.rank}
+                    className="hover:bg-[#18110b] transition-colors group"
+                  >
+                    <td className="py-4 px-6 font-display font-bold">
+                      {d.rank === 1 && (
+                        <span className="inline-flex items-center gap-1.5 text-[#ffd700]">
+                          <Crown className="w-4 h-4 text-[#ffd700]" />
+                          <span>#1</span>
                         </span>
-                      </td>
+                      )}
+                      {d.rank === 2 && (
+                        <span className="inline-flex items-center gap-1.5 text-[#e5e5e5]">
+                          <Trophy className="w-4 h-4 text-[#c0c0c0]" />
+                          <span>#2</span>
+                        </span>
+                      )}
+                      {d.rank === 3 && (
+                        <span className="inline-flex items-center gap-1.5 text-[#cd7f32]">
+                          <Trophy className="w-4 h-4 text-[#cd7f32]" />
+                          <span>#3</span>
+                        </span>
+                      )}
+                      {d.rank > 3 && (
+                        <span className="font-mono text-[#a68e72]">#{d.rank}</span>
+                      )}
+                    </td>
 
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${isTopThree ? "text-[#f5ecd8]" : "text-[#c4b59d]"}`}>
-                            {d.name}
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#f5ecd8] group-hover:text-[#ffdca8]">
+                          {d.name}
+                        </span>
+                        {d.isSns && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#211710] border border-[#c6a15b]/40 text-[#c6a15b]">
+                            SNS
                           </span>
-                          {d.isSns && (
-                            <span className="text-[10px] font-['Space_Mono',monospace] px-1.5 py-0.5 rounded-sm bg-[#1c2e22] text-[#52c41a] border border-[#2e5e3a]">
-                              SNS
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                        )}
+                      </div>
+                    </td>
 
-                      <td className="py-4 px-6 font-['Space_Mono',monospace] text-[#e5c378]">
-                        {d.elo}
-                      </td>
+                    <td className="py-4 px-6 font-mono text-[#a68e72]">
+                      {d.elo} PTS
+                    </td>
 
-                      <td className="py-4 px-6 text-center font-['Space_Mono',monospace]">
-                        <span className="text-[#52c41a] font-bold">{d.wins}G</span>
-                        <span className="mx-1 text-[#665444]">-</span>
-                        <span className="text-[#ff4d4f]">{d.losses}M</span>
-                        <span className="ml-2 text-[10px] text-[#8a7761]">({winRate}%)</span>
-                      </td>
+                    <td className="py-4 px-6 text-center font-mono">
+                      <span className="text-[#52c41a]">{d.wins}W</span>
+                      <span className="text-zinc-600 mx-1">/</span>
+                      <span className="text-[#ff4d4f]">{d.losses}L</span>
+                      <span className="text-[10px] text-zinc-500 ml-2">
+                        ({Math.round((d.wins / (d.wins + d.losses)) * 100)}%)
+                      </span>
+                    </td>
 
-                      <td className="py-4 px-6 text-right font-['Space_Mono',monospace] font-bold text-[#e5c378]">
-                        +{d.solClaimed.toFixed(2)} SOL
-                      </td>
-                    </tr>
-                  );
-                })}
+                    <td className="py-4 px-6 text-right font-mono font-bold text-[#e5c378]">
+                      +{d.solClaimed.toFixed(2)} SOL
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

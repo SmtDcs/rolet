@@ -40,7 +40,7 @@ export function ParchmentSeal({
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-3 py-1 border rounded-sm font-['Cinzel',serif] ${styles.border} ${styles.bg} ${styles.text} ${styles.glow} ${className}`}
+      className={`inline-flex items-center gap-2 px-3 py-1 border rounded-sm font-sans ${styles.border} ${styles.bg} ${styles.text} ${styles.glow} ${className}`}
     >
       {icon && <span className="text-sm opacity-90">{icon}</span>}
       <div className="flex flex-col leading-none">

@@ -11,6 +11,7 @@ import { DiegeticRevolver } from "./diegetic/DiegeticRevolver";
 import { DiegeticCardHand } from "./diegetic/DiegeticCardHand";
 import { NameplateSNS } from "./diegetic/NameplateSNS";
 import { GildedButton } from "@/components/ui/GildedButton";
+import { Crosshair, Flame, RotateCcw, Hand } from "lucide-react";
 
 export type DuelArenaDiegetic3DProps = {
   isYourTurn: boolean;
@@ -299,7 +300,8 @@ export function DuelArenaDiegetic3D({
                 size="md"
                 onClick={() => setGunHeld(true)}
               >
-                ✦ SİLAHI AL (GRAB REVOLVER)
+                <Hand className="w-4 h-4 mr-2 text-[#c6a15b]" />
+                <span>Take Revolver</span>
               </GildedButton>
             ) : (
               <>
@@ -308,7 +310,8 @@ export function DuelArenaDiegetic3D({
                   size="sm"
                   onClick={() => setTarget("opponent")}
                 >
-                  🎯 RAKİBE DOĞRULT
+                  <Crosshair className="w-4 h-4 mr-1.5" />
+                  <span>Aim at Opponent</span>
                 </GildedButton>
 
                 <GildedButton
@@ -316,7 +319,8 @@ export function DuelArenaDiegetic3D({
                   size="sm"
                   onClick={() => setTarget("self")}
                 >
-                  ⚡ KENDİNE DOĞRULT
+                  <RotateCcw className="w-4 h-4 mr-1.5" />
+                  <span>Aim at Self</span>
                 </GildedButton>
 
                 <div className="h-6 w-px bg-zinc-700 mx-1" />
@@ -327,7 +331,8 @@ export function DuelArenaDiegetic3D({
                   onClick={onFire}
                   disabled={firing !== null}
                 >
-                  {target === "opponent" ? "🔥 TETİĞİ ÇEK (RAKİBE)" : "🎲 TETİĞİ ÇEK (KENDİNE)"}
+                  <Flame className="w-4 h-4 mr-1.5 text-[#ff4422]" />
+                  <span>{target === "opponent" ? "Pull Trigger (Opponent)" : "Pull Trigger (Self)"}</span>
                 </GildedButton>
               </>
             )}
@@ -335,8 +340,8 @@ export function DuelArenaDiegetic3D({
         )}
 
         {/* Occult Turn Subtitle */}
-        <div className="text-xs uppercase tracking-[0.3em] font-serif text-[#c6a15b]/80 drop-shadow">
-          {isYourTurn ? "✦ SIRA SENDE — RUHUN MASADA ✦" : "✦ RAKİP HAMLESİNİ BEKLİYOR… ✦"}
+        <div className="text-xs uppercase tracking-[0.3em] font-sans text-[#c6a15b]/80 drop-shadow">
+          {isYourTurn ? "YOUR TURN — YOUR SOUL IS ON THE LINE" : "OPPONENT'S TURN — AWAITING ACTION"}
         </div>
       </div>
     </div>

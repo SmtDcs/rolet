@@ -2,6 +2,22 @@
 
 import React, { useState } from "react";
 import { ParchmentSeal } from "@/components/ui/ParchmentSeal";
+import {
+  Eye,
+  Wrench,
+  Shield,
+  Zap,
+  Heart,
+  RotateCcw,
+  Shuffle,
+  Hand,
+  VolumeX,
+  Compass,
+  Hourglass,
+  Crown,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 
 type CardCategory = "all" | "intel" | "offense" | "defense" | "trickery";
 
@@ -10,7 +26,7 @@ interface CardDef {
   name: string;
   category: "intel" | "offense" | "defense" | "trickery";
   categoryLabel: string;
-  icon: string;
+  icon: LucideIcon;
   effect: string;
   lore: string;
   tip: string;
@@ -21,255 +37,257 @@ const CARDS: CardDef[] = [
     id: "hawkEye",
     name: "HawkEye",
     category: "intel",
-    categoryLabel: "İstihbarat",
-    icon: "👁️",
-    effect: "Sıradaki hazneyi açığa çıkarır (Canlı mı, Kuru mu).",
-    lore: "Gözlerini kısıp silindirin içine bakanlar, kurşunun kaderini önceden okur.",
-    tip: "Kuru mermi görürsen tetiği hemen kendine çekip sıranı koru!",
+    categoryLabel: "Intel",
+    icon: Eye,
+    effect: "Reveals the next cylinder chamber (Live or Blank).",
+    lore: "Peer into the chamber's depths; decipher the bullet's destiny before the hammer falls.",
+    tip: "If it's a blank, shoot yourself immediately to keep your turn!",
   },
   {
     id: "bulletExtractor",
     name: "BulletExtractor",
     category: "trickery",
-    categoryLabel: "Kurnazlık",
-    icon: "⚙️",
-    effect: "Haznedeki mermiyi ateşlemeden dışarı fırlatır.",
-    lore: "Pirinç kerpeten kovanı yakalar; hazne boşalır, tehlike ertelenir.",
-    tip: "Rakibin DoubleStrike bastığı bir canlı mermiyi fırlatıp oyununu boz.",
+    categoryLabel: "Trickery",
+    icon: Wrench,
+    effect: "Ejects the current chamber's cartridge without firing.",
+    lore: "Pliers bite the brass rim; the shell flies, delaying fatal retribution.",
+    tip: "Disrupt an opponent's double-damage combo by discarding their live round.",
   },
   {
     id: "blocker",
     name: "Blocker",
     category: "defense",
-    categoryLabel: "Savunma",
-    icon: "🛡️",
-    effect: "Bir sonraki mermiden gelecek tüm hasarı sıfırlar.",
-    lore: "Yeleğin altındaki kurşungeçirmez çelik plaka hayat ile ölüm arasındaki tek engeldir.",
-    tip: "Rakip tetiği sana doğrulttuğunda gelen canlı mermiyi boşa çıkar.",
+    categoryLabel: "Defense",
+    icon: Shield,
+    effect: "Negates all incoming damage from the next live round.",
+    lore: "An occult steel plate beneath the vest, warding off death by inches.",
+    tip: "Play when the opponent aims down your throat to nullify their shot.",
   },
   {
     id: "doubleStrike",
     name: "DoubleStrike",
     category: "offense",
-    categoryLabel: "Saldırı",
-    icon: "⚡",
-    effect: "Sıradaki canlı merminin hasarını 1'den 2'ye çıkarır.",
-    lore: "İki kat barut, iki kat kıvılcım. Masada ikinci bir şans bırakmaz.",
-    tip: "HawkEye ile canlı mermiyi teyit ettikten sonra oyna ve 2 can birden al!",
+    categoryLabel: "Offense",
+    icon: Zap,
+    effect: "Doubles the damage of the next live bullet from 1 to 2 HP.",
+    lore: "Double grain gunpowder, double spark. No second chances at this table.",
+    tip: "Confirm a live round with HawkEye, then cast DoubleStrike for a fatal 2-HP blast.",
   },
   {
     id: "healer",
     name: "Healer",
     category: "defense",
-    categoryLabel: "Savunma",
-    icon: "🩸",
-    effect: "+1 HP iyileşme sağlar (En fazla başlangıç canı olan 4 HP).",
-    lore: "Koyu şarap ve tentürdiyot, titreyen elleri bir tur daha yatıştırır.",
-    tip: "Canın 3 veya daha az olduğunda masada kalma süreni uzatır.",
+    categoryLabel: "Defense",
+    icon: Heart,
+    effect: "Restores +1 candle HP (up to maximum starting HP of 4).",
+    lore: "Dark ceremonial wine and iodine, steadying trembling hands for one more round.",
+    tip: "Use when down to 1 or 2 HP to stay alive through bad odds.",
   },
   {
     id: "restoreBullet",
     name: "RestoreBullet",
     category: "trickery",
-    categoryLabel: "Kurnazlık",
-    icon: "🔄",
-    effect: "Ateşlenmiş boş bir hazneyi yeniden CANLI mermi ile doldurur.",
-    lore: "Boşalan yuvaya yeni bir kurşun itilir; hazne yeniden ölüm fısıldar.",
-    tip: "Mermiler azaldığında masadaki canlı mermi olasılığını yükselt.",
+    categoryLabel: "Trickery",
+    icon: RotateCcw,
+    effect: "Re-loads a spent empty chamber with a fresh LIVE cartridge.",
+    lore: "A fresh copper round pushed into the void; the cylinder whispers doom once more.",
+    tip: "Increases the live ratio when the cylinder runs dry.",
   },
   {
     id: "shuffler",
     name: "Shuffler",
     category: "trickery",
-    categoryLabel: "Kurnazlık",
-    icon: "🌪️",
-    effect: "Kalan henüz ateşlenmemiş tüm hazneleri yeniden karıştırır.",
-    lore: "Silindir hızla döndürülür ve kilitlenir; rakibin saydığı tüm kartlar çöpe gider.",
-    tip: "Rakip hazneleri saydıysa veya sıradaki mermiyi öğrendiyse planını mahvet.",
+    categoryLabel: "Trickery",
+    icon: Shuffle,
+    effect: "Reshuffles all remaining unspent chambers in the cylinder.",
+    lore: "A violent cylinder spin locks shut, wrecking every count and calculation.",
+    tip: "Play if the opponent counted cards or scouted the upcoming round.",
   },
   {
     id: "cardThief",
     name: "CardThief",
     category: "trickery",
-    categoryLabel: "Kurnazlık",
-    icon: "🧤",
-    effect: "Rakibin elindeki ilk kartı çalıp kendi boş slotuna koyar.",
-    lore: "Masada gözleri mermideyken cepleri boşaltmak eski bir kumarbaz zanaatıdır.",
-    tip: "Rakibin ölümcül kartını çalarak hem elini zayıflat hem kendine güç kat.",
-  },
-  {
-    id: "randomInsight",
-    name: "RandomInsight",
-    category: "intel",
-    categoryLabel: "İstihbarat",
-    icon: "🔮",
-    effect: "Henüz sıkılmamış rastgele bir haznenin mermisini gösterir.",
-    lore: "Kader zarları masaya fırlatılır; kör nokta aydınlanır.",
-    tip: "Oyunun sonlarına doğru haznedeki canlı/kuru dağılımını kesinleştir.",
-  },
-  {
-    id: "lastChance",
-    name: "LastChance",
-    category: "defense",
-    categoryLabel: "Savunma",
-    icon: "⏳",
-    effect: "Yalnızca 1 HP'deyken oynanabilir; rakibin turunu tamamen atlatır!",
-    lore: "Ölümün eşiğindeki kumarbaza masanın bahşettiği son nefes.",
-    tip: "Kritik anda sırayı tekrar kendine alarak maçı tersine çevir.",
-  },
-  {
-    id: "handOfFate",
-    name: "HandOfFate",
-    category: "trickery",
-    categoryLabel: "Kurnazlık",
-    icon: "🎲",
-    effect: "Sıradaki hazneyi yazı-tura atarak yeniden Canlı veya Kuru yapar.",
-    lore: "Kader tanrıçası bozuk parayı havaya fırlatır; ölüm tersyüz olur.",
-    tip: "Sıradaki merminin kesin Canlı olduğunu biliyorsan %50 şansla Kuru'ya çevir.",
+    categoryLabel: "Trickery",
+    icon: Hand,
+    effect: "Steals the first available card from the opponent's hand.",
+    lore: "Eyes glued to the barrel while nimble fingers clean out their vest pockets.",
+    tip: "Snatch their DoubleStrike or Healer right before they execute.",
   },
   {
     id: "silence",
     name: "Silence",
     category: "offense",
-    categoryLabel: "Saldırı",
-    icon: "🤐",
-    effect: "Rakibin bir sonraki tur hiçbir kart oynamasını engeller.",
-    lore: "Masaya düşen kurşun ağırlığı kelimeleri ve büyüleri boğazda düğümler.",
-    tip: "Rakibin elinde güçlü savunma veya iyileşme kartları varken oyna.",
+    categoryLabel: "Offense",
+    icon: VolumeX,
+    effect: "Silences the opponent, preventing them from playing cards on their next turn.",
+    lore: "Cold dread grips the throat; incantations wither to silent gasps.",
+    tip: "Paralyze an opponent holding lethal cards while you line up the kill shot.",
+  },
+  {
+    id: "randomInsight",
+    name: "RandomInsight",
+    category: "intel",
+    categoryLabel: "Intel",
+    icon: Compass,
+    effect: "Reveals one random live bullet's exact index in the cylinder.",
+    lore: "Whispers of the deceased duelists echo from the brass engravings.",
+    tip: "Gives vital foresight to calculate odds across multi-turn exchanges.",
+  },
+  {
+    id: "lastChance",
+    name: "LastChance",
+    category: "defense",
+    categoryLabel: "Defense",
+    icon: Hourglass,
+    effect: "If a lethal shot strikes you, survive with exactly 1 HP (one-time ward).",
+    lore: "A silver coin deflected the lead; fate grants one final breath.",
+    tip: "Your emergency clutch insurance when facing fatal 2-damage rounds.",
+  },
+  {
+    id: "handOfFate",
+    name: "HandOfFate",
+    category: "trickery",
+    categoryLabel: "Trickery",
+    icon: Crown,
+    effect: "Discards your entire hand and draws fresh occult cards.",
+    lore: "Tear up the pact; demand an audience with the elder dealer.",
+    tip: "Recycles defensive cards when you urgently need offensive spells.",
   },
 ];
 
 export function GrimoireSection() {
-  const [filter, setFilter] = useState<CardCategory>("all");
-  const [selectedCard, setSelectedCard] = useState<CardDef>(CARDS[0]);
+  const [selectedCategory, setSelectedCategory] = useState<CardCategory>("all");
+  const [activeCard, setActiveCard] = useState<CardDef>(CARDS[0]);
 
-  const filteredCards = filter === "all" ? CARDS : CARDS.filter((c) => c.category === filter);
+  const filteredCards =
+    selectedCategory === "all"
+      ? CARDS
+      : CARDS.filter((c) => c.category === selectedCategory);
+
+  const categories: { id: CardCategory; label: string }[] = [
+    { id: "all", label: "All Spells (12)" },
+    { id: "intel", label: "Intel" },
+    { id: "offense", label: "Offense" },
+    { id: "defense", label: "Defense" },
+    { id: "trickery", label: "Trickery" },
+  ];
 
   return (
     <section id="grimoire" className="py-20 md:py-28 border-b border-[#2b2016] bg-[#070605] relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <ParchmentSeal label="Taktiksel Kartlar" sublabel="Grimoire Koleksiyonu" variant="gold" />
-          <h2 className="font-['Cinzel_Decorative',serif] text-3xl sm:text-4xl font-bold tracking-tight text-[#f5ecd8] mt-4 mb-4">
-            ON İKİ KUTSAL KART
+        <div className="text-center max-w-3xl mx-auto mb-14">
+          <ParchmentSeal label="Tactical Grimoire" sublabel="Occult Arcana" variant="gold" />
+          <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-[#f5ecd8] mt-4 mb-4">
+            TWELVE SACRED TAROT CARDS
           </h2>
-          <p className="font-['Cinzel',serif] text-sm sm:text-base text-[#b8a68f] leading-relaxed">
-            Rolet sadece tetiğe basmaktan ibaret değildir. Elinize dağıtılan 4 taktiksel kartla olasılıkları 
-            hesaplayın, rakibin aklını okuyun ve kaderi kendi lehinize bükün.
+          <p className="font-serif italic text-base sm:text-lg text-[#b8a68f] leading-relaxed">
+            Pure randomness kills fools. The master duelist bends probability on-chain with twelve tactical cards drawn from the occult deck.
           </p>
-
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mt-8 font-['Cinzel',serif] text-xs uppercase tracking-wider">
-            {(
-              [
-                ["all", "Tüm Kartlar (12)"],
-                ["intel", "İstihbarat"],
-                ["offense", "Saldırı"],
-                ["defense", "Savunma"],
-                ["trickery", "Kurnazlık"],
-              ] as const
-            ).map(([cat, label]) => (
-              <button
-                key={cat}
-                onClick={() => setFilter(cat)}
-                className={`px-4 py-1.5 rounded-sm border transition-all ${
-                  filter === cat
-                    ? "bg-[#c6a15b] text-[#120e0a] border-[#e5c378] font-bold shadow-[0_0_12px_rgba(198,161,91,0.5)]"
-                    : "bg-[#140e0a] text-[#8c7760] border-[#36271c] hover:text-[#d6c3ad] hover:border-[#634934]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Cards Grid & Showcase */}
+        {/* Category Filters */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-4 py-2 rounded-sm font-sans text-xs uppercase tracking-wider transition-all duration-200 border ${
+                selectedCategory === cat.id
+                  ? "bg-[#241a12] text-[#e5c378] border-[#c6a15b] shadow-[0_0_12px_rgba(198,161,91,0.3)]"
+                  : "bg-[#0f0c09] text-[#a68e72] border-[#2b2016] hover:border-[#4a3726] hover:text-[#e6d7c3]"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Master-Detail Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Card Showcase Detail Panel (Left) */}
-          <div className="lg:col-span-5 rounded-sm border border-[#c6a15b]/40 bg-gradient-to-b from-[#18110b] to-[#0c0906] p-8 shadow-[0_0_30px_rgba(0,0,0,0.8)] relative">
-            <div className="absolute top-2 right-2 text-xs font-['Space_Mono',monospace] text-[#c6a15b]">
-              KOD: {selectedCard.id}
-            </div>
-
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-sm border border-[#c6a15b] bg-[#21160e] flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(198,161,91,0.3)]">
-                {selectedCard.icon}
-              </div>
-              <div>
-                <span className="text-[10px] font-['Space_Mono',monospace] uppercase text-[#52c41a] tracking-wider">
-                  ● {selectedCard.categoryLabel}
-                </span>
-                <h3 className="font-['Cinzel_Decorative',serif] text-2xl font-bold text-[#f5ecd8]">
-                  {selectedCard.name}
-                </h3>
-              </div>
-            </div>
-
-            <div className="mb-6 pb-6 border-b border-[#2b2016]">
-              <span className="text-xs font-['Cinzel',serif] uppercase tracking-wider text-[#a68e72]">
-                Zincir Üstü Etki:
-              </span>
-              <p className="font-['Cinzel',serif] text-base text-[#e5c378] mt-1 font-semibold leading-relaxed">
-                {selectedCard.effect}
-              </p>
-            </div>
-
-            <div className="mb-6 pb-6 border-b border-[#2b2016]">
-              <span className="text-xs font-['Cinzel',serif] uppercase tracking-wider text-[#a68e72]">
-                Kumarhane Rivayeti:
-              </span>
-              <p className="font-['Cinzel',serif] text-xs text-[#a68e72] italic mt-1 leading-relaxed">
-                "{selectedCard.lore}"
-              </p>
-            </div>
-
-            <div>
-              <span className="text-xs font-['Cinzel',serif] uppercase tracking-wider text-[#52c41a]">
-                💡 Taktiksel Hamle Tavsiyesi:
-              </span>
-              <p className="font-['Space_Mono',monospace] text-xs text-[#d6c4ad] mt-1 bg-[#140e0a] p-3 rounded-sm border border-[#3b2b1d]">
-                {selectedCard.tip}
-              </p>
-            </div>
-          </div>
-
-          {/* Cards Rack / List (Right) */}
-          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {/* Left: 12 Card Grid */}
+          <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {filteredCards.map((card) => {
-              const isSelected = selectedCard.id === card.id;
+              const isSelected = activeCard.id === card.id;
+              const IconComp = card.icon;
               return (
-                <button
+                <div
                   key={card.id}
-                  onClick={() => setSelectedCard(card)}
-                  className={`text-left p-4 rounded-sm border transition-all duration-200 relative group overflow-hidden ${
+                  onClick={() => setActiveCard(card)}
+                  className={`cursor-pointer rounded-sm border p-4 flex flex-col items-center text-center transition-all duration-300 relative group overflow-hidden ${
                     isSelected
-                      ? "bg-[#21160d] border-[#c6a15b] shadow-[0_0_20px_rgba(198,161,91,0.35)] scale-[1.02]"
-                      : "bg-[#110c08] border-[#312317] hover:border-[#6e5339] hover:bg-[#17100b]"
+                      ? "bg-gradient-to-b from-[#241a12] to-[#120d09] border-[#c6a15b] shadow-[0_0_20px_rgba(198,161,91,0.25)] -translate-y-1"
+                      : "bg-gradient-to-b from-[#120d09] to-[#0a0705] border-[#2b2016] hover:border-[#5a422e] hover:-translate-y-0.5"
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-2xl">{card.icon}</span>
-                    <span className="text-[9px] font-['Space_Mono',monospace] uppercase text-[#8c745c]">
-                      {card.categoryLabel}
-                    </span>
+                  <div className="w-10 h-10 rounded-full border border-[#3b2b1d] bg-[#1a140f] flex items-center justify-center text-[#c6a15b] mb-3 group-hover:border-[#c6a15b] transition-colors">
+                    <IconComp className="w-5 h-5 text-[#c6a15b]" />
                   </div>
 
-                  <h4 className="font-['Cinzel',serif] text-sm font-bold text-[#f5ecd8] group-hover:text-[#ffdca8] transition-colors mb-1">
+                  <span className="font-sans text-xs font-bold text-[#f5ecd8] mb-1 group-hover:text-[#ffdca8]">
                     {card.name}
-                  </h4>
+                  </span>
 
-                  <p className="font-['Cinzel',serif] text-[11px] text-[#9c8770] line-clamp-2 leading-snug">
-                    {card.effect}
-                  </p>
-
-                  {/* Active gold corner tag */}
-                  {isSelected && (
-                    <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#c6a15b]" />
-                  )}
-                </button>
+                  <span className="text-[10px] font-mono text-[#a68e72] uppercase tracking-wider">
+                    {card.categoryLabel}
+                  </span>
+                </div>
               );
             })}
+          </div>
+
+          {/* Right: Card Detail Showcase Panel */}
+          <div className="lg:col-span-4 sticky top-28">
+            <div className="rounded-sm border border-[#c6a15b]/60 bg-gradient-to-b from-[#1c140e] to-[#0c0906] p-6 shadow-[0_0_30px_rgba(0,0,0,0.85)] relative">
+              {/* Corner brass details */}
+              <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-[#c6a15b]" />
+              <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-[#c6a15b]" />
+              <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-[#c6a15b]" />
+              <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-[#c6a15b]" />
+
+              <div className="flex items-center gap-4 mb-5 pb-5 border-b border-[#2b2016]">
+                <div className="w-14 h-14 rounded-full border border-[#c6a15b] bg-[#241a12] flex items-center justify-center shadow-[0_0_15px_rgba(198,161,91,0.35)]">
+                  {React.createElement(activeCard.icon as React.ComponentType<{ className?: string }>, { className: "w-7 h-7 text-[#e5c378]" })}
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-bold text-[#f5ecd8]">
+                    {activeCard.name}
+                  </h3>
+                  <span className="text-xs font-mono text-[#c6a15b] uppercase tracking-wider">
+                    Category: {activeCard.categoryLabel}
+                  </span>
+                </div>
+              </div>
+
+              {/* Effect */}
+              <div className="mb-4">
+                <span className="text-[11px] font-sans uppercase tracking-widest text-[#a68e72] block mb-1">
+                  On-Chain Effect
+                </span>
+                <p className="font-sans text-sm font-semibold text-[#f5ecd8] leading-snug">
+                  {activeCard.effect}
+                </p>
+              </div>
+
+              {/* Lore */}
+              <div className="mb-4 p-3 rounded-sm bg-[#120d09] border border-[#2b2016]">
+                <span className="text-[10px] font-serif uppercase tracking-widest text-[#c6a15b] block mb-1">
+                  Grimoire Inscription
+                </span>
+                <p className="font-serif italic text-xs text-[#b8a68f] leading-relaxed">
+                  "{activeCard.lore}"
+                </p>
+              </div>
+
+              {/* Tactical Tip */}
+              <div className="p-3 rounded-sm bg-[#140b08] border border-[#4a1c12]">
+                <span className="text-[10px] font-sans uppercase tracking-widest text-[#ff8f8f] block mb-1">
+                  Tactical Insight
+                </span>
+                <p className="font-sans text-xs text-[#f0d0cb] leading-relaxed">
+                  {activeCard.tip}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

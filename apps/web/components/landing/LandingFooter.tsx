@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { AmbientAudio } from "@/components/ui/AmbientAudio";
+import { ExternalLink } from "lucide-react";
 
 export function LandingFooter() {
   return (
@@ -22,45 +23,46 @@ export function LandingFooter() {
                   <circle cx="6" cy="12" r="1.5" fill="currentColor" />
                 </svg>
               </div>
-              <span className="font-['Cinzel_Decorative',serif] text-xl font-bold tracking-widest text-[#f5ecd8]">
+              <span className="font-display text-xl font-bold tracking-widest text-[#f5ecd8]">
                 ROLET
               </span>
             </div>
-            <p className="font-['Cinzel',serif] text-xs text-[#8c7760] leading-relaxed max-w-sm">
-              Solana L1 üzerinde çalışan, hiçbir sunucu veya harici veritabanı gerektirmeyen, 
-              commit-reveal kriptografik rastgeleliğine sahip ilk tamamen zincir üstü taktiksel Rus Ruleti.
+            <p className="font-serif italic text-xs text-[#8c7760] leading-relaxed max-w-sm">
+              The first fully on-chain tactical Russian Roulette running purely on Solana L1. 
+              Zero servers, zero backend databases, and cryptographically verified via commit-reveal RNG.
             </p>
           </div>
 
           {/* Quick links */}
           <div>
-            <span className="font-['Cinzel',serif] text-xs uppercase tracking-widest text-[#c6a15b] font-semibold block mb-4">
-              Masa Menüsü
+            <span className="font-sans text-xs uppercase tracking-widest text-[#c6a15b] font-semibold block mb-4">
+              Navigation
             </span>
-            <ul className="space-y-2.5 font-['Cinzel',serif] text-xs text-[#b8a68f]">
+            <ul className="space-y-2.5 font-sans text-xs text-[#b8a68f]">
               <li>
                 <a href="#rules" className="hover:text-[#e5c378] transition-colors">
-                  Masa Kuralları
+                  Table Rules
                 </a>
               </li>
               <li>
                 <a href="#grimoire" className="hover:text-[#e5c378] transition-colors">
-                  12 Taktiksel Kart
+                  Grimoire (12 Cards)
                 </a>
               </li>
               <li>
                 <a href="#economy" className="hover:text-[#e5c378] transition-colors">
-                  Kasa Ekonomisi (%90/5/5)
+                  Vault Economy (90/5/5)
                 </a>
               </li>
               <li>
                 <a href="#leaderboard" className="hover:text-[#e5c378] transition-colors">
-                  Liderlik Kürsüsü
+                  Hall of Fame
                 </a>
               </li>
               <li>
-                <Link href="/play" className="hover:text-[#e5c378] transition-colors text-[#e5c378]">
-                  Oyun Portalı (/play) ↗
+                <Link href="/play" className="hover:text-[#e5c378] transition-colors text-[#e5c378] flex items-center gap-1">
+                  <span>Launch Portal (/play)</span>
+                  <ExternalLink className="w-3 h-3" />
                 </Link>
               </li>
             </ul>
@@ -68,18 +70,19 @@ export function LandingFooter() {
 
           {/* Ecosystem & Links */}
           <div>
-            <span className="font-['Cinzel',serif] text-xs uppercase tracking-widest text-[#c6a15b] font-semibold block mb-4">
-              Ekosistem & Kaynaklar
+            <span className="font-sans text-xs uppercase tracking-widest text-[#c6a15b] font-semibold block mb-4">
+              Ecosystem & Tech
             </span>
-            <ul className="space-y-2.5 font-['Space_Mono',monospace] text-xs text-[#8c7760]">
+            <ul className="space-y-2.5 font-mono text-xs text-[#8c7760]">
               <li>
                 <a
                   href="https://github.com/SmtDcs/rolet"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-[#e5c378] transition-colors"
+                  className="hover:text-[#e5c378] transition-colors flex items-center gap-1"
                 >
-                  GitHub Kaynak Kodu ↗
+                  <span>GitHub Source Code</span>
+                  <ExternalLink className="w-3 h-3" />
                 </a>
               </li>
               <li>
@@ -87,37 +90,37 @@ export function LandingFooter() {
                   href="https://explorer.solana.com/address/Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792?cluster=devnet"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-[#e5c378] transition-colors"
+                  className="hover:text-[#e5c378] transition-colors flex items-center gap-1"
                 >
-                  Solana Explorer (Program) ↗
+                  <span>Solana Explorer</span>
+                  <ExternalLink className="w-3 h-3" />
                 </a>
               </li>
               <li>
-                <span className="text-[#52c41a]">● Metaplex Core NFT</span>
+                <span className="text-[#52c41a]">● Metaplex Core NFTs</span>
               </li>
               <li>
                 <span className="text-[#52c41a]">● Bonfida SNS (.sol)</span>
               </li>
               <li>
-                <span className="text-[#52c41a]">● MagicBlock ER Compatible</span>
+                <span className="text-[#52c41a]">● MagicBlock Ephemeral Rollups</span>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom copyright & disclaimer */}
-        <div className="pt-8 border-t border-[#1f1710] flex flex-col sm:flex-row items-center justify-between gap-4 font-['Space_Mono',monospace] text-[10px] text-[#6b5847]">
-          <span>© 2026 ROLET Protocol. Açık kaynak kodlu (MIT License).</span>
+        {/* Bottom bar */}
+        <div className="pt-8 border-t border-[#1c140d] flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="font-mono text-[11px] text-[#635342]">
+            © 2026 ROLET Protocol. Deployed on Solana Devnet. All rights reserved.
+          </p>
+
+          {/* Ambient Audio Switch */}
           <div className="flex items-center gap-4">
-            <span>Ağ: Solana Devnet</span>
-            <span>•</span>
-            <span>Anchor 0.30.1</span>
+            <AmbientAudio />
           </div>
         </div>
       </div>
-
-      {/* Floating ambient sound control in bottom right */}
-      <AmbientAudio />
     </footer>
   );
 }
