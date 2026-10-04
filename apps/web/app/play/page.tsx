@@ -233,7 +233,7 @@ function PlayContent() {
           playerHp={playerHp}
           opponentHp={opponentHp}
           playerPubkey={wallet.publicKey?.toBase58() ?? "YOU"}
-          opponentPubkey="DEALER.SOL"
+          opponentPubkey="CHALLENGER.SOL"
           liveCount={liveCount}
           blankCount={blankCount}
           cards={handCards}

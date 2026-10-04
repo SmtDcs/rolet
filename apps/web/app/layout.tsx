@@ -29,8 +29,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ROLET — High-Stakes Occult Russian Roulette on Solana",
-  description: "Eight chambers. Twelve tarot cards. Provably fair on-chain PvP on Solana with MagicBlock Ephemeral Rollups.",
+  title: "ROLET — Tactical PvP Duel Protocol on Solana",
+  description: "Eight chambers. Twelve tactical tarot cards. Provably fair turn-based PvP on Solana with MagicBlock Ephemeral Rollups.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

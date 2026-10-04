@@ -51,9 +51,9 @@ export function HeroSection({
 
             {/* Subhead description */}
             <p className="font-serif italic text-lg sm:text-xl text-[#d4c3ad] leading-relaxed max-w-xl mb-8">
-              A high-stakes tactical Russian Roulette duel running purely on Solana L1. 
-              Two players share a single occult revolver loaded with live copper and blank rounds. 
-              Cast tactical tarot spells, bend probability, and seize the real SOL treasury.
+              A tactical turn-based chamber duel running purely on Solana L1. 
+              Two duelists share a single revolver cylinder loaded with live and blank cartridges. 
+              Cast tactical tarot spells, master on-chain probability, and claim the victor's treasury prize.
             </p>
 
             {/* Action Buttons */}

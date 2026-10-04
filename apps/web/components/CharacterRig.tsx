@@ -13,7 +13,7 @@ export type CharacterState = "idle" | "hit" | "dead" | "win";
 // KayKit skeleton clip names — verified from the GLB (95 clips shipped).
 // Standing idle only: the sit clips fold the rig down to ~0.7m and the
 // table top (0.45m) hides it completely. A standing character rising
-// above the table edge reads as "the Dealer" — the intended look.
+// above the table edge reads as "the Opponent" — the intended look.
 const IDLE_CLIPS = ["Idle", "Idle_B"];
 const DEATH_CLIPS = ["Death_A", "Death_B", "Death_C"];
 

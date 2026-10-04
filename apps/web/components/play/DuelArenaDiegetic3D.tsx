@@ -109,12 +109,12 @@ function ProceduralTableMesh() {
 }
 
 function LoadedTableGLTF() {
-  const { scene } = useGLTF("/models/casino_table.glb");
+  const { scene } = useGLTF("/models/arena_table.glb");
   const cloned = React.useMemo(() => scene.clone(), [scene]);
   return <primitive object={cloned} scale={1.25} position={[0, -0.68, 0]} />;
 }
 
-// ── Opponent Gambler Across Table ───────────────────────────────────────────
+// ── Opponent Challenger Across Table ───────────────────────────────────────
 function ProceduralOpponentMesh() {
   return (
     <group position={[0, 0.1, -1.05]}>
@@ -149,7 +149,7 @@ function ProceduralOpponentMesh() {
 }
 
 function LoadedOpponentGLTF() {
-  const { scene } = useGLTF("/models/opponent_gambler.glb");
+  const { scene } = useGLTF("/models/opponent_duelist.glb");
   const cloned = React.useMemo(() => scene.clone(), [scene]);
   return <primitive object={cloned} scale={0.95} position={[0, -0.65, -1.05]} rotation={[0, 0, 0]} />;
 }
@@ -218,7 +218,7 @@ export function DuelArenaDiegetic3D({
         {/* Moody red back rim on opponent */}
         <pointLight position={[0, 1.0, -1.8]} intensity={6} color="#8c2727" distance={3} />
 
-        {/* Gambling Table */}
+        {/* Duel Table */}
         <Suspense fallback={<ProceduralTableMesh />}>
           <LoadedTableGLTF />
         </Suspense>
@@ -349,5 +349,5 @@ export function DuelArenaDiegetic3D({
 }
 
 // Preload models for immediate rendering
-useGLTF.preload("/models/casino_table.glb");
-useGLTF.preload("/models/opponent_gambler.glb");
+useGLTF.preload("/models/arena_table.glb");
+useGLTF.preload("/models/opponent_duelist.glb");

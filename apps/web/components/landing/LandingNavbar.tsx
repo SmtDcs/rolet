@@ -33,7 +33,7 @@ export function LandingNavbar() {
               ROLET
             </span>
             <span className="font-serif text-[11px] uppercase tracking-[0.25em] text-[#c6a15b]">
-              The Occult Casino
+              Tactical Duel Protocol
             </span>
           </div>
         </Link>

@@ -22,9 +22,9 @@ export async function GET(req: NextRequest) {
   const payload = {
     type: "action",
     icon: `${baseUrl}/favicon.ico`,
-    title: "ROLET — Underground Occult Russian Roulette",
+    title: "ROLET — Tactical PvP Duel Protocol on Solana",
     description:
-      "Enter high-stakes Russian Roulette duels on Solana Devnet. Powered by Metaplex Core NFTs, MagicBlock Ephemeral Rollups, and provably fair commit-reveal randomness.",
+      "Enter tactical turn-based chamber duels on Solana Devnet. Powered by Metaplex Core NFTs, MagicBlock Ephemeral Rollups, and provably fair commit-reveal randomness.",
     label: "Duel Now",
     links: {
       actions: [

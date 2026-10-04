@@ -28,7 +28,7 @@ export function LandingFooter() {
               </span>
             </div>
             <p className="font-serif italic text-xs text-[#8c7760] leading-relaxed max-w-sm">
-              The first fully on-chain tactical Russian Roulette running purely on Solana L1. 
+              The first fully on-chain tactical chamber duel running purely on Solana L1. 
               Zero servers, zero backend databases, and cryptographically verified via commit-reveal RNG.
             </p>
           </div>

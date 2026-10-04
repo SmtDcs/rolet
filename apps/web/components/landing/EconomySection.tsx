@@ -80,7 +80,7 @@ export function EconomySection() {
               </div>
               <p className="font-serif text-xs text-[#c4b59d] leading-relaxed">
                 Locked as an on-chain protocol reserve to safeguard dispute resolution, RPC network disruptions, 
-                and sponsor seasonal championship jackpots.
+                and sponsor seasonal competitive championship prizes.
               </p>
             </div>
 

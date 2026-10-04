@@ -35,7 +35,7 @@ export function RulesSection() {
         <div className="text-center max-w-3xl mx-auto mb-16">
           <ParchmentSeal label="Table Rules" sublabel="How It Works" variant="gold" />
           <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-[#f5ecd8] mt-4 mb-4">
-            LAWS OF THE OCCULT CASINO
+            LAWS OF THE DUEL ARENA
           </h2>
           <p className="font-serif italic text-base sm:text-lg text-[#b8a68f] leading-relaxed">
             Three simple phases, where every pull of the trigger demands ice-cold nerve, calculated bluffing, and on-chain probability mastery.

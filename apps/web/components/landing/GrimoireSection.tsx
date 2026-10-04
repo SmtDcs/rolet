@@ -150,7 +150,7 @@ const CARDS: CardDef[] = [
     categoryLabel: "Trickery",
     icon: Crown,
     effect: "Discards your entire hand and draws fresh occult cards.",
-    lore: "Tear up the pact; demand an audience with the elder dealer.",
+    lore: "Tear up the pact; demand an audience with the grand arbiter.",
     tip: "Recycles defensive cards when you urgently need offensive spells.",
   },
 ];
