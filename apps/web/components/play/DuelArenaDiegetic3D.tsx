@@ -5,6 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { DiegeticCandleHP } from "./diegetic/DiegeticCandleHP";
+import { DiegeticLifeCounterBox } from "./diegetic/DiegeticLifeCounterBox";
 import { DiegeticAmmoTray } from "./diegetic/DiegeticAmmoTray";
 import { DiegeticTurnCoin } from "./diegetic/DiegeticTurnCoin";
 import { DiegeticRevolver } from "./diegetic/DiegeticRevolver";
@@ -227,27 +228,28 @@ export function DuelArenaDiegetic3D({
         <OpponentFigure />
 
         {/* Diegetic Elements Placed on Table Felt */}
-        {/* 1. Player Candle HP (near left) */}
-        <DiegeticCandleHP
-          hp={playerHp}
+        {/* 1. Life Monitor Box on Table (Vitality Counter Box) */}
+        <DiegeticLifeCounterBox
+          playerHp={playerHp}
+          opponentHp={opponentHp}
           maxHp={3}
-          position={[-0.52, 0.08, 0.4]}
-          rotation={[0, 0.3, 0]}
+          position={[-0.48, 0.08, 0.2]}
+          rotation={[0, 0.35, 0]}
         />
 
-        {/* 2. Opponent Candle HP (far left) */}
+        {/* 2. Ambient Candle Light on far table */}
         <DiegeticCandleHP
-          hp={opponentHp}
+          hp={Math.max(1, opponentHp)}
           maxHp={3}
-          position={[-0.52, 0.08, -0.45]}
-          rotation={[0, -0.3, 0]}
+          position={[-0.58, 0.08, -0.45]}
+          rotation={[0, -0.2, 0]}
         />
 
         {/* 3. Ammo Tray (near right) */}
         <DiegeticAmmoTray
           liveCount={liveCount}
           blankCount={blankCount}
-          position={[0.55, 0.08, 0.35]}
+          position={[0.52, 0.08, 0.3]}
           rotation={[0, -0.25, 0]}
         />
 
