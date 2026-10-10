@@ -38,10 +38,11 @@ function PlayContent() {
     busy,
   } = useRolet();
 
+  const queryDemo = searchParams.get("demo") === "true";
   const [activeLobbyId, setActiveLobbyId] = useState<string | null>(queryLobby);
   const [isHost, setIsHost] = useState(false);
   const [statusText, setStatusText] = useState("");
-  const [inMatch, setInMatch] = useState(false);
+  const [inMatch, setInMatch] = useState(queryDemo || false);
 
   // In-Game Diegetic State
   const [isYourTurn, setIsYourTurn] = useState(true);

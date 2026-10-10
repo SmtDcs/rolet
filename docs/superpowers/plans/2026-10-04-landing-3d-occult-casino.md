@@ -1,15 +1,15 @@
-# ROLET — Occult Casino Landing & 3D Diegetic Game Portal Implementation Plan
+# ROLET — Occult Duel Chamber Landing & 3D Diegetic Game Portal Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform ROLET into a flagship Axie Infinity-style Web3 gaming portal with an Occult Casino landing page at `/` and a fully diegetic 3D FPS duel arena at `/play`, featuring Meshy AI-generated assets, 90/5/5 economics, and Dialect Solana Blinks.
+**Goal:** Transform ROLET into a flagship Axie Infinity-style Web3 gaming portal with an occult duel-chamber landing page at `/` and a fully diegetic 3D FPS duel arena at `/play`, featuring Meshy AI-generated assets, 90/5/5 economics, and Dialect Solana Blinks.
 
 **Architecture:** Next.js 16 App Router separates marketing/landing (`/`) from the full-screen dApp portal (`/play`). Three.js / React Three Fiber powers the interactive 3D hero canvas on the landing page and the zero-2D-HUD diegetic duel arena in `/play`. Solana Anchor smart contract (`Gwh17...`) handles commit-reveal RNG, Metaplex Core NFTs, session keys, and 90/5/5 vault distribution.
 
 **Tech Stack:** Next.js 16 (React 19), Tailwind CSS v4, Three.js / React Three Fiber / Drei, Anchor 0.30.1 / Rust, Metaplex Core, Bonfida SNS, Dialect Actions/Blinks, Meshy AI (MCP).
 
 ## Global Constraints
-- Primary Palette: `#0B0907` (Deep Obsidian), `#1E1611` (Dark Mahogany), `#152B1E` (Casino Baize Felt), `#C6A15B` (Antique Brass/Gold), `#8C2727` (Dried Blood/Crimson), `#E6D7C3` (Aged Parchment).
+- Primary Palette: `#0B0907` (Deep Obsidian), `#1E1611` (Dark Mahogany), `#152B1E` (Chamber Baize Felt), `#C6A15B` (Antique Brass/Gold), `#8C2727` (Dried Blood/Crimson), `#E6D7C3` (Aged Parchment).
 - Fonts: `Cinzel` for headings/seals, `Space Mono` for monospace stats/readouts.
 - Economic Split: 90% Treasury SOL / 5% Ops Wallet / 5% Insurance Fund PDA.
 - Game HUD: Zero floating 2D HUD during 3D duels; all status (HP, bullets, turn) lives diegetically on the table (candles, ammo tray, sliding coin).
@@ -17,11 +17,11 @@
 
 ---
 
-### Task 1: Occult Casino Design System & Theme Foundations
+### Task 1: Occult Duel Chamber Design System & Theme Foundations
 
 **Files:**
 - Modify: `apps/web/app/layout.tsx` (Add Google Fonts `Cinzel` and `Space Mono`)
-- Modify: `apps/web/app/globals.css` (Define Occult Casino CSS variables, candle flicker keyframes, gold glow utilities)
+- Modify: `apps/web/app/globals.css` (Define occult duel CSS variables, candle flicker keyframes, gold glow utilities)
 - Create: `apps/web/components/ui/GildedButton.tsx` (Gold foil border, brass sheen, hover sound)
 - Create: `apps/web/components/ui/ParchmentSeal.tsx` (Vintage wax seal badge for stats and logos)
 - Create: `apps/web/components/ui/AmbientAudio.tsx` (Toggleable vinyl crackle/candle ambient audio)
@@ -38,7 +38,7 @@
 - [ ] **Step 4: Implement `AmbientAudio.tsx`**
   Add a discrete toggle button in the bottom right corner of the layout that plays atmospheric background audio.
 - [ ] **Step 5: Verify build & commit**
-  Run `pnpm --filter web build` to ensure font loaders and CSS tokens compile cleanly. Commit with message `feat(ui): add occult casino theme tokens, typography and gilded button components`.
+  Run `pnpm --filter web build` to ensure font loaders and CSS tokens compile cleanly. Commit with message `feat(ui): add occult duel theme tokens, typography and gilded button components`.
 
 ---
 
@@ -70,7 +70,7 @@
 - [ ] **Step 5: Build `EconomySection.tsx` & `HallOfFameSection.tsx`**
   Visual 90/5/5 distribution pie/flowchart, commit-reveal cryptographic guarantee, and top winning `.sol` duelists.
 - [ ] **Step 6: Assemble in `apps/web/app/page.tsx` and verify**
-  Test in browser, verify responsive layout on mobile/desktop, ensure "Launch App" navigates to `/play`. Commit with message `feat(web): build Axie-style occult casino landing page`.
+  Test in browser, verify responsive layout on mobile/desktop, ensure "Launch App" navigates to `/play`. Commit with message `feat(web): build Axie-style occult duel landing page`.
 
 ---
 
@@ -105,10 +105,10 @@
 - Target Directory: `apps/web/public/models/`
 - Output Files:
   - `revolver_occult.glb` (8-chamber brass & dark gunmetal engraved revolver)
-  - `casino_table.glb` (Dark mahogany gambling table with circular green baize felt)
+  - `arena_table.glb` (Dark mahogany duel table with circular green baize felt)
   - `bullet_cartridges.glb` (Brass live round & blank spent casing)
   - `candelabra_props.glb` (Antique brass candelabra with wax drips)
-  - `opponent_gambler.glb` (Victorian masked gambler in formal coat)
+  - `opponent_duelist.glb` (Victorian masked duelist in formal coat)
 
 **Interfaces:**
 - Consumes: MCP tool `call_mcp_tool` with `ServerName: "meshy"`, `ToolName: "meshy_text_to_3d"` and `meshy_download_model`.
@@ -118,12 +118,12 @@
   Call `meshy_check_balance` to verify credits.
 - [ ] **Step 2: Generate Revolver model (`revolver_occult`)**
   Prompt: *"Antique heavy 8-chamber Western occult revolver, dark gunmetal cylinder, intricate polished brass engravings, PBR, game ready"*. Download GLB to `public/models/revolver_occult.glb`.
-- [ ] **Step 3: Generate Table model (`casino_table`)**
-  Prompt: *"Antique dark mahogany circular gambling table with worn green velvet baize top, brass corner inlays, Victorian style, game asset"*. Download GLB to `public/models/casino_table.glb`.
+- [ ] **Step 3: Generate Table model (`arena_table`)**
+  Prompt: *"Antique dark mahogany circular duel table with worn green velvet baize top, brass corner inlays, Victorian style, game asset"*. Download GLB to `public/models/arena_table.glb`.
 - [ ] **Step 4: Generate Candelabra & Props (`candelabra_props`)**
   Prompt: *"Ornate antique brass candelabra with melting wax candles, vintage poker chip stack"*. Download GLB to `public/models/candelabra_props.glb`.
-- [ ] **Step 5: Generate Opponent Character (`opponent_gambler`)**
-  Prompt: *"Dark Victorian high-stakes gambler wearing formal frock coat, seated pose, sinister porcelain mask, occult undertones"*. Download GLB to `public/models/opponent_gambler.glb`.
+- [ ] **Step 5: Generate Opponent Character (`opponent_duelist`)**
+  Prompt: *"Dark Victorian masked duelist wearing formal frock coat, seated pose, sinister porcelain mask, occult undertones"*. Download GLB to `public/models/opponent_duelist.glb`.
 - [ ] **Step 6: Optimize GLB meshes with gltf-transform or Draco compression**
   Ensure each model is under 5MB for rapid WebGL streaming. Commit with message `feat(assets): generate and bundle occult 3D models via Meshy AI`.
 
@@ -196,4 +196,4 @@
 - [ ] **Step 2: Verify responsive design and asset loading performance**
   Confirm 60 FPS on desktop and clean fallback on mobile.
 - [ ] **Step 3: Final documentation and checkpoint update**
-  Update `README.md` and `CHECKPOINT-v0.1.md` with new features and architecture diagram. Commit with message `chore: polish documentation and complete occult casino 3D system integration`.
+  Update `README.md` and `CHECKPOINT-v0.1.md` with new features and architecture diagram. Commit with message `chore: polish documentation and complete occult duel 3D system integration`.

@@ -13,6 +13,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { useRolet, useToasts, emitToast, type RoletCard } from "@/hooks/useRolet";
 import { useSound } from "@/hooks/useSound";
+import { Volume2, VolumeX } from "lucide-react";
 
 const DuelBoard2D = dynamic(() => import("@/components/DuelBoard2D"), { ssr: false });
 const HandRack2D = dynamic(() => import("@/components/HandRack2D"), { ssr: false });
@@ -598,8 +599,21 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
           MATCH 0x{matchId.toString(16).toUpperCase()} · L1://solana-devnet
         </span>
         <div className="flex items-center gap-4">
-          <button onClick={toggleMute} className="text-[10px] tracking-[0.4em] text-rust hover:text-red-500 crt-text">
-            {muted ? "🔇 MUTED" : "🔊 ON"}
+          <button
+            onClick={toggleMute}
+            className="flex items-center gap-1.5 text-[10px] tracking-[0.4em] text-rust hover:text-red-500 crt-text"
+          >
+            {muted ? (
+              <>
+                <VolumeX className="h-3.5 w-3.5" aria-hidden />
+                MUTED
+              </>
+            ) : (
+              <>
+                <Volume2 className="h-3.5 w-3.5" aria-hidden />
+                ON
+              </>
+            )}
           </button>
           <span className="text-[10px] tracking-[0.4em] text-red-500 animate-pulse crt-text">
             ● {decoded?.status?.toUpperCase() ?? "AWAITING"}
@@ -738,6 +752,22 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
                   />
                 )}
               </motion.button>
+              {!turnIsYours && decoded?.status === "active" && (
+                <button
+                  onClick={async () => {
+                    const sig = await rolet.claimTimeout(matchId);
+                    if (sig) {
+                      const fresh = await rolet.fetchMatch(matchId);
+                      if (fresh) setState(fresh);
+                    }
+                  }}
+                  disabled={rolet.busy}
+                  className="mt-1 border border-yellow-700/60 bg-yellow-950/30 px-2 py-1 text-[8px] tracking-[0.3em] text-yellow-400 hover:bg-yellow-900/50 disabled:opacity-40 crt-text text-center transition-colors"
+                  title="Claim win by forfeit if opponent has stalled for 150+ slots"
+                >
+                  ⏱ CLAIM TIMEOUT (IF STALLED)
+                </button>
+              )}
             </div>
           </div>
 
@@ -1254,6 +1284,135 @@ function Lobby() {
 }
 
 // ============================================================
+// LOBBY LAUNCH HELPER — mutual initMatch with SeedSlotNotReached retry
+// ============================================================
+function isSeedSlotNotReached(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("SeedSlotNotReached") ||
+    msg.includes("6037") ||
+    msg.includes("0x1795") ||
+    msg.includes("Seed slot has not been produced yet")
+  );
+}
+
+function isAlreadyLaunched(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("LobbyAlreadyLaunched") ||
+    msg.includes("already in use") ||
+    msg.includes("6033") ||
+    msg.includes("0x0")
+  );
+}
+
+async function launchMatchWithRetry({
+  matchId,
+  rolet,
+  wallet,
+  router,
+  isHost,
+  fallbackLobby,
+}: {
+  matchId: BN;
+  rolet: ReturnType<typeof useRolet>;
+  wallet: { publicKey: PublicKey | null };
+  router: { replace: (url: string) => void };
+  isHost: boolean;
+  fallbackLobby?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+}): Promise<boolean> {
+  if (!wallet.publicKey) return false;
+  const matchHex = matchId.toString(16);
+  const maxRetries = 5;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // 1. Check if match is already created on-chain (e.g. other player succeeded)
+      const existing = await rolet.fetchMatch(matchId);
+      if (existing) {
+        if (isHost) {
+          await rolet.closeLobby(matchId).catch(() => {});
+        }
+        router.replace(`/duel?match=${matchHex}`);
+        return true;
+      }
+
+      // 2. Fetch fresh lobby state
+      const curLobby = (await rolet.fetchLobby(matchId)) ?? fallbackLobby;
+      if (curLobby?.launched) {
+        if (isHost) {
+          await rolet.closeLobby(matchId).catch(() => {});
+        }
+        router.replace(`/duel?match=${matchHex}`);
+        return true;
+      }
+
+      // 3. Pre-flight slot check if seedSlot is recorded
+      const seedSlot = curLobby?.seedSlot;
+      if (seedSlot) {
+        const targetSlot =
+          typeof seedSlot.toNumber === "function"
+            ? seedSlot.toNumber()
+            : Number(seedSlot);
+        if (targetSlot > 0) {
+          const curSlot = await rolet.connection.getSlot("confirmed").catch(() => 0);
+          if (curSlot <= targetSlot) {
+            // Wait ~1.5s for seed slot to arrive
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+        }
+      }
+
+      // 4. Attempt initMatch
+      const hostPk = curLobby?.host;
+      const guestPk = curLobby?.guest as PublicKey | undefined;
+      const sig = await rolet.initMatch({
+        matchId,
+        playerOne: hostPk,
+        playerTwo: guestPk,
+      });
+
+      if (sig) {
+        if (isHost) {
+          await rolet.delegateMatch(matchId);
+          await rolet.closeLobby(matchId).catch(() => {});
+        }
+        router.replace(`/duel?match=${matchHex}`);
+        return true;
+      }
+    } catch (err: unknown) {
+      if (isAlreadyLaunched(err)) {
+        if (isHost) {
+          await rolet.closeLobby(matchId).catch(() => {});
+        }
+        router.replace(`/duel?match=${matchHex}`);
+        return true;
+      }
+
+      if (isSeedSlotNotReached(err)) {
+        if (attempt < maxRetries - 1) {
+          // Wait ~1.5s before next attempt
+          await new Promise((r) => setTimeout(r, 1500));
+          continue;
+        } else {
+          emitToast("error", "Match seed slot not reached yet after retries — tap launch to try again");
+          return false;
+        }
+      }
+
+      const msg = err instanceof Error ? err.message : String(err);
+      if (attempt === maxRetries - 1) {
+        emitToast("error", `Launch failed: ${msg}`);
+        return false;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+
+  return false;
+}
+
+// ============================================================
 // HOST WAITING — polls lobby, shows shareable link, launches match
 // ============================================================
 function HostWaiting({ matchId }: { matchId: BN }) {
@@ -1298,6 +1457,10 @@ function HostWaiting({ matchId }: { matchId: BN }) {
       try {
         const l = await roletRef.current.fetchLobby(matchId);
         if (alive) setLobby(l);
+        const m = await roletRef.current.fetchMatch(matchId);
+        if (alive && m) {
+          router.replace(`/duel?match=${matchHex}`);
+        }
       } catch { /* swallow */ }
     }, 2000);
 
@@ -1336,36 +1499,47 @@ function HostWaiting({ matchId }: { matchId: BN }) {
   }, [programReady, matchId, wallet.publicKey, router]);
 
   const guestReady = !!lobby?.guest;
+  const hostRevealed = !!lobby?.hostRevealed;
+  const guestRevealed = !!lobby?.guestRevealed;
+  const bothRevealed = hostRevealed && guestRevealed;
+
+  const autoRevealedRef = useRef(false);
   const autoLaunchedRef = useRef(false);
 
+  // Auto-reveal host secret as soon as guest arrives
+  useEffect(() => {
+    if (guestReady && !hostRevealed && !autoRevealedRef.current && !rolet.busy) {
+      autoRevealedRef.current = true;
+      rolet.revealSecret(matchId).catch(() => {
+        autoRevealedRef.current = false;
+      });
+    }
+  }, [guestReady, hostRevealed, matchId, rolet]);
+
   const handleLaunch = useCallback(async () => {
-    if (!wallet.publicKey || !lobby) return;
+    if (!wallet.publicKey) return;
     setLaunching(true);
     try {
-      const guestPk = lobby.guest as PublicKey;
-      const sig = await rolet.initMatch({
+      await launchMatchWithRetry({
         matchId,
-        opponent: guestPk,
-        opponentCommit: Uint8Array.from(lobby.guestCommit),
-        opponentSecret: Uint8Array.from(lobby.guestSecret),
+        rolet,
+        wallet,
+        router,
+        isHost: true,
+        fallbackLobby: lobby,
       });
-      if (sig) {
-        await rolet.delegateMatch(matchId);
-        await rolet.closeLobby(matchId);
-        router.replace(`/duel?match=${matchHex}`);
-      }
     } finally {
       setLaunching(false);
     }
-  }, [wallet.publicKey, lobby, matchHex, matchId, rolet, router]);
+  }, [wallet, lobby, matchId, rolet, router]);
 
-  // Auto-launch as soon as a guest is detected — no button press needed
+  // Auto-launch as soon as both secrets are revealed
   useEffect(() => {
-    if (guestReady && !autoLaunchedRef.current && !launching && !rolet.busy) {
+    if (bothRevealed && !autoLaunchedRef.current && !launching && !rolet.busy) {
       autoLaunchedRef.current = true;
       handleLaunch();
     }
-  }, [guestReady, launching, rolet.busy, handleLaunch]);
+  }, [bothRevealed, launching, rolet.busy, handleLaunch]);
 
   return (
     <LobbyShell subtitle={`LOBBY · 0x${matchHex.toUpperCase()}`} statusTag={guestReady ? "// CHALLENGER FOUND" : "// WAITING"} toasts={toasts}>
@@ -1374,7 +1548,15 @@ function HostWaiting({ matchId }: { matchId: BN }) {
       </span>
 
       <h1 className="font-display text-bleed leading-none select-none" style={{ fontSize: "clamp(2rem, 7vw, 5rem)" }}>
-        {launching || rolet.busy ? "LAUNCHING…" : guestReady ? "OPPONENT FOUND" : "SCANNING…"}
+        {launching || rolet.busy
+          ? "LAUNCHING…"
+          : !guestReady
+          ? "SCANNING…"
+          : !hostRevealed
+          ? "REVEALING…"
+          : !guestRevealed
+          ? "WAITING FOR GUEST…"
+          : "OPPONENT VERIFIED"}
       </h1>
 
       <div className="mt-8 w-full max-w-xl border border-rust/60 bg-black/70 p-4 text-left">
@@ -1382,9 +1564,13 @@ function HostWaiting({ matchId }: { matchId: BN }) {
         <code className="text-[11px] text-zinc-300">
           {launching || rolet.busy
             ? "Initializing match on-chain…"
-            : guestReady
-            ? "Opponent joined — launching automatically…"
-            : "Scanning for an opponent…"}
+            : !guestReady
+            ? "Scanning for an opponent…"
+            : !hostRevealed
+            ? "Opponent joined — revealing host secret…"
+            : !guestRevealed
+            ? "Host secret revealed — waiting for guest reveal…"
+            : "Both secrets verified — launching automatically…"}
         </code>
       </div>
 
@@ -1398,7 +1584,7 @@ function HostWaiting({ matchId }: { matchId: BN }) {
       </div>
 
       {/* Manual fallback in case auto-launch fails */}
-      {guestReady && !launching && !rolet.busy && (
+      {bothRevealed && !launching && !rolet.busy && (
         <button
           onClick={handleLaunch}
           className="mt-8 border-2 border-red-600 bg-gradient-to-b from-red-950/60 to-black px-10 py-5 font-display tracking-[0.4em] text-xl text-red-400 text-bleed animate-blood transition-all hover:text-red-200"
@@ -1407,12 +1593,25 @@ function HostWaiting({ matchId }: { matchId: BN }) {
           <div className="mt-1 text-[8px] tracking-[0.5em] text-rust">tap if auto-launch stalled</div>
         </button>
       )}
+
+      {/* When both secrets are revealed, program rejects closeLobby (must launch) — only show before both revealed */}
+      {!bothRevealed && !launching && !rolet.busy && (
+        <button
+          onClick={async () => {
+            const sig = await rolet.closeLobby(matchId);
+            if (sig) router.replace("/duel");
+          }}
+          className="mt-4 border border-zinc-700 bg-black/60 px-6 py-2 text-[10px] tracking-[0.3em] text-zinc-400 hover:text-red-400 hover:border-red-800 transition-all"
+        >
+          ✕ CANCEL & REFUND LOBBY
+        </button>
+      )}
     </LobbyShell>
   );
 }
 
 // ============================================================
-// GUEST LOBBY — joins lobby, then polls for match to appear
+// GUEST LOBBY — joins lobby, reveals secret, and launches match
 // ============================================================
 function GuestLobby({ matchId, autoJoin = false }: { matchId: BN, autoJoin?: boolean }) {
   const router = useRouter();
@@ -1420,10 +1619,13 @@ function GuestLobby({ matchId, autoJoin = false }: { matchId: BN, autoJoin?: boo
   const rolet = useRolet({ ephemeral: false });
   const toasts = useToasts();
   const matchHex = matchId.toString(16);
+  const [lobby, setLobby] = useState<any>(null);  // eslint-disable-line @typescript-eslint/no-explicit-any
   const [joined, setJoined] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [launching, setLaunching] = useState(false);
   // useRef is synchronous — prevents double-fire from React batching setState
   const autoTriggeredRef = useRef(false);
+  const autoLaunchedRef = useRef(false);
 
   // Auto-arm session key while waiting — one popup now, zero popups in-match.
   const guestArmedRef = useRef(false);
@@ -1433,6 +1635,9 @@ function GuestLobby({ matchId, autoJoin = false }: { matchId: BN, autoJoin?: boo
     rolet.startSession(60 * 60).catch(() => { guestArmedRef.current = false; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!wallet.publicKey, !!rolet.program, !!rolet.sessionKey]);
+
+  const roletRef = useRef(rolet);
+  roletRef.current = rolet;
 
   const handleJoin = useCallback(async () => {
     if (!wallet.publicKey) return;
@@ -1445,12 +1650,13 @@ function GuestLobby({ matchId, autoJoin = false }: { matchId: BN, autoJoin?: boo
     setBusy(true);
     try {
       const { secret, commit } = rolet.generateCommitReveal();
+      rolet.stashSecret(matchId.toString(), secret);
       const sig = await rolet.joinLobby(matchId, commit, secret);
       if (sig) setJoined(true);
     } finally {
       setBusy(false);
     }
-  }, [wallet.publicKey, rolet, matchId]);
+  }, [wallet.publicKey, rolet, matchId, router]);
 
   useEffect(() => {
     if (autoJoin && wallet.publicKey && rolet.program && !joined && !busy && !autoTriggeredRef.current) {
@@ -1459,37 +1665,125 @@ function GuestLobby({ matchId, autoJoin = false }: { matchId: BN, autoJoin?: boo
     }
   }, [autoJoin, wallet.publicKey, rolet.program, joined, busy, handleJoin]);
 
-  // After joining, poll for MatchState to appear (host calls init_match)
+  // After joining, reveal secret when guest arrives, then poll for MatchState or launch
+  const guestRevealedRef = useRef(false);
   useEffect(() => {
-    if (!joined || !rolet.program) return;
+    if (!rolet.program || !wallet.publicKey) return;
     let alive = true;
+
     const poll = setInterval(async () => {
       try {
-        const m = await rolet.fetchMatch(matchId);
+        const l = await roletRef.current.fetchLobby(matchId);
+        if (alive && l) {
+          setLobby(l);
+          if (l.guest && wallet.publicKey && (l.guest as PublicKey).equals(wallet.publicKey)) {
+            setJoined(true);
+          }
+          if (
+            l.guest &&
+            wallet.publicKey &&
+            (l.guest as PublicKey).equals(wallet.publicKey) &&
+            !l.guestRevealed &&
+            !guestRevealedRef.current &&
+            !roletRef.current.busy
+          ) {
+            guestRevealedRef.current = true;
+            roletRef.current.revealSecret(matchId).catch(() => {
+              guestRevealedRef.current = false;
+            });
+          }
+        }
+        const m = await roletRef.current.fetchMatch(matchId);
         if (alive && m) {
           clearInterval(poll);
           router.replace(`/duel?match=${matchHex}`);
         }
       } catch { /* swallow RPC errors between polls */ }
     }, 1500);
+
+    roletRef.current.fetchLobby(matchId).then((l) => {
+      if (!alive || !l) return;
+      setLobby(l);
+      if (l.guest && wallet.publicKey && (l.guest as PublicKey).equals(wallet.publicKey)) {
+        setJoined(true);
+      }
+    });
+
     return () => { alive = false; clearInterval(poll); };
-  }, [joined, rolet, matchId, matchHex, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchId, matchHex, router, wallet.publicKey, !!rolet.program]);
+
+  const hostRevealed = !!lobby?.hostRevealed;
+  const guestRevealed = !!lobby?.guestRevealed;
+  const bothRevealed = hostRevealed && guestRevealed;
+
+  const handleLaunch = useCallback(async () => {
+    if (!wallet.publicKey) return;
+    setLaunching(true);
+    try {
+      await launchMatchWithRetry({
+        matchId,
+        rolet,
+        wallet,
+        router,
+        isHost: false,
+        fallbackLobby: lobby,
+      });
+    } finally {
+      setLaunching(false);
+    }
+  }, [wallet, lobby, matchId, rolet, router]);
+
+  // Both host and guest auto-launch once both secrets are revealed
+  useEffect(() => {
+    if (bothRevealed && !autoLaunchedRef.current && !launching && !rolet.busy) {
+      autoLaunchedRef.current = true;
+      handleLaunch();
+    }
+  }, [bothRevealed, launching, rolet.busy, handleLaunch]);
 
   return (
-    <LobbyShell subtitle={`MATCH · 0x${matchHex.toUpperCase()}`} statusTag={joined ? "// JOINED" : "// STANDBY"} toasts={toasts}>
+    <LobbyShell subtitle={`MATCH · 0x${matchHex.toUpperCase()}`} statusTag={joined ? (bothRevealed ? "// READY" : "// JOINED") : "// STANDBY"} toasts={toasts}>
       <span className="text-[10px] tracking-[0.6em] text-zinc-600 mb-4">
         // OPPONENT FOUND
       </span>
 
       <h1 className="font-display text-bleed leading-none select-none" style={{ fontSize: "clamp(2rem, 7vw, 5rem)" }}>
-        {joined ? "WAITING FOR HOST…" : "CONNECTING"}
+        {launching || rolet.busy
+          ? "LAUNCHING…"
+          : !joined
+          ? "CONNECTING"
+          : bothRevealed
+          ? "SECRETS VERIFIED"
+          : hostRevealed && !guestRevealed
+          ? "REVEALING SECRET…"
+          : "WAITING FOR HOST…"}
       </h1>
 
       <p className="mt-4 max-w-xl text-sm tracking-[0.2em] text-zinc-500 uppercase">
-        {joined
-          ? "Your commit is on-chain. Waiting for the host to launch the match…"
+        {launching || rolet.busy
+          ? "Initializing match on-chain with retry…"
+          : bothRevealed
+          ? "Both secrets verified. Launching match on-chain automatically…"
+          : joined
+          ? "You joined the lobby. Awaiting secrets verification…"
           : "Sign the transaction to join the opponent's lobby."}
       </p>
+
+      <div className="mt-8 w-full max-w-xl border border-rust/60 bg-black/70 p-4 text-left">
+        <div className="text-[9px] tracking-[0.4em] text-rust mb-2">// LOBBY STATUS</div>
+        <code className="text-[11px] text-zinc-300">
+          {launching || rolet.busy
+            ? "Initializing match on-chain…"
+            : !joined
+            ? "Sign the transaction to join the opponent's lobby."
+            : bothRevealed
+            ? "Both secrets verified — launching automatically…"
+            : hostRevealed && !guestRevealed
+            ? "Host secret revealed — submitting guest reveal…"
+            : "Joined lobby — waiting for host secret reveal…"}
+        </code>
+      </div>
 
       {!joined && (
         <button
@@ -1504,13 +1798,47 @@ function GuestLobby({ matchId, autoJoin = false }: { matchId: BN, autoJoin?: boo
         </button>
       )}
 
-      {joined && (
+      {joined && !bothRevealed && (
         <div className="mt-12 flex items-center gap-4">
           <div className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(220,30,30,0.8)] animate-pulse" />
           <span className="text-[10px] tracking-[0.4em] text-zinc-500">
-            polling for match · host must click launch match…
+            {hostRevealed
+              ? "host revealed · submitting guest secret…"
+              : "waiting for host reveal…"}
           </span>
         </div>
+      )}
+
+      {/* Manual fallback in case auto-launch stalled */}
+      {bothRevealed && !launching && !rolet.busy && (
+        <button
+          onClick={handleLaunch}
+          className="mt-8 border-2 border-red-600 bg-gradient-to-b from-red-950/60 to-black px-10 py-5 font-display tracking-[0.4em] text-xl text-red-400 text-bleed animate-blood transition-all hover:text-red-200"
+        >
+          ▼ LAUNCH MATCH ▼
+          <div className="mt-1 text-[8px] tracking-[0.5em] text-rust">tap if auto-launch stalled</div>
+        </button>
+      )}
+
+      {/* Small UX note for stuck lobby when host revealed but guest cannot reveal */}
+      {joined && hostRevealed && !guestRevealed && (
+        <div className="mt-6 w-full max-w-xl border border-amber-800/60 bg-amber-950/30 p-4 text-left">
+          <div className="text-[9px] tracking-[0.4em] text-amber-500 mb-2">// LOBBY ADVISORY</div>
+          <p className="text-[11px] text-zinc-300 leading-relaxed">
+            Host has revealed their secret, but your secret was not revealed yet.
+            If this lobby is stuck or abandoned, only the host can close it and refund durability on-chain.
+          </p>
+        </div>
+      )}
+
+      {/* Safe exit for guest: navigates back to /duel without invoking any unauthorized on-chain instruction */}
+      {joined && !launching && !rolet.busy && (
+        <button
+          onClick={() => router.replace("/duel")}
+          className="mt-6 border border-zinc-700 bg-black/60 px-6 py-2 text-[10px] tracking-[0.3em] text-zinc-400 hover:text-red-400 hover:border-red-800 transition-all"
+        >
+          ✕ LEAVE LOBBY SCREEN
+        </button>
       )}
 
       {!wallet.connected && (

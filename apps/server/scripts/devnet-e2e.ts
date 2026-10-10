@@ -152,7 +152,7 @@ async function main() {
   const provider = new anchor.AnchorProvider(connection, wallet, { commitment: "confirmed" });
   anchor.setProvider(provider);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const program = new Program(idl as any, provider);
+  const program: any = new Program(idl as any, provider);
 
   console.log("─── ROLET devnet E2E ───");
   console.log("program:", programId.toBase58());
@@ -207,8 +207,15 @@ async function main() {
 
   const hostSecret = Keypair.generate().secretKey.slice(0, 32);
   const guestSecret = Keypair.generate().secretKey.slice(0, 32);
-  const hostCommit = Array.from(Buffer.from(keccak_256(hostSecret)));
-  const guestCommit = Array.from(Buffer.from(keccak_256(guestSecret)));
+  // Commit preimage = secret || player pubkey || match_id (u64 LE) — RISK-B.
+  const boundCommit = (secret: Uint8Array, player: PublicKey) =>
+    Array.from(
+      Buffer.from(
+        keccak_256(Buffer.concat([Buffer.from(secret), player.toBuffer(), matchIdBuf])),
+      ),
+    );
+  const hostCommit = boundCommit(hostSecret, playerA.publicKey);
+  const guestCommit = boundCommit(guestSecret, playerB.publicKey);
 
   await program.methods
     .openLobby(matchId, hostCommit)
@@ -223,7 +230,7 @@ async function main() {
     .then((sig: string) => confirmSig(connection, sig, "open_lobby"));
 
   await program.methods
-    .joinLobby(guestCommit, Array.from(guestSecret))
+    .joinLobby(guestCommit)
     .accounts({
       lobby: lobbyPda,
       guestProfile: profileB,
@@ -238,22 +245,46 @@ async function main() {
   console.log(`  A durability: ${profA1.durabilityRemaining} -> ${profA2.durabilityRemaining}`);
   console.log(`  B durability: ${profB1.durabilityRemaining} -> ${profB2.durabilityRemaining}`);
 
-  // ── Step 5: init_match ───────────────────────────────────────────
-  console.log("\n[3] init_match");
+  // ── Step 5: reveal_secret & init_match ───────────────────────────
+  console.log("\n[3] reveal_secret (host & guest)");
+  await program.methods
+    .revealSecret(Array.from(hostSecret))
+    .accounts({
+      lobby: lobbyPda,
+      player: playerA.publicKey,
+    } as never)
+    .signers([playerA])
+    .rpc({ commitment: "confirmed" })
+    .then((sig: string) => confirmSig(connection, sig, "reveal_secret (host)"));
+
+  await program.methods
+    .revealSecret(Array.from(guestSecret))
+    .accounts({
+      lobby: lobbyPda,
+      player: playerB.publicKey,
+    } as never)
+    .signers([playerB])
+    .rpc({ commitment: "confirmed" })
+    .then((sig: string) => confirmSig(connection, sig, "reveal_secret (guest)"));
+
+  const lobbyAcct = await program.account.lobbyState.fetch(lobbyPda);
+  console.log(`  lobby seed_slot: ${lobbyAcct.seedSlot.toString()}`);
+  while (true) {
+    const curSlot = await connection.getSlot("confirmed");
+    if (curSlot > Number(lobbyAcct.seedSlot)) break;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+
+  console.log("\n[4] init_match");
   const [matchPda] = PublicKey.findProgramAddressSync(
     [Buffer.from("match"), matchIdBuf],
     programId,
   );
   await program.methods
-    .initMatch(
-      matchId,
-      hostCommit,
-      guestCommit,
-      Array.from(hostSecret),
-      Array.from(guestSecret),
-    )
+    .initMatch(matchId)
     .accounts({
       matchState: matchPda,
+      lobby: lobbyPda,
       playerOne: playerA.publicKey,
       playerTwo: playerB.publicKey,
       payer: playerA.publicKey,

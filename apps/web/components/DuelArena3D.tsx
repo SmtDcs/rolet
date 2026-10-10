@@ -65,7 +65,7 @@ function Bulb() {
   );
 }
 
-// ── Round wooden gambler's table ────────────────────────────────────────────
+// ── Round wooden duel table ──────────────────────────────────────────────
 function Table() {
   return (
     <group position={[0, -0.5, 0]}>

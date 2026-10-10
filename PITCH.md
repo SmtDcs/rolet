@@ -21,8 +21,9 @@ ROLET is a **Fully On-Chain Game (FOCG)** that solves all three:
 
 **1. Lobby PDA rendezvous**  
 Host calls `open_lobby` → on-chain PDA created (`seeds: ["lobby", match_id]`).  
-Guest calls `join_lobby` → submits `guest_commit = keccak256(secret)` + secret on-chain.  
-Host calls `init_match` → both secrets combined → RNG seed locked.
+Guest calls `join_lobby` → submits secret commitment on-chain.  
+Both players call `reveal_secret` → program verifies preimages against commitments.  
+Host calls `init_match` → verified secrets combined with slot hashes → RNG seed locked.
 
 **2. Commit-reveal fairness**  
 `rng_seed = hash(host_secret ‖ guest_secret)`  
@@ -37,25 +38,25 @@ SOL lives in a treasury PDA. `settle_match` transfers the winner's reward. 70% o
 
 ## What's built
 
-- ✅ Full Anchor program (Rust): `init_match`, `pull_trigger`, `play_card`, `settle_match`, `register_session_key`, `init_player_profile`, `init_vault`, `open_lobby`, `join_lobby`, `close_lobby`
-- ✅ 12 tactical cards with on-chain effects
-- ✅ Real 2-player matchmaking (Lobby PDA)
-- ✅ Session keys (gasless turns)
-- ✅ Character NFT purchase (Metaplex Core) with durability burn on match entry
-- ✅ SOL reward payouts from an on-chain treasury PDA
-- ✅ CRT/industrial aesthetic frontend
-- ✅ Live on Solana Devnet
+- Full Anchor program (Rust): `init_match`, `pull_trigger`, `play_card`, `settle_match`, `register_session_key`, `init_player_profile`, `init_vault`, `open_lobby`, `join_lobby`, `reveal_secret`, `close_lobby`
+- 12 tactical cards with on-chain effects
+- Real 2-player matchmaking (Lobby PDA)
+- Session keys (gasless turns)
+- Character NFT purchase (Metaplex Core) with durability burn on match entry
+- SOL reward payouts from an on-chain treasury PDA
+- Paper-card workshop aesthetic frontend
+- Live on Solana Devnet
 
 ## Demo
 
-[`rolet-web-server.vercel.app`](https://rolet-web-server.vercel.app) · [`github.com/SmtDcs/rolet-web`](https://github.com/SmtDcs/rolet-web)
+[`rolet-web-server.vercel.app`](https://rolet-web-server.vercel.app) · [`github.com/SmtDcs/rolet`](https://github.com/SmtDcs/rolet)
 
 ## Roadmap
 
 | Feature | Status |
 |---------|--------|
 | Character NFT (Metaplex Core) + durability | Done |
-| MagicBlock ER delegation (sub-second latency) | Blocked on SDK dep conflict; waiting for resolution |
+| MagicBlock ER delegation | Planned — blocked on SDK dependency conflict; game runs on L1 with session keys |
 | Leaderboard / ELO | Planned |
 | Match replay (deterministic RNG) | Planned |
 
@@ -65,7 +66,7 @@ SOL lives in a treasury PDA. `settle_match` transfers the winner's reward. 70% o
 - Session keys via account model (no EIP-like proposal needed)
 - Anchor makes PDA-heavy programs ergonomic
 - Helius RPC for reliable devnet access
-- MagicBlock ER path exists for future sub-second finality
+- MagicBlock ER path exists for future sub-second finality (Planned)
 
 ---
 

@@ -20,10 +20,10 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 
 ### [0:00 – 0:20] Hook
 
-**Show:** Game landing page. CRT aesthetic, scanlines, the revolver.
+**Show:** Game landing page. Paper-card workshop aesthetic, tactical duel arena, the revolver.
 
 **Say:**
-> "This is ROLET — a fully on-chain PvP Russian Roulette built on Solana.
+> "This is ROLET — a fully on-chain tactical chamber duel built on Solana.
 > No server. No database. Every chamber, every card effect, every payout
 > lives on-chain. Let me show you a live match on devnet."
 
@@ -49,7 +49,7 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 
 - Guest sees "Join match" → click **JOIN**
 - Wallet popup → approve (join_lobby transaction)
-- Guest screen shows "Waiting for host to launch…"
+- Guest screen shows "Waiting for secret reveal…"
 
 **Say:**
 > "Player two joins. They submit their own secret commitment on-chain.
@@ -57,20 +57,36 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 
 ---
 
-### [1:10 – 1:35] Host launches — commit-reveal
+### [1:10 – 1:30] Reveal secrets (`revealSecret`)
 
-**Show:** Left window — "Guest joined!" banner appears
-- Click **LAUNCH MATCH** → wallet popup → approve (init_match + close_lobby)
-- Both windows redirect to the active duel
+**Show:** Both windows — commitments locked on-chain
+
+- Host and guest execute `revealSecret` transactions on-chain
+- Program verifies each secret preimage against its stored commitment in the Lobby PDA
+- Both screens update to confirmed revealed status
 
 **Say:**
-> "The host launches. Both secrets are now revealed and combined on-chain
-> to seed the chamber RNG — cryptographically fair, neither player could
-> predict it. The Lobby PDA is closed, rent returned."
+> "Before the duel seeds, both players execute `revealSecret` on-chain.
+> The program checks each preimage against the registered commitment,
+> ensuring neither player could change entropy after seeing their opponent."
 
 ---
 
-### [1:35 – 2:10] ARM WEAPON — session keys
+### [1:30 – 1:55] Host launches duel (`initMatch`)
+
+**Show:** Left window — both secrets verified on-chain
+- Click **LAUNCH MATCH** → wallet popup → approve (`initMatch`)
+- Program combines both verified secrets with Solana slot hashes to seed chamber RNG
+- Lobby PDA is closed (rent returned) and both windows redirect to active duel
+
+**Say:**
+> "Now the host launches via `initMatch`. Both verified secrets are combined
+> with Solana slot hashes on-chain to seed the chamber sequence — provably
+> fair and tamper-proof. The Lobby PDA is closed, rent returned, and the duel begins."
+
+---
+
+### [1:55 – 2:25] ARM WEAPON — session keys
 
 **Show:** Left window → click **ARM WEAPON**
 - One wallet popup (register_session_key) → approve
@@ -85,7 +101,7 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 
 ---
 
-### [2:10 – 3:00] Gameplay — cards + trigger pulls
+### [2:25 – 3:15] Gameplay — cards + trigger pulls
 
 **Show:** Left window — it's Host's turn
 - Play **HawkEye** card → chamber revealed (live or blank indicator)
@@ -103,7 +119,7 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 
 ---
 
-### [3:00 – 3:30] Settle — on-chain payout
+### [3:15 – 3:45] Settle — on-chain payout
 
 **Show:** Final trigger pull → HP hits 0 → winner screen
 - "CLAIM REWARD" button appears
@@ -117,7 +133,7 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 
 ---
 
-### [3:30 – 3:50] Outro
+### [3:45 – 4:00] Outro
 
 **Show:** Solana Explorer — show the settle_match transaction, click through
 the instruction data.
@@ -127,7 +143,7 @@ the instruction data.
 > session-key gasless turns, 2-player PvP via Lobby PDA rendezvous.
 > Source on GitHub. Try the live demo on devnet."
 
-**End screen:** `github.com/SmtDcs/rolet-web` + `https://rolet-web-server.vercel.app`
+**End screen:** `github.com/SmtDcs/rolet` + `https://rolet-web-server.vercel.app`
 
 ---
 

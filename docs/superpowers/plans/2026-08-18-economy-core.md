@@ -2180,8 +2180,8 @@ git commit -m "test: economy core — vault init + durability burn e2e"
 1. "What's built" listesine şunu ekle:
 
 ```
-- ✅ Character NFT purchase (Metaplex Core) with durability burn on match entry
-- ✅ SOL reward payouts from an on-chain treasury PDA
+- Character NFT purchase (Metaplex Core) with durability burn on match entry
+- SOL reward payouts from an on-chain treasury PDA
 ```
 
 2. "Roadmap" tablosunda "Character NFT (Metaplex Core) + durability" satırının Status'ünü `Done` yap.

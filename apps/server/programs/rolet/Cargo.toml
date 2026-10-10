@@ -1,7 +1,7 @@
 [package]
 name = "rolet"
 version = "0.1.0"
-description = "ROLET — fully on-chain Russian Roulette duel for Solana + MagicBlock"
+description = "ROLET — fully on-chain tactical chamber duel for Solana"
 edition = "2021"
 
 [lib]

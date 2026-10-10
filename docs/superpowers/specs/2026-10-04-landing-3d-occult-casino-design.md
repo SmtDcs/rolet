@@ -1,4 +1,4 @@
-# ROLET — Occult Casino Landing & 3D Diegetic Game Portal Specification
+# ROLET — Occult Duel Chamber Landing & 3D Diegetic Game Portal Specification
 
 **Tarih:** 2026-10-04  
 **Durum:** Onaylandı / Uygulama Planı Aşamasında  
@@ -9,20 +9,20 @@
 
 ## 1. Vizyon ve Genel Hedefler
 
-Bu şartname, **ROLET** projesini ham bir Web3 prototipinden, **Axie Infinity** kalibresinde profesyonel bir vitrine ve *Inscryption* / *Buckshot Roulette* atmosferine sahip **tamamen diegetik (oyun dünyasına yedirilmiş) 3D bir FPS düello oyununa** dönüştürme planını tanımlar.
+Bu şartname, **ROLET** projesini ham bir Web3 prototipinden, **Axie Infinity** kalibresinde profesyonel bir vitrine ve *Inscryption* esintili atmosferik bir **tamamen diegetik (oyun dünyasına yedirilmiş) 3D FPS düello oyununa** dönüştürme planını tanımlar.
 
 ### Temel Hedefler:
 1. **İki Katmanlı Web Mimarisi:**
    * `/` (Landing Page): Cüzdansız da gezilebilen, 3D interaktif vitrinli, zengin hikâye, kurallar, kart galerisi ve on-chain ekonomi şeffaflığı sunan pazarlama sitesi.
    * `/play` (Oyun Portalı): "Launch App" butonuna basıldığında açılan, sıfır 2D UI kirliliği olan, 3D birinci şahıs (FPS) diegetik düello arenası.
-2. **Occult Underground Casino (Okült Kumarhane) Estetiği:**
+2. **Occult Underground Duel Chamber (Okült Yeraltı Düello Salonu) Estetiği:**
    * Koyu maun ahşap, eskitme yeşil çuha (baize felt), pirinç detaylar, yanan balmumu şamdanlar ve altın varak mühürler.
 3. **Diegetik 3D Arayüz (Zero 2D HUD):**
    * Ekranda yüzen can barı veya butonlar yok. Masadaki 4 yanan mum (can), pirinç mermi tepsisi, fiziksel tarot kartları ve elinizle tutup çevirdiğiniz 3D revolver.
 4. **Meshy AI MCP 3D Varlık Üretimi:**
-   * Özel 8-hazneli okült revolver, antika kumar masası, pirinç şamdan ve maskeli rakip modellerinin Meshy AI MCP ile üretilip optimize edilmesi.
+   * Özel 8-hazneli okült revolver, antika düello masası, pirinç şamdan ve maskeli rakip modellerinin Meshy AI MCP ile üretilip optimize edilmesi.
 5. **Solana Hackathon & Fuar Çarpanları:**
-   * **MagicBlock Ephemeral Rollups (ER):** Alt-saniye (<50ms) gazsız hamleler.
+   * **MagicBlock Ephemeral Rollups (ER):** Planlanan yol haritası — henüz aktif değil. Gazsız hamleler bugün Solana L1 üzerinde session key'lerle çalışıyor.
    * **Dialect Solana Blinks:** X / Twitter üzerinden tek tıkla doğrudan düelloya lobi açma / katılma.
    * **Metaplex Core NFT:** 10 Dayanıklılık (Durability) yaşam döngüsü ve %90 Hazine / %5 Sigorta / %5 Ops gelir bölüşümü.
    * **Bonfida SNS:** Masadaki pirinç plakada kazınmış doğrulanmış `.sol` kimliği.
@@ -31,18 +31,18 @@ Bu şartname, **ROLET** projesini ham bir Web3 prototipinden, **Axie Infinity** 
 
 ## 2. Görsel Kimlik ve Tasarım Sistemi
 
-### Renk Paleti (Sanat & Kumarhane Yasası)
+### Renk Paleti (Sanat & Düello Salonu Yönü)
 | Renk Kodu | İsim | Kullanım Alanı |
 |---|---|---|
 | `#0B0907` | Zifiri Obsidiyen | Sayfa arka planı, derin gölgeler |
 | `#1E1611` | Koyu Maun | Ahşap masa dokuları, kart çerçeveleri |
-| `#152B1E` | Kumarhane Çuhası | Masa yüzeyi, yeşil vurgular, güvenli durumlar |
+| `#152B1E` | Düello Çuhası | Masa yüzeyi, yeşil vurgular, güvenli durumlar |
 | `#C6A15B` | Parlatılmış Pirinç / Altın Varak | Butonlar, başlıklar, aktif kart ışıltıları, sayaçlar |
 | `#8C2727` | Kuru Kan / Bordo | Hasar, canlı mermi, uyarılar ve tehlike |
 | `#E6D7C3` | Eskitme Parşömen | Tarot kart gövdeleri, okunabilir metinler |
 
 ### Tipografi
-* **Display / Başlıklar:** `Cinzel` / `Cinzel Decorative` (Google Fonts). Mühür, klasik kumarhane ve okült kitabe hissi.
+* **Display / Başlıklar:** `Cinzel` / `Cinzel Decorative` (Google Fonts). Mühür, klasik düello salonu ve okült kitabe hissi.
 * **Açıklama / Metin Gövdesi:** `Space Mono` ve `Cinzel` kombinasyonu (Modern on-chain veriler ile antika atmosfer dengesi).
 
 ---
@@ -87,16 +87,16 @@ flowchart LR
 
 ### 4.2. Hero Bölümü (3D İnteraktif Merkez)
 * **Başlık:** *"SEKİZ HAZNE. ON İKİ KART. KAZANAN TÜM KASAYI ALIR."*
-* **Alt Metin:** *"Solana L1 üzerinde çalışan, sıfır sunucu ve hilesiz commit-reveal rastgeleliğine sahip ilk tamamen on-chain taktiksel Rus Ruleti."*
+* **Alt Metin:** *"Solana L1 üzerinde çalışan, sıfır sunucu ve hilesiz commit-reveal rastgeleliğine sahip ilk tamamen on-chain taktiksel hazne düellosu."*
 * **3D Sahne:** 
   * Three.js Canvas: Kullanıcının faresiyle hafifçe döndürebileceği, ışık yansımalı okült işlemeli 3D revolver ve yanında süzülen 3D tarot kartları.
 * **Aksiyonlar:**
-  * **[KUMARHANEYE GİR / LAUNCH APP]** (Büyük parlayan buton)
+  * **[ARENAYA GİR / LAUNCH APP]** (Büyük parlayan buton)
   * **[NASIL OYNANIR?]** (Kısa kural videosu / modal penceresi)
 * **Canlı On-Chain İstatistik Ticker'ı:**
-  * 🏛️ **Kasadaki Ödül:** Anlık `GameVault` bakiyesi (SOL)
-  * ⚔️ **Sonuçlanan Düellolar:** Anlık `matches_settled` sayısı
-  * ⚡ **İşlem Hızı:** Gazsız ve anlık (Session Keys & MagicBlock ER)
+  * **Kasadaki Ödül:** Anlık `GameVault` bakiyesi (SOL)
+  * **Sonuçlanan Düellolar:** Anlık `matches_settled` sayısı
+  * **Hamle İmzalama:** Session key ile gazsız; MagicBlock ER planlanan yol haritasında
 
 ### 4.3. "The Rules of the Table" (Nasıl Oynanır)
 3 kartlık şık bir storyboard döngüsü:
@@ -122,9 +122,9 @@ flowchart LR
 
 ### 4.5. Ekonomi & Provably Fair Güvencesi (90 / 5 / 5 Modeli)
 * **Sürdürülebilir Gelir Bölüşümü:** Karakter alımlarından toplanan SOL'un dağılımı:
-  * 🏛️ **%90 Hazine (Treasury / Kazanan Ödül Havuzu):** Her düelloda kazanan oyuncuya doğrudan SOL olarak dağıtılır. Oyuncu riske ettiği tutarın neredeyse iki katını (+%80 net getiri) kazanır.
-  * 🛡️ **%5 Sigorta Fonu (Insurance / Safety Fund):** Olası uyuşmazlıklar, ağ kesintisi tazminatları ve büyük ikramiye (jackpot) birikimi için ayrılan koruma rezervi.
-  * ⚙️ **%5 Geliştirme & Operasyon (Ops Wallet):** Protokol bakımı, altyapı ve RPC maliyetleri.
+  * **%90 Hazine (Treasury / Kazanan Ödül Havuzu):** Her düelloda kazanan oyuncuya doğrudan SOL olarak dağıtılır. Oyuncu riske ettiği tutarın neredeyse iki katını (+%80 net getiri) kazanır.
+  * **%5 Sigorta Fonu (Insurance / Safety Fund):** Olası uyuşmazlıklar ve ağ kesintisi tazminatları için ayrılan koruma rezervi.
+  * **%5 Geliştirme & Operasyon (Ops Wallet):** Protokol bakımı, altyapı ve RPC maliyetleri.
 * **Commit-Reveal Hilesizlik Güvencesi:** Host ve Guest tohumlarının `keccak256` ile kilitlenip manipüle edilemez RNG ürettiğinin basit şematik anlatımı (Host'un tohumu önceden görmesini engelleyen güvenli taahhüt protokolü).
 * **Masa Güvencesi:** Lobi açıp iptal eden (`close_lobby`) oyuncunun dayanıklılığı (durability) eksiksiz iade edilir.
 
@@ -166,19 +166,19 @@ Meshy MCP araçları (`meshy_text_to_3d`, `meshy_download_model`) ile `apps/web/
 | Dosya Adı | Meshy AI Promptu | Kullanım Alanı |
 |---|---|---|
 | `revolver_occult.glb` | *"Antique heavy 8-chamber Western occult revolver, dark gunmetal cylinder, intricate polished brass engravings, PBR, game ready"* | Hero 3D sahnesi + Oyun içi silah |
-| `casino_table.glb` | *"Antique dark mahogany circular gambling table with worn green velvet baize top, brass corner inlays, Victorian style, game asset"* | FPS oyun masası |
+| `arena_table.glb` | *"Antique dark mahogany circular duel table with worn green velvet baize top, brass corner inlays, Victorian style, game asset"* | FPS oyun masası |
 | `bullet_cartridges.glb` | *"Vintage brass revolver bullet cartridge, live round with copper tip, blank spent casing, photorealistic"* | Masa mermi tepsisi |
 | `candelabra_props.glb` | *"Ornate antique brass candelabra with melting wax candles, vintage poker chip stack"* | Masa aydınlatması & can göstergesi |
-| `opponent_gambler.glb` | *"Dark Victorian high-stakes gambler wearing formal frock coat, seated pose, sinister porcelain mask, occult undertones"* | Karşıdaki rakip oyuncu |
+| `opponent_duelist.glb` | *"Dark Victorian masked duelist wearing formal frock coat, seated pose, sinister porcelain mask, occult undertones"* | Karşıdaki rakip oyuncu |
 
 ---
 
 ## 7. Solana Hackathon & Web3 Entegrasyonları
 
-### 7.1. MagicBlock Ephemeral Rollups (ER)
-* Lobi kapandığında `MatchState` hesabı MagicBlock ER'ye delege edilir.
-* Her tetik çekme (`pull_trigger`) ve kart oynama (`play_card`) işlemi ER üzerinde sıfır gaz ve <50ms süreyle işlenir.
-* Maç tamamlandığında sonuç Solana L1'e commit edilir ve kazanan ödülünü alır.
+### 7.1. MagicBlock Ephemeral Rollups (ER) — Planlanan, Henüz Aktif Değil
+* Hedef tasarım: lobi kapandığında `MatchState` hesabının MagicBlock ER'ye delege edilmesi.
+* ER yolu şu an devre dışı (Rust SDK bağımlılık çatışması — bkz. README Known Limitations). Maçlar Solana L1 üzerinde çalışır; gazsız hamleler session key'lerle bugün de mümkündür.
+* ER yolu açıldığında maç sonucu Solana L1'e commit edilecek ve kazanan ödülünü alacak.
 
 ### 7.2. Dialect Solana Blinks / Actions
 * Lobi oluşturulduğunda tek tıkla üretilen Blink URL'si (`https://.../api/actions/duel?lobby=<id>`):

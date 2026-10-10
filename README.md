@@ -8,11 +8,12 @@
 </p>
 
 <p align="center">
-  <strong>Fully on-chain PvP Russian Roulette on Solana.</strong><br/>
+  <strong>Fully on-chain turn-based tactical chamber duel on Solana.</strong><br/>
   Eight chambers. Twelve tactical cards. One winner claims the vault.
 </p>
 
 <p align="center">
+  <a href="https://github.com/SmtDcs/rolet">GitHub Repository</a> ·
   <a href="https://rolet-web-server.vercel.app">Live Demo (Devnet)</a> ·
   <a href="https://explorer.solana.com/address/Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792?cluster=devnet">On-chain Program</a>
 </p>
@@ -40,7 +41,7 @@ All state lives on Solana. No server. No database.
 | **12 Tactical Cards** | Fully on-chain card logic — HawkEye, Shuffler, LastChance, HandOfFate, and 8 more |
 | **Character NFT Economy** | Buy a Metaplex Core character (1 SOL, 10 durability); each Web3 duel consumes 1 durability |
 | **SOL Payouts** | Winners are paid in SOL from the treasury PDA — no inflationary token |
-| **3D Arena** | React Three Fiber scene with GLB models, post-processing, and CRT aesthetic |
+| **3D Arena** | React Three Fiber scene with GLB models, post-processing, and paper-card workshop aesthetic |
 
 ---
 
@@ -168,7 +169,7 @@ npx tsx scripts/bootstrap-vault.ts
 ## Repo Layout
 
 ```
-rolet-web/
+rolet/
 ├── apps/
 │   ├── server/
 │   │   ├── programs/rolet/src/lib.rs   # Anchor program (~1300 LOC)
@@ -191,7 +192,7 @@ rolet-web/
 ## Known Limitations
 
 - **Commit-Reveal griefing vector:** In the current implementation `join_lobby` passes `guest_secret` in plain text, allowing a malicious host to preview the RNG seed and decline to launch if unfavorable. A strict three-step commit → init → reveal flow closes this — planned post-hackathon.
-- **MagicBlock ER not active:** The SDK has a type conflict with Anchor 0.30. The game runs fully on L1 devnet with session keys instead.
+- **MagicBlock ER (Planned):** Ephemeral Rollup delegation is planned for sub-second finality. The SDK currently has a type conflict with Anchor 0.30; the live demo runs fully on Solana L1 devnet with session keys.
 - **Self-attested NFT authority (MVP):** The program validates a character NFT by checking its Core asset `update_authority` field against the program ID. That field is written by whoever mints the asset (client-side `createV1`), so a determined user can mint their own asset with the program ID as update authority and pass validation. A program-signed mint (CPI) or a program-owned Metaplex Core collection check is the production fix.
 
 ---
@@ -202,6 +203,6 @@ MIT
 
 ## Asset Credits
 
-- **Character model** — [KayKit Skeleton Character Pack](https://kaylousberg.itch.io/kaykit-skeletons) by Kay Lousberg, licensed CC0 1.0 (free for personal and commercial use, no attribution required). Optimized with gltf-transform (meshopt + WebP).
+- **Character & card art** — Paper-card workshop handcrafted assets.
 - **Table, revolver, lantern, bullet models** — Quaternius (CC0).
 - **Sound effects** — CC0/free-license sources bundled in `public/sounds/`.

@@ -4,7 +4,7 @@
     "name": "rolet",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "ROLET \u2014 fully on-chain Russian Roulette duel for Solana + MagicBlock"
+    "description": "ROLET — fully on-chain tactical chamber duel for Solana"
   },
   "instructions": [
     {
@@ -43,6 +43,28 @@
           }
         },
         {
+          "name": "lobby",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  98,
+                  98,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "match_id"
+              }
+            ]
+          }
+        },
+        {
           "name": "player_one"
         },
         {
@@ -66,42 +88,6 @@
         {
           "name": "match_id",
           "type": "u64"
-        },
-        {
-          "name": "player_one_commit",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "player_two_commit",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "player_one_secret",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "player_two_secret",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
         }
       ]
     },
@@ -534,15 +520,6 @@
               32
             ]
           }
-        },
-        {
-          "name": "guest_secret",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
         }
       ]
     },
@@ -562,6 +539,35 @@
         {
           "name": "lobby",
           "writable": true
+        },
+        {
+          "name": "host_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "host"
+              }
+            ]
+          }
+        },
+        {
+          "name": "guest_profile",
+          "writable": true,
+          "optional": true
         },
         {
           "name": "host",
@@ -658,7 +664,75 @@
             "option": "u64"
           }
         }
+      ],
+      "discriminator": [
+        70,
+        157,
+        73,
+        56,
+        190,
+        227,
+        31,
+        133
       ]
+    },
+    {
+      "name": "reveal_secret",
+      "discriminator": [
+        126,
+        156,
+        142,
+        60,
+        92,
+        135,
+        177,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "lobby",
+          "writable": true
+        },
+        {
+          "name": "player",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "secret",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "claim_timeout",
+      "discriminator": [
+        130,
+        234,
+        45,
+        53,
+        120,
+        90,
+        86,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "match_state",
+          "writable": true
+        },
+        {
+          "name": "claimant",
+          "signer": true
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -851,6 +925,55 @@
           "type": "u64",
           "index": false
         }
+      ],
+      "discriminator": [
+        73,
+        89,
+        143,
+        32,
+        156,
+        92,
+        183,
+        37
+      ]
+    },
+    {
+      "name": "SecretRevealed",
+      "discriminator": [
+        164,
+        226,
+        145,
+        231,
+        240,
+        31,
+        44,
+        142
+      ]
+    },
+    {
+      "name": "LobbyClosed",
+      "discriminator": [
+        7,
+        233,
+        210,
+        36,
+        203,
+        140,
+        14,
+        47
+      ]
+    },
+    {
+      "name": "MatchForfeited",
+      "discriminator": [
+        154,
+        253,
+        133,
+        187,
+        123,
+        209,
+        207,
+        139
       ]
     }
   ],
@@ -1013,12 +1136,72 @@
     {
       "code": 6031,
       "name": "NoDurability",
-      "msg": "Character durability is exhausted \u2014 purchase a new character"
+      "msg": "Character durability is exhausted — purchase a new character"
     },
     {
       "code": 6032,
       "name": "InvalidPurchaseAmount",
       "msg": "Purchase amount must be exactly the configured character price"
+    },
+    {
+      "code": 6033,
+      "name": "LobbyAlreadyLaunched",
+      "msg": "Lobby already launched a match"
+    },
+    {
+      "code": 6034,
+      "name": "LobbyNotReady",
+      "msg": "Lobby has no guest yet"
+    },
+    {
+      "code": 6035,
+      "name": "SecretsNotRevealed",
+      "msg": "Both players must reveal their secrets first"
+    },
+    {
+      "code": 6036,
+      "name": "AlreadyRevealed",
+      "msg": "Secret already revealed"
+    },
+    {
+      "code": 6037,
+      "name": "SeedSlotNotReached",
+      "msg": "Seed slot has not been produced yet; retry in a moment"
+    },
+    {
+      "code": 6038,
+      "name": "SeedSlotExpired",
+      "msg": "Seed slot fell out of the SlotHashes window; close the lobby and retry"
+    },
+    {
+      "code": 6039,
+      "name": "LobbyMismatch",
+      "msg": "Account does not match the lobby record"
+    },
+    {
+      "code": 6040,
+      "name": "GuestProfileRequired",
+      "msg": "Guest profile must be supplied to refund a joined lobby"
+    },
+    {
+      "code": 6041,
+      "name": "CannotClaimOwnTimeout",
+      "msg": "The player on turn cannot claim their own timeout"
+    },
+    {
+      "code": 6042,
+      "name": "TimeoutNotReached",
+      "msg": "Turn timeout has not elapsed yet"
+    },
+    {
+      "code": 6043,
+      "name": "LobbyMustLaunch",
+      "msg": "Both secrets revealed — the match must be launched (init_match), not closed"
+    },
+    {
+      "code": 6044,
+      "name": "DuplicateCommit",
+      "msg": "Guest commit must differ from the host commit"
     }
   ],
   "types": [
@@ -1621,6 +1804,31 @@
             }
           },
           {
+            "name": "host_secret",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "host_revealed",
+            "type": "bool"
+          },
+          {
+            "name": "guest_revealed",
+            "type": "bool"
+          },
+          {
+            "name": "seed_slot",
+            "type": "u64"
+          },
+          {
+            "name": "launched",
+            "type": "bool"
+          },
+          {
             "name": "bump",
             "type": "u8"
           }
@@ -1679,6 +1887,66 @@
           {
             "name": "characterPriceSol",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SecretRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "match_id",
+            "type": "u64"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "seed_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LobbyClosed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "match_id",
+            "type": "u64"
+          },
+          {
+            "name": "host",
+            "type": "pubkey"
+          },
+          {
+            "name": "refunded",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MatchForfeited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "match_id",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "staller",
+            "type": "pubkey"
           }
         ]
       }

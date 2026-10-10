@@ -22,6 +22,9 @@ import bs58 from "bs58";
 import idl from "@/idl/rolet.json";
 import type { Rolet } from "@/idl/rolet_types";
 import { treasurySolPda } from "@/lib/economy";
+import { computeLobbyCommit } from "@/lib/lobbyCommit";
+
+export { computeLobbyCommit };
 
 // ============================================================
 // Constants
@@ -168,11 +171,33 @@ function lobbyPda(matchId: BN) {
 // ============================================================
 // Commit-Reveal generator
 // ============================================================
-function generateCommitReveal(): CommitReveal {
+/**
+ * Generates a fresh secret. When `player` + `matchId` are given, `commit` is
+ * the bound on-chain commitment. Without them `commit` is NOT valid on-chain;
+ * openLobby / joinLobby always recompute the bound commit from the secret.
+ */
+function generateCommitReveal(player?: PublicKey, matchId?: BN): CommitReveal {
   const secret = new Uint8Array(32);
   crypto.getRandomValues(secret);
-  const commit = keccak_256(secret);
+  const commit =
+    player && matchId ? computeLobbyCommit(secret, player, matchId) : keccak_256(secret);
   return { secret, commit };
+}
+
+/**
+ * Resolve the secret for this lobby seat (explicit > stashed > fresh), stash
+ * it for reveal_secret, and return the commitment bound to (player, matchId).
+ * The caller-supplied commit is ignored so every call site stays aligned
+ * with the on-chain preimage.
+ */
+function boundCommitFor(matchId: BN, player: PublicKey, secret?: Uint8Array): Uint8Array {
+  let s = secret ?? recallSecret(matchId.toString());
+  if (!s) {
+    s = new Uint8Array(32);
+    crypto.getRandomValues(s);
+  }
+  stashSecret(matchId.toString(), s);
+  return computeLobbyCommit(s, player, matchId);
 }
 
 function stashSecret(matchId: string, secret: Uint8Array) {
@@ -432,14 +457,16 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   const initMatch = useCallback(
     async ({
       matchId,
+      playerOne,
+      playerTwo,
       opponent,
-      opponentCommit,
-      opponentSecret,
     }: {
       matchId: BN;
-      opponent: PublicKey;
-      opponentCommit: Uint8Array;
-      opponentSecret: Uint8Array;
+      playerOne?: PublicKey;
+      playerTwo?: PublicKey;
+      opponent?: PublicKey;
+      opponentCommit?: Uint8Array;
+      opponentSecret?: Uint8Array;
     }) => {
       if (!program || !wallet.publicKey) {
         emitToast("error", "Wallet not connected");
@@ -447,26 +474,24 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       }
       setBusy(true);
       try {
-        let secret = recallSecret(matchId.toString());
-        if (!secret) {
-          const fresh = generateCommitReveal();
-          secret = fresh.secret;
-          stashSecret(matchId.toString(), secret);
+        let p1 = playerOne;
+        let p2 = playerTwo ?? opponent;
+        if (!p1 || !p2) {
+          const l: any = await ((programL1 ?? program)!.account as any).lobbyState.fetch(lobbyPda(matchId));
+          p1 = p1 ?? l.host;
+          p2 = p2 ?? l.guest;
         }
-        const myCommit = keccak_256(secret);
+        if (!p1 || !p2) {
+          throw new Error("Lobby missing host or guest");
+        }
 
         const sig = await program.methods
-          .initMatch(
-            matchId,
-            Array.from(myCommit),
-            Array.from(opponentCommit),
-            Array.from(secret),
-            Array.from(opponentSecret)
-          )
+          .initMatch(matchId)
           .accounts({
             matchState: matchPda(matchId),
-            playerOne: wallet.publicKey,
-            playerTwo: opponent,
+            lobby: lobbyPda(matchId),
+            playerOne: p1,
+            playerTwo: p2,
             payer: wallet.publicKey,
             slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
             systemProgram: SystemProgram.programId,
@@ -477,14 +502,26 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         return sig;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        emitToast("error", `init_match failed · ${msg}`);
-        return null;
+        const isBenign =
+          msg.includes("SeedSlotNotReached") ||
+          msg.includes("6037") ||
+          msg.includes("0x1795") ||
+          msg.includes("Seed slot has not been produced yet") ||
+          msg.includes("LobbyAlreadyLaunched") ||
+          msg.includes("already in use") ||
+          msg.includes("6033") ||
+          msg.includes("0x0");
+        if (!isBenign) {
+          emitToast("error", `init_match failed · ${msg}`);
+        }
+        throw err;
       } finally {
         setBusy(false);
       }
     },
-    [program, wallet.publicKey]
+    [program, programL1, wallet.publicKey]
   );
+
 
   const playCard = useCallback(
     async ({
@@ -791,13 +828,16 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   );
 
   const openLobby = useCallback(
-    async (matchId: BN, hostCommit: Uint8Array) => {
+    // `_hostCommit` is kept for call-site compatibility; the bound commit is
+    // derived from the (explicit / stashed / fresh) secret — see boundCommitFor.
+    async (matchId: BN, _hostCommit?: Uint8Array, hostSecret?: Uint8Array) => {
       if (!programL1 || !wallet.publicKey) {
         emitToast("error", "Wallet not connected");
         return null;
       }
       setBusy(true);
       try {
+        const hostCommit = boundCommitFor(matchId, wallet.publicKey, hostSecret);
         const sig = await programL1.methods
           .openLobby(matchId, Array.from(hostCommit))
           .accounts({
@@ -821,15 +861,16 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   );
 
   const joinLobby = useCallback(
-    async (matchId: BN, guestCommit: Uint8Array, guestSecret: Uint8Array) => {
+    async (matchId: BN, _guestCommit?: Uint8Array, guestSecret?: Uint8Array) => {
       if (!programL1 || !wallet.publicKey) {
         emitToast("error", "Wallet not connected");
         return null;
       }
       setBusy(true);
       try {
+        const guestCommit = boundCommitFor(matchId, wallet.publicKey, guestSecret);
         const sig = await programL1.methods
-          .joinLobby(Array.from(guestCommit), Array.from(guestSecret))
+          .joinLobby(Array.from(guestCommit))
           .accounts({
             lobby: lobbyPda(matchId),
             guestProfile: profilePda(wallet.publicKey),
@@ -841,6 +882,38 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         emitToast("error", `join_lobby failed · ${msg}`);
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [programL1, wallet.publicKey]
+  );
+
+  const revealSecret = useCallback(
+    async (matchId: BN, secret?: Uint8Array) => {
+      if (!programL1 || !wallet.publicKey) {
+        emitToast("error", "Wallet not connected");
+        return null;
+      }
+      setBusy(true);
+      try {
+        const s = secret ?? recallSecret(matchId.toString());
+        if (!s) {
+          throw new Error("No secret found for match to reveal");
+        }
+        const sig = await programL1.methods
+          .revealSecret(Array.from(s))
+          .accounts({
+            lobby: lobbyPda(matchId),
+            player: wallet.publicKey,
+          } as never)
+          .rpc({ commitment: "confirmed" });
+        emitToast("success", `Secret revealed · ${sig.slice(0, 6)}…`);
+        return sig;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        emitToast("error", `reveal_secret failed · ${msg}`);
         return null;
       } finally {
         setBusy(false);
@@ -865,18 +938,63 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   const closeLobby = useCallback(
     async (matchId: BN) => {
       if (!programL1 || !wallet.publicKey) return null;
+      setBusy(true);
       try {
+        let guestProfile: PublicKey | null = null;
+        try {
+          const l: any = await (programL1.account as any).lobbyState.fetch(lobbyPda(matchId));
+          if (l?.guest) {
+            guestProfile = profilePda(l.guest as PublicKey);
+          }
+        } catch {
+          // lobby state might already be closed or unreadable
+        }
+
         const sig = await programL1.methods
           .closeLobby()
           .accounts({
             lobby: lobbyPda(matchId),
+            hostProfile: profilePda(wallet.publicKey),
+            guestProfile,
             host: wallet.publicKey,
           } as never)
           .rpc({ commitment: "confirmed" });
         emitToast("info", `Lobby closed · ${sig.slice(0, 6)}…`);
         return sig;
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        emitToast("error", `close_lobby failed · ${msg}`);
         return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [programL1, wallet.publicKey]
+  );
+
+  const claimTimeout = useCallback(
+    async (matchId: BN) => {
+      if (!programL1 || !wallet.publicKey) {
+        emitToast("error", "Wallet not connected");
+        return null;
+      }
+      setBusy(true);
+      try {
+        const sig = await programL1.methods
+          .claimTimeout()
+          .accounts({
+            matchState: matchPda(matchId),
+            claimant: wallet.publicKey,
+          } as never)
+          .rpc({ commitment: "confirmed" });
+        emitToast("success", `Timeout claimed · ${sig.slice(0, 6)}…`);
+        return sig;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        emitToast("error", `claim_timeout failed · ${msg}`);
+        return null;
+      } finally {
+        setBusy(false);
       }
     },
     [programL1, wallet.publicKey]
@@ -954,9 +1072,13 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       generateCommitReveal,
       openLobby,
       joinLobby,
+      revealSecret,
+      claimTimeout,
       findOpenLobby,
       fetchLobby,
       closeLobby,
+      stashSecret,
+      recallSecret,
     }),
     [
       program,
@@ -981,6 +1103,8 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       generateCommitReveal,
       openLobby,
       joinLobby,
+      revealSecret,
+      claimTimeout,
       findOpenLobby,
       fetchLobby,
       closeLobby,

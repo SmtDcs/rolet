@@ -66,8 +66,8 @@ export function EconomySection() {
                 <span className="text-[11px] font-mono text-[#52c41a]">GameVault PDA</span>
               </div>
               <p className="font-serif text-xs text-[#a3bfa9] leading-relaxed">
-                A massive 90% of every character purchase and lobby stake flows directly into the Solana GameVault. 
-                Victorious duelists leave the table with <strong>nearly double (+80% net return)</strong> on match stakes.
+                A massive 90% of every character purchase flows directly into the Solana GameVault. 
+                Victorious duelists claim their SOL reward straight from the on-chain treasury.
               </p>
             </div>
 
@@ -92,8 +92,7 @@ export function EconomySection() {
                 <span className="text-[11px] font-mono text-[#ff4d4f]">Ops Wallet</span>
               </div>
               <p className="font-serif text-xs text-[#cfa8a2] leading-relaxed">
-                Dedicated exclusively to high-throughput RPC node infrastructure, MagicBlock Ephemeral Rollup maintenance, 
-                and continuous smart contract audits.
+                Dedicated exclusively to high-throughput RPC node infrastructure and continuous smart contract audits.
               </p>
             </div>
           </div>
@@ -112,7 +111,7 @@ export function EconomySection() {
               Provably Fair Commit-Reveal RNG
             </h3>
             <p className="font-serif text-sm text-[#b8a68f] leading-relaxed mb-6">
-              Neither the server, the players, nor the house can predict bullet positions in advance. 
+              Neither the server, the players, nor the protocol can predict bullet positions in advance. 
               Both duelists submit SHA-256 hashes of their secret seeds on-chain during lobby formation. 
               The cylinder order is mathematically derived only after both commits are verified on Solana L1.
             </p>

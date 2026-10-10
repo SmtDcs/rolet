@@ -21,14 +21,14 @@ ilerleme. Her feature kendi branch'inde, merge edilince main güncel kalır.
 
 ## Backlog (öncelik sırasıyla)
 
-### 🎯 Hackathon submission paketi (önce bunu bitir)
+### Hackathon submission paketi (önce bunu bitir)
 
 | # | Branch                       | İş                                                  | Süre | Risk |
 |---|------------------------------|-----------------------------------------------------|------|------|
 | 1 | `polish/demo-screencast`     | 3-5 dk demo videosu + README + pitch deck          | 2-3s | düşük|
 | 2 | `polish/readme`              | Mimari diyagram + setup talimatı + ekran görüntüsü | 1s   | düşük|
 
-### 🔥 Kuvvetli feature'lar
+### Kuvvetli feature'lar
 
 | # | Branch                       | İş                                                  | Süre | Risk |
 |---|------------------------------|-----------------------------------------------------|------|------|
@@ -36,7 +36,7 @@ ilerleme. Her feature kendi branch'inde, merge edilince main güncel kalır.
 | 4 | `feature/character-nft`      | Metaplex Core mint + durability bar UI             | 3-4s | orta |
 | 5 | `feature/sns-resolution`     | Bonfida ile gerçek `.sol` doğrulama                | 1s   | düşük|
 
-### 🧪 Spekülatif (ekosistem stabil olunca)
+### Spekülatif (ekosistem stabil olunca)
 
 | # | Branch                       | İş                                                  | Süre | Risk |
 |---|------------------------------|-----------------------------------------------------|------|------|
@@ -45,7 +45,7 @@ ilerleme. Her feature kendi branch'inde, merge edilince main güncel kalır.
 | 8 | `feature/spectator`          | Aktif maçları izleme (subscribe to all matches)    | 2s   | orta |
 | 9 | `feature/match-replay`       | RNG seed deterministik olduğu için adım-adım rerun | 3s   | orta |
 
-### 🔧 Teknik borç
+### Teknik borç
 
 | # | Branch                       | İş                                                  | Süre | Risk |
 |---|------------------------------|-----------------------------------------------------|------|------|

@@ -27,6 +27,16 @@ pub const BLANK_ROUNDS: u8 = 3;
 pub const HAND_SIZE: usize = 4;
 pub const CARD_VARIANTS: u8 = 12;
 pub const TURN_TIMEOUT_SLOTS: u64 = 150;
+/// Entropy is pinned to the first produced slot at or after
+/// `final_reveal_slot + SEED_DELAY_SLOTS`. Its hash does not exist yet when
+/// the last secret is revealed, so neither player can grind the outcome.
+pub const SEED_DELAY_SLOTS: u64 = 2;
+/// After both secrets are revealed the lobby is committed to launching:
+/// either participant may call init_match while the seed slot is still in
+/// the SlotHashes window. close_lobby is rejected until this many slots past
+/// seed_slot (kept well below the ~512-slot SlotHashes depth), and after that
+/// it only reclaims rent — no durability refund (RISK-A).
+pub const LAUNCH_WINDOW_SLOTS: u64 = 300;
 
 #[program]
 pub mod rolet {
@@ -35,36 +45,52 @@ pub mod rolet {
     // --------------------------------------------------------
     // INIT_MATCH — seeds chambers + deals starting hands
     // --------------------------------------------------------
-    pub fn init_match(
-        ctx: Context<InitMatch>,
-        match_id: u64,
-        player_one_commit: [u8; 32],
-        player_two_commit: [u8; 32],
-        player_one_secret: [u8; 32],
-        player_two_secret: [u8; 32],
-    ) -> Result<()> {
+    pub fn init_match(ctx: Context<InitMatch>, match_id: u64) -> Result<()> {
+        // SECURITY: no caller-supplied commits/secrets. Both secrets were
+        // committed in the lobby (open_lobby / join_lobby), revealed and
+        // verified against those commits in reveal_secret, and re-checked
+        // below so init_match is self-contained. The entropy slot was pinned
+        // to a FUTURE slot at final reveal time, so the caller (host or
+        // guest) can only trigger the deterministic launch.
+        let lobby = &mut ctx.accounts.lobby;
+        require!(!lobby.launched, RoletError::LobbyAlreadyLaunched);
+        require!(lobby.guest.is_some(), RoletError::LobbyNotReady);
         require!(
-            keccak::hash(&player_one_secret).0 == player_one_commit,
+            lobby.host_revealed && lobby.guest_revealed,
+            RoletError::SecretsNotRevealed
+        );
+        // Defense in depth: pair each revealed secret with the commit hash
+        // recorded in the lobby at open_lobby / join_lobby. Even if a future
+        // code path ever wrote host_secret/guest_secret without verifying,
+        // init_match can never seed from an uncommitted secret.
+        // Commits are bound to (player, match_id) — see lobby_commitment.
+        let guest_key = lobby.guest.ok_or(RoletError::LobbyNotReady)?;
+        require!(
+            lobby_commitment(&lobby.host_secret, &lobby.host, lobby.match_id)
+                == lobby.host_commit,
             RoletError::InvalidReveal
         );
         require!(
-            keccak::hash(&player_two_secret).0 == player_two_commit,
+            lobby_commitment(&lobby.guest_secret, &guest_key, lobby.match_id)
+                == lobby.guest_commit,
             RoletError::InvalidReveal
         );
 
         let clock = Clock::get()?;
-        let recent_slothash = ctx.accounts.slot_hashes.data.borrow();
-        let mut slot_entropy = [0u8; 32];
-        slot_entropy.copy_from_slice(&recent_slothash[16..48]);
+        require!(clock.slot > lobby.seed_slot, RoletError::SeedSlotNotReached);
+        let slot_entropy = {
+            let data = ctx.accounts.slot_hashes.try_borrow_data()?;
+            find_seed_slot_hash(&data, lobby.seed_slot)?
+        };
 
         let seed = keccak::hashv(&[
-            &player_one_secret,
-            &player_two_secret,
+            &lobby.host_secret,
+            &lobby.guest_secret,
             &slot_entropy,
             &match_id.to_le_bytes(),
-            &clock.unix_timestamp.to_le_bytes(),
         ])
         .0;
+        lobby.launched = true;
 
         let m = &mut ctx.accounts.match_state;
         m.match_id = match_id;
@@ -334,7 +360,7 @@ pub mod rolet {
     }
 
     // --------------------------------------------------------
-    // PULL_TRIGGER — Russian Roulette core mechanic
+    // PULL_TRIGGER — tactical chamber duel core mechanic
     // --------------------------------------------------------
     pub fn pull_trigger(ctx: Context<PullTrigger>, target_self: bool) -> Result<()> {
         let signer = ctx.accounts.actor.key();
@@ -791,23 +817,29 @@ pub mod rolet {
         lobby.guest = None;
         lobby.guest_commit = [0u8; 32];
         lobby.guest_secret = [0u8; 32];
+        lobby.host_secret = [0u8; 32];
+        lobby.host_revealed = false;
+        lobby.guest_revealed = false;
+        lobby.seed_slot = 0;
+        lobby.launched = false;
         lobby.bump = ctx.bumps.lobby;
         emit!(LobbyOpened { match_id, host: lobby.host });
         Ok(())
     }
 
     // --------------------------------------------------------
-    // JOIN_LOBBY — guest fills the second seat
+    // JOIN_LOBBY — guest fills the second seat. Only the COMMIT is stored;
+    // the secret is revealed later via reveal_secret.
     // --------------------------------------------------------
-    pub fn join_lobby(
-        ctx: Context<JoinLobby>,
-        guest_commit: [u8; 32],
-        guest_secret: [u8; 32],
-    ) -> Result<()> {
+    pub fn join_lobby(ctx: Context<JoinLobby>, guest_commit: [u8; 32]) -> Result<()> {
+        let lobby = &mut ctx.accounts.lobby;
+        require!(lobby.guest.is_none(), RoletError::LobbyFull);
+        require!(!lobby.launched, RoletError::LobbyAlreadyLaunched);
         require!(
-            keccak::hash(&guest_secret).0 == guest_commit,
-            RoletError::InvalidReveal
+            ctx.accounts.guest.key() != lobby.host,
+            RoletError::CannotSelfMatch
         );
+
         let guest_profile = &mut ctx.accounts.guest_profile;
         require!(
             guest_profile.durability_remaining > 0,
@@ -815,15 +847,15 @@ pub mod rolet {
         );
         guest_profile.durability_remaining = guest_profile.durability_remaining - 1;
 
-        let lobby = &mut ctx.accounts.lobby;
-        require!(lobby.guest.is_none(), RoletError::LobbyFull);
-        require!(
-            ctx.accounts.guest.key() != lobby.host,
-            RoletError::CannotSelfMatch
-        );
+        // RISK-B defense in depth: a commit can never be copied verbatim.
+        // (The binding of player + match_id into the preimage already makes a
+        // copied commit unrevealable; this rejects it up front.)
+        require!(guest_commit != lobby.host_commit, RoletError::DuplicateCommit);
+
         lobby.guest = Some(ctx.accounts.guest.key());
         lobby.guest_commit = guest_commit;
-        lobby.guest_secret = guest_secret;
+        lobby.guest_secret = [0u8; 32];
+        lobby.guest_revealed = false;
         emit!(LobbyReady {
             match_id: lobby.match_id,
             host: lobby.host,
@@ -833,9 +865,148 @@ pub mod rolet {
     }
 
     // --------------------------------------------------------
-    // CLOSE_LOBBY — host reclaims rent after match is launched
+    // REVEAL_SECRET — host or guest reveals their committed secret once
+    // both commits are locked. When the second secret lands, the entropy
+    // slot is pinned to a future slot (unknown to everyone at that time).
     // --------------------------------------------------------
-    pub fn close_lobby(_ctx: Context<CloseLobby>) -> Result<()> {
+    pub fn reveal_secret(ctx: Context<RevealSecret>, secret: [u8; 32]) -> Result<()> {
+        let lobby = &mut ctx.accounts.lobby;
+        require!(!lobby.launched, RoletError::LobbyAlreadyLaunched);
+        let guest = lobby.guest.ok_or(RoletError::LobbyNotReady)?;
+        let player = ctx.accounts.player.key();
+        // RISK-B: the preimage binds the revealing player and this match_id,
+        // so a commit/secret copied from the other seat or another lobby
+        // never verifies.
+        let hashed = lobby_commitment(&secret, &player, lobby.match_id);
+
+        if player == lobby.host {
+            require!(!lobby.host_revealed, RoletError::AlreadyRevealed);
+            require!(hashed == lobby.host_commit, RoletError::InvalidReveal);
+            lobby.host_secret = secret;
+            lobby.host_revealed = true;
+        } else if player == guest {
+            require!(!lobby.guest_revealed, RoletError::AlreadyRevealed);
+            require!(hashed == lobby.guest_commit, RoletError::InvalidReveal);
+            lobby.guest_secret = secret;
+            lobby.guest_revealed = true;
+        } else {
+            return err!(RoletError::NotAParticipant);
+        }
+
+        if lobby.host_revealed && lobby.guest_revealed {
+            let slot = Clock::get()?.slot;
+            lobby.seed_slot = slot.saturating_add(SEED_DELAY_SLOTS);
+        }
+        emit!(SecretRevealed {
+            match_id: lobby.match_id,
+            player,
+            seed_slot: lobby.seed_slot,
+        });
+        Ok(())
+    }
+
+    // --------------------------------------------------------
+    // CLOSE_LOBBY — host cancels or reclaims rent.
+    // * No guest yet              -> host durability refunded (+1).
+    // * Guest joined, <2 reveals  -> both durabilities refunded (+1 each);
+    //                                guest_profile must be supplied.
+    // * Both revealed, not launched (RISK-A): the outcome becomes computable
+    //   once seed_slot is produced, so a refund would be a free re-roll.
+    //     - within seed_slot + LAUNCH_WINDOW_SLOTS -> REJECTED; launch it
+    //       (host or guest can call init_match).
+    //     - after the window (seed hash expired)   -> rent reclaim only,
+    //       NO durability refund for either side.
+    // * Match launched            -> rent reclaim only, no refund.
+    // --------------------------------------------------------
+    pub fn close_lobby(ctx: Context<CloseLobby>) -> Result<()> {
+        let lobby = &ctx.accounts.lobby;
+        if lobby.launched {
+            emit!(LobbyClosed {
+                match_id: lobby.match_id,
+                host: lobby.host,
+                refunded: false,
+            });
+            return Ok(());
+        }
+
+        if lobby.host_revealed && lobby.guest_revealed {
+            let slot = Clock::get()?.slot;
+            require!(
+                slot > lobby.seed_slot.saturating_add(LAUNCH_WINDOW_SLOTS),
+                RoletError::LobbyMustLaunch
+            );
+            emit!(LobbyClosed {
+                match_id: lobby.match_id,
+                host: lobby.host,
+                refunded: false,
+            });
+            return Ok(());
+        }
+
+        let host_profile = &mut ctx.accounts.host_profile;
+        host_profile.durability_remaining = host_profile
+            .durability_remaining
+            .saturating_add(1)
+            .min(host_profile.durability_max);
+
+        if let Some(guest) = lobby.guest {
+            let guest_profile = ctx
+                .accounts
+                .guest_profile
+                .as_mut()
+                .ok_or(RoletError::GuestProfileRequired)?;
+            require!(
+                guest_profile.authority == guest,
+                RoletError::ProfileMismatch
+            );
+            guest_profile.durability_remaining = guest_profile
+                .durability_remaining
+                .saturating_add(1)
+                .min(guest_profile.durability_max);
+        }
+
+        emit!(LobbyClosed {
+            match_id: lobby.match_id,
+            host: lobby.host,
+            refunded: true,
+        });
+        Ok(())
+    }
+
+    // --------------------------------------------------------
+    // CLAIM_TIMEOUT — if the player on turn stalls for more than
+    // TURN_TIMEOUT_SLOTS (L1 slots), the waiting player wins by forfeit.
+    // Afterwards settle_match works as usual.
+    // --------------------------------------------------------
+    pub fn claim_timeout(ctx: Context<ClaimTimeout>) -> Result<()> {
+        let claimant = ctx.accounts.claimant.key();
+        let m = &mut ctx.accounts.match_state;
+        require!(m.status == MatchStatus::Active, RoletError::MatchNotActive);
+        require!(
+            claimant == m.player_one || claimant == m.player_two,
+            RoletError::NotAParticipant
+        );
+        require!(claimant != m.current_turn, RoletError::CannotClaimOwnTimeout);
+        let slot = Clock::get()?.slot;
+        require!(
+            slot > m.last_action_slot.saturating_add(TURN_TIMEOUT_SLOTS),
+            RoletError::TimeoutNotReached
+        );
+
+        let staller = m.current_turn;
+        if staller == m.player_one {
+            m.player_one_hp = 0;
+        } else {
+            m.player_two_hp = 0;
+        }
+        m.status = MatchStatus::Completed;
+        m.winner = Some(claimant);
+        m.last_action_slot = slot;
+        emit!(MatchForfeited {
+            match_id: m.match_id,
+            winner: claimant,
+            staller,
+        });
         Ok(())
     }
 }
@@ -892,6 +1063,41 @@ fn resolve_actor(
         }
     }
     err!(RoletError::UnauthorizedActor)
+}
+
+/// Returns the hash of the first produced slot at or after `seed_slot` from
+/// the raw SlotHashes sysvar data (entries are sorted newest -> oldest:
+/// u64 len, then [slot u64 LE, hash 32] * len). Skipped slots are handled by
+/// taking the earliest entry >= seed_slot; if the window no longer proves
+/// which entry that is (sysvar keeps ~512 slots), the seed has expired.
+/// Commitment preimage: keccak256(secret || player_pubkey || match_id_le).
+/// Binding the player and match makes a commit non-transferable between
+/// seats and lobbies (RISK-B). Client (useRolet.ts) must hash identically.
+pub fn lobby_commitment(secret: &[u8; 32], player: &Pubkey, match_id: u64) -> [u8; 32] {
+    keccak::hashv(&[secret.as_ref(), player.as_ref(), &match_id.to_le_bytes()]).0
+}
+
+fn find_seed_slot_hash(data: &[u8], seed_slot: u64) -> Result<[u8; 32]> {
+    require!(data.len() >= 8, RoletError::SeedSlotExpired);
+    let len = u64::from_le_bytes(data[0..8].try_into().unwrap()) as usize;
+    let mut candidate: Option<[u8; 32]> = None;
+    for i in 0..len {
+        let off = 8 + i * 40;
+        if off + 40 > data.len() {
+            break;
+        }
+        let slot = u64::from_le_bytes(data[off..off + 8].try_into().unwrap());
+        if slot >= seed_slot {
+            let mut h = [0u8; 32];
+            h.copy_from_slice(&data[off + 8..off + 40]);
+            candidate = Some(h);
+        } else {
+            // First entry older than seed_slot: candidate is the earliest
+            // produced slot at or after seed_slot.
+            return candidate.ok_or(error!(RoletError::SeedSlotNotReached));
+        }
+    }
+    err!(RoletError::SeedSlotExpired)
 }
 
 // ============================================================
@@ -1018,7 +1224,16 @@ pub struct LobbyState {
     pub host_commit: [u8; 32],
     pub guest: Option<Pubkey>,
     pub guest_commit: [u8; 32],
+    /// Zero until the guest calls reveal_secret (never set at join).
     pub guest_secret: [u8; 32],
+    /// Zero until the host calls reveal_secret.
+    pub host_secret: [u8; 32],
+    pub host_revealed: bool,
+    pub guest_revealed: bool,
+    /// Pinned future slot whose hash seeds the match (set on final reveal).
+    pub seed_slot: u64,
+    /// True once init_match has created the MatchState for this lobby.
+    pub launched: bool,
     pub bump: u8,
 }
 
@@ -1114,11 +1329,26 @@ pub struct InitMatch<'info> {
         bump,
     )]
     pub match_state: Box<Account<'info, MatchState>>,
-    /// CHECK: pubkey only — signature verified at lobby join
+    #[account(
+        mut,
+        seeds = [b"lobby", match_id.to_le_bytes().as_ref()],
+        bump = lobby.bump,
+        constraint = lobby.match_id == match_id @ RoletError::LobbyMismatch,
+    )]
+    pub lobby: Box<Account<'info, LobbyState>>,
+    /// CHECK: must equal lobby.host (host signed open_lobby)
+    #[account(address = lobby.host @ RoletError::LobbyMismatch)]
     pub player_one: UncheckedAccount<'info>,
-    /// CHECK: pubkey only — signature verified at lobby join
+    /// CHECK: must equal lobby.guest (guest signed join_lobby)
+    #[account(
+        constraint = lobby.guest == Some(player_two.key()) @ RoletError::LobbyMismatch,
+    )]
     pub player_two: UncheckedAccount<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = payer.key() == lobby.host || lobby.guest == Some(payer.key())
+            @ RoletError::NotAParticipant,
+    )]
     pub payer: Signer<'info>,
     /// CHECK: SlotHashes sysvar — read-only, address-validated
     #[account(address = anchor_lang::solana_program::sysvar::slot_hashes::ID)]
@@ -1361,8 +1591,45 @@ pub struct CloseLobby<'info> {
         close = host,
     )]
     pub lobby: Account<'info, LobbyState>,
+    #[account(
+        mut,
+        seeds = [b"profile", host.key().as_ref()],
+        bump = host_profile.bump,
+        constraint = host_profile.authority == host.key() @ RoletError::ProfileMismatch,
+    )]
+    pub host_profile: Box<Account<'info, PlayerProfile>>,
+    /// Required only when a guest joined but the match was never launched
+    /// (refunds the guest's durability too). Authority checked in handler.
+    #[account(
+        mut,
+        seeds = [b"profile", guest_profile.authority.as_ref()],
+        bump = guest_profile.bump,
+    )]
+    pub guest_profile: Option<Box<Account<'info, PlayerProfile>>>,
     #[account(mut)]
     pub host: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct RevealSecret<'info> {
+    #[account(
+        mut,
+        seeds = [b"lobby", lobby.match_id.to_le_bytes().as_ref()],
+        bump = lobby.bump,
+    )]
+    pub lobby: Box<Account<'info, LobbyState>>,
+    pub player: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct ClaimTimeout<'info> {
+    #[account(
+        mut,
+        seeds = [b"match", match_state.match_id.to_le_bytes().as_ref()],
+        bump = match_state.bump,
+    )]
+    pub match_state: Box<Account<'info, MatchState>>,
+    pub claimant: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -1473,6 +1740,28 @@ pub struct LobbyOpened {
 }
 
 #[event]
+pub struct SecretRevealed {
+    pub match_id: u64,
+    pub player: Pubkey,
+    /// 0 until both secrets are revealed.
+    pub seed_slot: u64,
+}
+
+#[event]
+pub struct LobbyClosed {
+    pub match_id: u64,
+    pub host: Pubkey,
+    pub refunded: bool,
+}
+
+#[event]
+pub struct MatchForfeited {
+    pub match_id: u64,
+    pub winner: Pubkey,
+    pub staller: Pubkey,
+}
+
+#[event]
 pub struct LobbyReady {
     pub match_id: u64,
     pub host: Pubkey,
@@ -1550,4 +1839,28 @@ pub enum RoletError {
     NoDurability,
     #[msg("Purchase amount must be exactly the configured character price")]
     InvalidPurchaseAmount,
+    #[msg("Lobby already launched a match")]
+    LobbyAlreadyLaunched,
+    #[msg("Lobby has no guest yet")]
+    LobbyNotReady,
+    #[msg("Both players must reveal their secrets first")]
+    SecretsNotRevealed,
+    #[msg("Secret already revealed")]
+    AlreadyRevealed,
+    #[msg("Seed slot has not been produced yet; retry in a moment")]
+    SeedSlotNotReached,
+    #[msg("Seed slot fell out of the SlotHashes window; close the lobby and retry")]
+    SeedSlotExpired,
+    #[msg("Account does not match the lobby record")]
+    LobbyMismatch,
+    #[msg("Guest profile must be supplied to refund a joined lobby")]
+    GuestProfileRequired,
+    #[msg("The player on turn cannot claim their own timeout")]
+    CannotClaimOwnTimeout,
+    #[msg("Turn timeout has not elapsed yet")]
+    TimeoutNotReached,
+    #[msg("Both secrets revealed — the match must be launched (init_match), not closed")]
+    LobbyMustLaunch,
+    #[msg("Guest commit must differ from the host commit")]
+    DuplicateCommit,
 }

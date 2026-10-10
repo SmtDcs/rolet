@@ -199,96 +199,99 @@ export function DuelArenaDiegetic3D({
     <div className="relative w-full h-full select-none overflow-hidden bg-[#070605]">
       {/* Three.js Canvas Scene */}
       <Canvas
-        camera={{ position: [0, 0.48, 1.38], fov: 48 }}
+        camera={{ position: [0, 0.62, 1.25], fov: 46 }}
         dpr={[1, 1.5]}
-        shadows
+        gl={{ antialias: true, alpha: true }}
         className="w-full h-full"
       >
-        {/* Occult Room Atmosphere & Fog */}
-        <color attach="background" args={["#070605"]} />
-        <fogExp2 attach="fog" args={["#070605", 0.42]} />
+        <Suspense fallback={null}>
+          {/* Atmosphere & Subtle Depth Fog */}
+          <color attach="background" args={["#0a0e1c"]} />
+          <fogExp2 attach="fog" args={["#0a0e1c", 0.08]} />
 
-        {/* Lighting Setup */}
-        <ambientLight intensity={0.35} />
-        <SwingingBulb />
+          {/* Global Lighting Setup */}
+          <ambientLight intensity={1.1} />
+          <directionalLight position={[0, 3.5, 1.2]} intensity={2.0} color="#fff8ee" />
+          <SwingingBulb />
 
-        {/* Warm candle sidelights */}
-        <pointLight position={[-1.2, 0.4, 0]} intensity={4} color="#ff9e42" distance={2.5} />
-        <pointLight position={[1.2, 0.4, 0]} intensity={4} color="#ff9e42" distance={2.5} />
+          {/* Warm candle sidelights */}
+          <pointLight position={[-1.0, 0.5, 0.2]} intensity={5} color="#ff9e42" distance={3} />
+          <pointLight position={[1.0, 0.5, 0.2]} intensity={5} color="#38bdf8" distance={3} />
 
-        {/* Moody red back rim on opponent */}
-        <pointLight position={[0, 1.0, -1.8]} intensity={6} color="#8c2727" distance={3} />
+          {/* Moody red back rim on opponent */}
+          <pointLight position={[0, 1.2, -1.6]} intensity={8} color="#e63946" distance={3.5} />
 
-        {/* Duel Table */}
-        <Suspense fallback={<ProceduralTableMesh />}>
-          <LoadedTableGLTF />
+          {/* Duel Table */}
+          <Suspense fallback={<ProceduralTableMesh />}>
+            <LoadedTableGLTF />
+          </Suspense>
+
+          {/* Opponent Figure */}
+          <OpponentFigure />
+
+          {/* Diegetic Elements Placed on Table Felt */}
+          {/* 1. Life Monitor Box on Table (Vitality Counter Box) */}
+          <DiegeticLifeCounterBox
+            playerHp={playerHp}
+            opponentHp={opponentHp}
+            maxHp={3}
+            position={[-0.48, 0.08, 0.2]}
+            rotation={[0, 0.35, 0]}
+          />
+
+          {/* 2. Ambient Candle Light on far table */}
+          <DiegeticCandleHP
+            hp={Math.max(1, opponentHp)}
+            maxHp={3}
+            position={[-0.58, 0.08, -0.45]}
+            rotation={[0, -0.2, 0]}
+          />
+
+          {/* 3. Ammo Tray (near right) */}
+          <DiegeticAmmoTray
+            liveCount={liveCount}
+            blankCount={blankCount}
+            position={[0.52, 0.08, 0.3]}
+            rotation={[0, -0.25, 0]}
+          />
+
+          {/* 4. Turn Indicator Coin (table center) */}
+          <DiegeticTurnCoin
+            isYourTurn={isYourTurn}
+            position={[0, 0.08, 0]}
+          />
+
+          {/* 5. Duelist Nameplates on table rims */}
+          <NameplateSNS
+            name={playerPubkey}
+            position={[0, 0.08, 0.68]}
+            rotation={[-0.3, 0, 0]}
+            isCurrentTurn={isYourTurn}
+          />
+          <NameplateSNS
+            name={opponentPubkey}
+            position={[0, 0.08, -0.68]}
+            rotation={[0.3, Math.PI, 0]}
+            isCurrentTurn={!isYourTurn}
+          />
+
+          {/* 6. Diegetic Tarot Hand */}
+          <DiegeticCardHand
+            cards={cards}
+            selectedCardIndex={selectedCardIndex}
+            onSelectCard={onSelectCard}
+            disabled={!isYourTurn || disabled}
+            position={[0, 0.08, 0.48]}
+          />
+
+          {/* 7. Diegetic First-Person Revolver */}
+          <DiegeticRevolver
+            isYourTurn={isYourTurn}
+            gunHeld={gunHeld}
+            target={target}
+            firing={firing}
+          />
         </Suspense>
-
-        {/* Opponent Figure */}
-        <OpponentFigure />
-
-        {/* Diegetic Elements Placed on Table Felt */}
-        {/* 1. Life Monitor Box on Table (Vitality Counter Box) */}
-        <DiegeticLifeCounterBox
-          playerHp={playerHp}
-          opponentHp={opponentHp}
-          maxHp={3}
-          position={[-0.48, 0.08, 0.2]}
-          rotation={[0, 0.35, 0]}
-        />
-
-        {/* 2. Ambient Candle Light on far table */}
-        <DiegeticCandleHP
-          hp={Math.max(1, opponentHp)}
-          maxHp={3}
-          position={[-0.58, 0.08, -0.45]}
-          rotation={[0, -0.2, 0]}
-        />
-
-        {/* 3. Ammo Tray (near right) */}
-        <DiegeticAmmoTray
-          liveCount={liveCount}
-          blankCount={blankCount}
-          position={[0.52, 0.08, 0.3]}
-          rotation={[0, -0.25, 0]}
-        />
-
-        {/* 4. Turn Indicator Coin (table center) */}
-        <DiegeticTurnCoin
-          isYourTurn={isYourTurn}
-          position={[0, 0.08, 0]}
-        />
-
-        {/* 5. Duelist Nameplates on table rims */}
-        <NameplateSNS
-          name={playerPubkey}
-          position={[0, 0.08, 0.68]}
-          rotation={[-0.3, 0, 0]}
-          isCurrentTurn={isYourTurn}
-        />
-        <NameplateSNS
-          name={opponentPubkey}
-          position={[0, 0.08, -0.68]}
-          rotation={[0.3, Math.PI, 0]}
-          isCurrentTurn={!isYourTurn}
-        />
-
-        {/* 6. Diegetic Tarot Hand */}
-        <DiegeticCardHand
-          cards={cards}
-          selectedCardIndex={selectedCardIndex}
-          onSelectCard={onSelectCard}
-          disabled={!isYourTurn || disabled}
-          position={[0, 0.08, 0.48]}
-        />
-
-        {/* 7. Diegetic First-Person Revolver */}
-        <DiegeticRevolver
-          isYourTurn={isYourTurn}
-          gunHeld={gunHeld}
-          target={target}
-          firing={firing}
-        />
       </Canvas>
 
       {/* Diegetic Action Controls Overlay (Zero 2D HUD clutter — only physical triggers) */}

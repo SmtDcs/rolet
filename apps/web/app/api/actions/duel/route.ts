@@ -24,20 +24,20 @@ export async function GET(req: NextRequest) {
     icon: `${baseUrl}/favicon.ico`,
     title: "ROLET — Tactical PvP Duel Protocol on Solana",
     description:
-      "Enter tactical turn-based chamber duels on Solana Devnet. Powered by Metaplex Core NFTs, MagicBlock Ephemeral Rollups, and provably fair commit-reveal randomness.",
+      "Enter tactical turn-based chamber duels on Solana Devnet. Powered by Metaplex Core NFTs, session-key gameplay, and provably fair commit-reveal randomness.",
     label: "Duel Now",
     links: {
       actions: [
         {
-          label: "⚡ Quick Match (Join Table)",
+          label: "Join Quick Match",
           href: `${baseUrl}/api/actions/duel?action=quickmatch`,
         },
         {
-          label: "🎲 Host Match (0.1 SOL)",
+          label: "Host Match 0.1 SOL",
           href: `${baseUrl}/api/actions/duel?action=host`,
         },
         {
-          label: "📜 Mint Character NFT (1 SOL)",
+          label: "Mint Character NFT",
           href: `${baseUrl}/api/actions/duel?action=mint`,
         },
       ],
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       recentBlockhash: blockhash,
     });
 
-    let message = "Joining ROLET Underground Duel...";
+    let message = "Joining ROLET Tactical Duel...";
 
     if (action === "host" || action === "mint") {
       // Program treasury vault memo / deposit transaction
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
           lamports: 0,
         })
       );
-      message = action === "mint" ? "Minting Occult Duelist NFT..." : "Hosting ROLET table on-chain...";
+      message = action === "mint" ? "Minting Duelist Character NFT..." : "Hosting ROLET duel lobby on-chain...";
     } else {
       transaction.add(
         SystemProgram.transfer({
