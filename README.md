@@ -1,3 +1,5 @@
+> **AI / CLI oturumları: önce [`docs/CLI_HANDOFF.md`](docs/CLI_HANDOFF.md) dosyasını okuyun** — proje durumu, ekonomi, mimari, sıradaki iş ve yasaklar orada.
+
 # ROLET
 
 <p align="center">
