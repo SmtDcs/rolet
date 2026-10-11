@@ -242,8 +242,7 @@
         {
           "name": "payer",
           "docs": [
-            "Wallet of the participant. The delegation CPI needs a real signer, so",
-            "this one step cannot use a session key."
+            "Pays the delegation rent. The session key when one is armed."
           ],
           "writable": true,
           "signer": true
@@ -400,6 +399,35 @@
               }
             ]
           }
+        },
+        {
+          "name": "launcher_profile",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Wallet of the participant. Seeds and the participant check only."
+          ]
         },
         {
           "name": "owner_program",

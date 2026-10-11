@@ -1034,12 +1034,18 @@ pub mod rolet {
     /// The account must stay untyped: ownership moves to the delegation program
     /// before Anchor would write it back.
     pub fn delegate_match(ctx: Context<DelegateMatch>, match_id: u64) -> Result<()> {
+        resolve_actor(
+            ctx.accounts.payer.key(),
+            &ctx.accounts.launcher_profile,
+            ctx.accounts.authority.key(),
+            Clock::get()?.unix_timestamp,
+        )?;
         let state = read_match_state(&ctx.accounts.match_state.to_account_info())?;
         require!(state.match_id == match_id, RoletError::LobbyMismatch);
         require!(state.status == MatchStatus::Active, RoletError::MatchNotActive);
         require!(
-            ctx.accounts.payer.key() == state.player_one
-                || ctx.accounts.payer.key() == state.player_two,
+            ctx.accounts.authority.key() == state.player_one
+                || ctx.accounts.authority.key() == state.player_two,
             RoletError::NotAParticipant
         );
         let match_id_le = match_id.to_le_bytes();
@@ -1450,8 +1456,7 @@ pub struct InitMatch<'info> {
 #[derive(Accounts)]
 #[instruction(match_id: u64)]
 pub struct DelegateMatch<'info> {
-    /// Wallet of the participant. The delegation CPI needs a real signer, so
-    /// this one step cannot use a session key.
+    /// Pays the delegation rent. The session key when one is armed.
     #[account(mut)]
     pub payer: Signer<'info>,
     /// CHECK: match PDA. Untyped because delegation changes its owner.
@@ -1462,6 +1467,14 @@ pub struct DelegateMatch<'info> {
         bump,
     )]
     pub match_state: UncheckedAccount<'info>,
+    #[account(
+        seeds = [b"profile", authority.key().as_ref()],
+        bump = launcher_profile.bump,
+        constraint = launcher_profile.authority == authority.key() @ RoletError::ProfileMismatch,
+    )]
+    pub launcher_profile: Box<Account<'info, PlayerProfile>>,
+    /// Wallet of the participant. Seeds and the participant check only.
+    pub authority: SystemAccount<'info>,
 }
 
 #[commit]

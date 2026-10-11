@@ -509,11 +509,13 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
           [Buffer.from("delegation-metadata"), matchState.toBuffer()],
           DELEGATION_PROGRAM_ID
         );
-        const sig = await programL1.methods
+        const ix = await programL1.methods
           .delegateMatch(matchId)
           .accounts({
-            payer: wallet.publicKey,
+            payer: activeSigner,
             matchState,
+            launcherProfile: profilePda(wallet.publicKey),
+            authority: wallet.publicKey,
             bufferMatchState,
             delegationRecordMatchState,
             delegationMetadataMatchState,
@@ -521,7 +523,8 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
             delegationProgram: DELEGATION_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
           } as never)
-          .rpc({ commitment: "confirmed" });
+          .instruction();
+        const sig = await sendAsPlayer(new Transaction().add(ix));
         emitToast("success", `Match delegated · ${sig.slice(0, 6)}…`);
         return sig;
       } catch (err) {
@@ -532,7 +535,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet.publicKey]
+    [programL1, wallet.publicKey, activeSigner, sendAsPlayer]
   );
 
   const commitAndUndelegateMatch = useCallback(
@@ -963,17 +966,12 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
             vault: vaultPda(),
             treasurySol,
             winner: winnerPk,
-            rentRefund: wallet.publicKey,
+            rentRefund: activeSigner,
             systemProgram: SystemProgram.programId,
           } as never)
           .instruction();
 
-        const tx = new Transaction().add(settleIx);
-        tx.feePayer = wallet.publicKey;
-        tx.recentBlockhash = (await l1Connection.getLatestBlockhash()).blockhash;
-        const signed = await wallet.signTransaction(tx);
-        const sig = await l1Connection.sendRawTransaction(signed.serialize());
-        await l1Connection.confirmTransaction(sig, "confirmed");
+        const sig = await sendAsPlayer(new Transaction().add(settleIx));
         emitToast("success", `Match settled · ${sig.slice(0, 6)}…`);
         return sig;
       } catch (err) {
@@ -992,7 +990,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet, l1Connection]
+    [programL1, wallet, l1Connection, activeSigner, sendAsPlayer]
   );
 
   const openLobby = useCallback(
