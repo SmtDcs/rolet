@@ -4,218 +4,193 @@
    Tailwind v4 design tokens — exposed under @theme so animations
    become utility classes (animate-noise, animate-flicker, …).
    ────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────
+   Tactical Telemetry substrate.
+   Deactivated CRT, never pure black. Phosphor text scale. One
+   accent (brass). Red and green are reserved for live state.
+   No gradients, no blur, no soft shadow, no border-radius.
+   ────────────────────────────────────────────────────────────── */
 @theme {
-  --color-background: #060919;
-  --color-foreground: #e2e8f0;
+  --color-void: #0a0a0a;
+  --color-surface: #121212;
+  --color-surface-2: #1a1a1a;
+  --color-surface-3: #222222;
+  --color-line: #2a2a2a;
+  --color-line-strong: #3a3a3a;
 
-  --color-obsidian: #080c1e;
-  --color-mahogany: #101935;
-  --color-felt: #0c2340;
-  --color-brass: #f59e0b;
-  --color-brass-light: #fbbf24;
-  --color-brass-dark: #b45309;
-  --color-crimson: #0284c7;
-  --color-crimson-bright: #38bdf8;
-  --color-parchment: #e2e8f0;
-  --color-parchment-dim: #94a3b8;
+  --color-phosphor: #eaeaea;
+  --color-phosphor-dim: #9a9a9a;
+  --color-phosphor-faint: #5c5c5c;
+
+  --color-brass: #c6a15b;
+  --color-brass-dim: #8a703f;
+  --color-brass-bright: #e5c378;
+
+  /* Reserved: live damage and failure only. */
+  --color-alert: #e61919;
+  --color-patina: #52c41a;
+
+  /* Legacy aliases — pages still read these while they migrate (A2–A5). */
+  --color-background: var(--color-void);
+  --color-foreground: var(--color-phosphor);
 
   --font-serif: var(--font-cormorant), Georgia, serif;
   --font-display: var(--font-big-shoulders), sans-serif;
   --font-sans: var(--font-inter), sans-serif;
   --font-mono: var(--font-mono), monospace;
-  --font-cinzel: var(--font-cormorant), Georgia, serif;
-  --font-cinzel-dec: var(--font-cormorant), Georgia, serif;
 
-  --animate-noise: rolet-noise 0.6s steps(4) infinite;
-  --animate-flicker: rolet-flicker 4.2s infinite;
-  --animate-candle: rolet-candle-flicker 3s ease-in-out infinite;
-  --animate-blood: rolet-pulse-blood 2.4s ease-in-out infinite;
-  --animate-gold-glow: rolet-gold-pulse 3s ease-in-out infinite;
-  --animate-title: rolet-title-shake 5.5s infinite;
-  --animate-float: rolet-float 3.2s ease-in-out infinite;
-  --animate-float-slow: rolet-float 4.8s ease-in-out infinite;
-  --animate-float-player: rolet-float 3.8s ease-in-out 0.6s infinite;
+  /* Motion, four purposes only. See the rules block below. */
+  --animate-marquee: rolet-marquee 600s linear infinite;
+  --animate-marquee-reverse: rolet-marquee-reverse 600s linear infinite;
+  --animate-attention: rolet-attention 8s linear infinite;
+  --animate-waiting: rolet-waiting 2s ease-in-out infinite;
+
+  /* Functional game feedback — one-shot, not decoration. */
   --animate-shake: rolet-shake 0.45s ease-in-out;
+  --animate-jolt: rolet-jolt 0.5s ease-in-out;
+  --animate-recoil: rolet-recoil 0.4s ease-out;
+  --animate-muzzle: rolet-muzzle 0.35s ease-out;
   --animate-scan-line: rolet-scan-line 3s linear infinite;
-  --animate-red-alert: rolet-red-alert 0.6s ease-in-out infinite;
   --animate-grain: rolet-grain 0.8s steps(8) infinite;
-  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Axie Infinity Signature 3D Tactile Buttons & Badges */
-@utility btn-axie-orange {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, #ff9f1c 0%, #f77f00 48%, #d65000 100%);
-  border-top: 2px solid rgba(255, 255, 255, 0.5);
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  border-right: 1px solid rgba(0, 0, 0, 0.25);
-  box-shadow: 0 6px 0 #8f2d00, 0 12px 24px rgba(247, 127, 0, 0.45);
-  border-radius: 9999px;
-  color: #ffffff;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
-  user-select: none;
-  &:hover {
-    transform: translateY(2px);
-    box-shadow: 0 4px 0 #8f2d00, 0 8px 18px rgba(247, 127, 0, 0.55);
-    filter: brightness(1.05);
-  }
-  &:active {
-    transform: translateY(6px);
-    box-shadow: 0 0 0 #8f2d00, 0 2px 8px rgba(247, 127, 0, 0.4);
-  }
-}
-
-@utility btn-axie-blue {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, #00b4d8 0%, #0077b6 50%, #023e8a 100%);
-  border-top: 2px solid rgba(255, 255, 255, 0.5);
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  border-right: 1px solid rgba(0, 0, 0, 0.25);
-  box-shadow: 0 6px 0 #001845, 0 12px 24px rgba(0, 119, 182, 0.45);
-  border-radius: 9999px;
-  color: #ffffff;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
-  user-select: none;
-  &:hover {
-    transform: translateY(2px);
-    box-shadow: 0 4px 0 #001845, 0 8px 18px rgba(0, 119, 182, 0.55);
-    filter: brightness(1.05);
-  }
-  &:active {
-    transform: translateY(6px);
-    box-shadow: 0 0 0 #001845, 0 2px 8px rgba(0, 119, 182, 0.4);
-  }
-}
-
-@utility btn-axie-purple {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, #a855f7 0%, #7e22ce 50%, #581c87 100%);
-  border-top: 2px solid rgba(255, 255, 255, 0.45);
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 6px 0 #3b0764, 0 12px 24px rgba(126, 34, 206, 0.4);
-  border-radius: 9999px;
-  color: #ffffff;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
-  cursor: pointer;
-  user-select: none;
-  &:hover {
-    transform: translateY(2px);
-    box-shadow: 0 4px 0 #3b0764, 0 8px 16px rgba(126, 34, 206, 0.5);
-    filter: brightness(1.05);
-  }
-  &:active {
-    transform: translateY(6px);
-    box-shadow: 0 0 0 #3b0764, 0 2px 8px rgba(126, 34, 206, 0.3);
-  }
-}
-
-@utility btn-axie-glass {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(15, 23, 42, 0.75);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  box-shadow: 0 4px 0 rgba(7, 12, 26, 0.8), 0 8px 20px rgba(0, 0, 0, 0.5);
-  border-radius: 9999px;
-  color: #e2e8f0;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  backdrop-filter: blur(12px);
-  transition: all 0.12s ease-in-out;
-  cursor: pointer;
-  user-select: none;
-  &:hover {
-    background: rgba(30, 41, 70, 0.85);
-    border-color: rgba(56, 189, 248, 0.65);
-    transform: translateY(2px);
-    box-shadow: 0 2px 0 rgba(7, 12, 26, 0.8), 0 6px 14px rgba(56, 189, 248, 0.2);
-  }
-  &:active {
-    transform: translateY(4px);
-    box-shadow: none;
-  }
-}
-
-@utility axie-card {
-  background: linear-gradient(180deg, rgba(16, 26, 56, 0.85) 0%, rgba(10, 16, 36, 0.95) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  border-radius: 1.5rem;
-  backdrop-filter: blur(16px);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  &:hover {
-    border-color: rgba(56, 189, 248, 0.5);
-    box-shadow: 0 25px 50px -12px rgba(0, 150, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-    transform: translateY(-4px);
-  }
-}
-
-@utility axie-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: rgba(14, 28, 64, 0.85);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  color: #38bdf8;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
-}
-
 /* ──────────────────────────────────────────────────────────────
    Custom utilities — Tailwind v4 @utility syntax
    ────────────────────────────────────────────────────────────── */
 @utility text-bleed {
-  text-shadow:
-    0 0 1px rgba(255, 80, 80, 0.9),
-    2px 0 0 rgba(255, 0, 0, 0.45),
-    -2px 0 0 rgba(0, 200, 255, 0.35),
-    0 0 24px rgba(180, 0, 0, 0.55);
+  color: var(--color-alert);
 }
 
 @utility text-rust {
-  color: #6b4a30;
-  text-shadow: 0 1px 0 #1a0e07, 0 0 12px rgba(120, 60, 20, 0.25);
+  color: var(--color-brass-dim);
 }
 
 @utility border-rust {
-  border-color: #4a2f1a;
-}
-
-@utility text-gold-glow {
-  text-shadow: 0 0 12px rgba(198, 161, 91, 0.6), 0 0 24px rgba(198, 161, 91, 0.25);
+  border-color: color-mix(in oklab, var(--color-brass) 34%, transparent);
 }
 
 @utility border-brass-frame {
-  border: 1px solid rgba(198, 161, 91, 0.35);
-  box-shadow: inset 0 0 8px rgba(198, 161, 91, 0.1), 0 0 16px rgba(0, 0, 0, 0.7);
+  border: 1px solid color-mix(in oklab, var(--color-brass) 38%, transparent);
 }
 
-@utility bg-felt-pattern {
-  background-color: #152b1e;
-  background-image: radial-gradient(circle at center, rgba(35, 74, 52, 0.5) 0%, rgba(13, 26, 18, 0.95) 100%);
+/* ── Structural type ─────────────────────────────────────────── */
+
+/* Macro type: the only place large scale is allowed. */
+@utility macro {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  line-height: 0.9;
+  font-size: clamp(2.75rem, 7vw, 8rem);
+  color: var(--color-phosphor);
+}
+
+@utility macro-sm {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  font-size: clamp(1.75rem, 3.4vw, 3.25rem);
+  color: var(--color-phosphor);
+}
+
+/* Micro type: every label, readout, unit id and table header. */
+@utility label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-phosphor-dim);
+}
+
+@utility readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--color-phosphor);
+}
+
+/* ── Structure ───────────────────────────────────────────────── */
+
+/* Compartments, not cards. Square corners, hairline borders. */
+@utility panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+}
+
+@utility panel-2 {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line);
+}
+
+/* Full-width separator between operational units. */
+@utility rule {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+}
+
+/* ASCII corner framing used around section headers. */
+@utility frame {
+  position: relative;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--color-line);
+  &::before,
+  &::after {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    color: var(--color-brass-dim);
+    position: absolute;
+    text-transform: uppercase;
+  }
+  &::before {
+    content: attr(data-frame);
+    top: -0.6em;
+    left: 0.75rem;
+    background: var(--color-void);
+    padding: 0 0.4rem;
+  }
+}
+
+/* ── Controls ────────────────────────────────────────────────── */
+
+/* The only button shape. No gradient, no radius, no soft shadow. */
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1.15rem;
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-surface-2);
+  color: var(--color-phosphor);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transition: background-color 120ms linear, border-color 120ms linear, color 120ms linear;
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    background: var(--color-surface-3);
+    border-color: var(--color-brass-dim);
+  }
+  &:focus-visible {
+    outline: 1px solid var(--color-brass);
+    outline-offset: 2px;
+  }
+  &:disabled {
+    color: var(--color-phosphor-faint);
+    cursor: not-allowed;
+  }
+}
+
+@utility btn-primary {
+  border-color: var(--color-brass);
+  color: var(--color-brass-bright);
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -228,60 +203,6 @@
   60%  { transform: translate(-1%, 2%); }
   80%  { transform: translate(2%, 1%); }
   100% { transform: translate(0, 0); }
-}
-
-@keyframes rolet-flicker {
-  0%, 100% { opacity: 1; }
-  42%      { opacity: 0.92; }
-  43%      { opacity: 1; }
-  77%      { opacity: 0.86; }
-  78%      { opacity: 1; }
-}
-
-@keyframes rolet-pulse-blood {
-  0%, 100% {
-    box-shadow:
-      inset 0 0 24px rgba(120, 0, 0, 0.6),
-      0 0 36px rgba(180, 0, 0, 0.55),
-      0 0 80px rgba(120, 0, 0, 0.35);
-  }
-  50% {
-    box-shadow:
-      inset 0 0 36px rgba(180, 0, 0, 0.85),
-      0 0 64px rgba(220, 20, 20, 0.85),
-      0 0 140px rgba(180, 0, 0, 0.6);
-  }
-}
-
-@keyframes rolet-candle-flicker {
-  0%, 100% { opacity: 0.95; filter: drop-shadow(0 0 8px rgba(245, 175, 60, 0.7)); }
-  25%      { opacity: 0.82; filter: drop-shadow(0 0 4px rgba(220, 140, 40, 0.5)); }
-  50%      { opacity: 1;    filter: drop-shadow(0 0 12px rgba(255, 195, 80, 0.9)); }
-  75%      { opacity: 0.88; filter: drop-shadow(0 0 6px rgba(230, 150, 50, 0.6)); }
-}
-
-@keyframes rolet-gold-pulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(198, 161, 91, 0.25), inset 0 0 6px rgba(198, 161, 91, 0.15); }
-  50%      { box-shadow: 0 0 24px rgba(198, 161, 91, 0.6), inset 0 0 14px rgba(198, 161, 91, 0.35); }
-}
-
-@keyframes rolet-title-shake {
-  0%, 100% { transform: translate(0, 0) skewX(0); }
-  20%      { transform: translate(-1px, 1px) skewX(-0.4deg); }
-  40%      { transform: translate(1px, -1px) skewX(0.3deg); }
-  60%      { transform: translate(-1px, 0) skewX(-0.2deg); }
-  80%      { transform: translate(1px, 1px) skewX(0.4deg); }
-}
-
-@keyframes rolet-float {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  30%      { transform: translateY(-10px) rotate(0.4deg); }
-  70%      { transform: translateY(-6px) rotate(-0.3deg); }
-}
-
-@keyframes rolet-eye-glow {
-  0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 2px rgba(20,8,6,0.8)); }
-  50%      { opacity: 1;    filter: drop-shadow(0 0 6px rgba(180,40,20,0.6)); }
 }
 
 @keyframes rolet-shake {
@@ -321,6 +242,35 @@
   60%  { background-position: -3px -7px; }
   80%  { background-position: 7px 3px; }
   100% { background-position: 0 0; }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Motion — four purposes only.
+   1 brand rhythm (marquee), 2 attention (hero CTA border),
+   3 waiting (matchmaking), 4 game feedback (shake/jolt/recoil).
+   Nothing else. Reduced-motion turns 1-3 off entirely.
+   ────────────────────────────────────────────────────────────── */
+@keyframes rolet-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes rolet-marquee-reverse {
+  from { transform: translate3d(-50%, 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+
+/* A single travelling highlight on the primary call to action. */
+@keyframes rolet-attention {
+  0%, 92%, 100% { border-color: var(--color-brass); }
+  94%           { border-color: var(--color-brass-bright); }
+  97%           { border-color: var(--color-brass-dim); }
+}
+
+/* One blinking block while the client waits on the chain. */
+@keyframes rolet-waiting {
+  0%, 45%   { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
 }
 
 /* 2D duel board — one-shot impact animations (CSS-driven, no three.js) */
@@ -381,38 +331,28 @@
   78%      { opacity: 0.9; }
 }
 
-@keyframes rolet-blink-lid {
-  0%, 88%, 100% { transform: scaleY(0); }
-  92%           { transform: scaleY(0.08); }
-  94%           { transform: scaleY(1); }
-  97%           { transform: scaleY(0); }
-}
-
 /* ──────────────────────────────────────────────────────────────
    CRT / pixelated UI utilities
    ────────────────────────────────────────────────────────────── */
 @utility crt-text {
-  text-shadow:
-    -1px 0 rgba(0, 220, 255, 0.45),
-    1px 0 rgba(255, 0, 50, 0.55),
-    0 0 8px rgba(255, 50, 30, 0.35);
-  image-rendering: pixelated;
-  letter-spacing: 0.04em;
+  color: var(--color-phosphor);
+  text-shadow: 0 0 6px color-mix(in oklab, var(--color-phosphor) 18%, transparent);
+  letter-spacing: 0.02em;
 }
 
 @utility crt-frame {
   position: relative;
-  box-shadow:
-    inset 0 0 0 1px rgba(120, 60, 20, 0.4),
-    inset 0 0 16px rgba(60, 20, 10, 0.6),
-    0 0 0 1px rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 0 0 1px var(--color-line);
   &::before {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background:
-      repeating-linear-gradient(0deg, rgba(255, 200, 180, 0.06) 0 1px, transparent 1px 3px);
+    background: repeating-linear-gradient(
+      0deg,
+      color-mix(in oklab, var(--color-phosphor) 5%, transparent) 0 1px,
+      transparent 1px 3px
+    );
     mix-blend-mode: screen;
   }
 }
@@ -435,9 +375,39 @@
    Body — dark/cursed default (overrides create-next-app baseline)
    ────────────────────────────────────────────────────────────── */
 body {
-  background: #0a0807;
-  color: #d9bfb2;
-  font-family: var(--font-rolet-mono), ui-monospace, monospace;
+  background: var(--color-void);
+  color: var(--color-phosphor);
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Motion policy.
+   Brand rhythm, attention and waiting stop for anyone who asks for
+   reduced motion. Functional game feedback collapses to its end
+   state instead of animating.
+   ────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-reverse,
+  .animate-attention,
+  .animate-waiting,
+  .animate-grain,
+  .animate-scan-line,
+  .crt-grain::after {
+    animation: none !important;
+  }
+  .animate-shake,
+  .animate-jolt,
+  .animate-recoil,
+  .animate-muzzle {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────
