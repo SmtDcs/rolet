@@ -110,25 +110,8 @@ function ProceduralTableMesh() {
 }
 
 function LoadedTableGLTF() {
-  const { scene } = useGLTF("/models/arena_table.glb");
-  const cloned = React.useMemo(() => {
-    const copy = scene.clone();
-    // The source asset ships a casino-green playing surface. Any material whose
-    // green clearly dominates is repainted to bench wood, so the table belongs
-    // to a workshop rather than a card room.
-    copy.traverse((child) => {
-      const mesh = child as THREE.Mesh;
-      const material = mesh.material as THREE.MeshStandardMaterial | undefined;
-      if (!material || !material.color) return;
-      const { r, g, b } = material.color;
-      if (g > r * 1.15 && g > b * 1.15) {
-        material.color.set("#2a1d14");
-        material.roughness = 0.92;
-        material.metalness = 0.05;
-      }
-    });
-    return copy;
-  }, [scene]);
+  const { scene } = useGLTF("/models/bench_table.glb");
+  const cloned = React.useMemo(() => scene.clone(), [scene]);
   return <primitive object={cloned} scale={1.25} position={[0, -0.68, 0]} />;
 }
 
@@ -227,16 +210,16 @@ export function DuelArenaDiegetic3D({
           <fogExp2 attach="fog" args={["#0a0e1c", 0.08]} />
 
           {/* Global Lighting Setup */}
-          <ambientLight intensity={1.1} />
-          <directionalLight position={[0, 3.5, 1.2]} intensity={2.0} color="#fff8ee" />
+          <ambientLight intensity={1.35} />
+          <directionalLight position={[0, 3.5, 1.2]} intensity={1.9} color="#fff8ee" />
           <SwingingBulb />
 
           {/* Warm candle sidelights */}
-          <pointLight position={[-1.0, 0.5, 0.2]} intensity={5} color="#ff9e42" distance={3} />
-          <pointLight position={[1.0, 0.5, 0.2]} intensity={5} color="#38bdf8" distance={3} />
+          <pointLight position={[-1.0, 0.5, 0.2]} intensity={11} color="#ff9e42" distance={4} decay={1.4} />
+          <pointLight position={[1.0, 0.5, 0.2]} intensity={6} color="#38bdf8" distance={4} decay={1.4} />
 
           {/* Moody red back rim on opponent */}
-          <pointLight position={[0, 1.2, -1.6]} intensity={8} color="#e63946" distance={3.5} />
+          <pointLight position={[0, 1.2, -1.6]} intensity={13} color="#e63946" distance={5} decay={1.4} />
 
           {/* Duel Table */}
           <Suspense fallback={<ProceduralTableMesh />}>
@@ -248,6 +231,8 @@ export function DuelArenaDiegetic3D({
 
           {/* Diegetic Elements Placed on Table Felt */}
           {/* 1. Life Monitor Box on Table (Vitality Counter Box) */}
+          {/* TEMP isolate: heaviest model in the scene */}
+          <Suspense fallback={null}>
           <DiegeticLifeCounterBox
             playerHp={playerHp}
             opponentHp={opponentHp}
@@ -255,6 +240,7 @@ export function DuelArenaDiegetic3D({
             position={[-0.48, 0.08, 0.2]}
             rotation={[0, 0.35, 0]}
           />
+          </Suspense>
 
           {/* 2. Ambient Candle Light on far table */}
           <DiegeticCandleHP
@@ -302,12 +288,14 @@ export function DuelArenaDiegetic3D({
           />
 
           {/* 7. Diegetic First-Person Revolver */}
-          <DiegeticRevolver
+          <Suspense fallback={null}>
+            <DiegeticRevolver
             isYourTurn={isYourTurn}
             gunHeld={gunHeld}
             target={target}
             firing={firing}
           />
+          </Suspense>
         </Suspense>
       </Canvas>
 
@@ -371,5 +359,5 @@ export function DuelArenaDiegetic3D({
 }
 
 // Preload models for immediate rendering
-useGLTF.preload("/models/arena_table.glb");
+useGLTF.preload("/models/bench_table.glb");
 useGLTF.preload("/models/opponent_duelist.glb");

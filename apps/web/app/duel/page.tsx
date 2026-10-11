@@ -28,7 +28,10 @@ import {
 import { useSound } from "@/hooks/useSound";
 import { Volume2, VolumeX } from "lucide-react";
 
-const DuelBoard2D = dynamic(() => import("@/components/DuelBoard2D"), { ssr: false });
+const DuelArenaDiegetic3D = dynamic(
+  () => import("@/components/duel/scene/DuelArenaDiegetic3D").then((m) => m.DuelArenaDiegetic3D),
+  { ssr: false }
+);
 const HandRack2D = dynamic(() => import("@/components/HandRack2D"), { ssr: false });
 
 // ============================================================
@@ -463,11 +466,23 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       style={{ width: "100vw", height: "100vh" }}
     >
       {/* 2D duel board — covers entire viewport, behind everything */}
-      <DuelBoard2D
+      <DuelArenaDiegetic3D
         isYourTurn={turnIsYours}
         gunHeld={gunHeld}
+        setGunHeld={setGunHeld}
         target={target}
+        setTarget={setTarget}
         firing={firing}
+        onFire={handlePullTrigger}
+        playerHp={
+          decoded && youKey
+            ? youKey === decoded.playerOne
+              ? decoded.playerOneHp
+              : decoded.playerTwoHp
+            : 4
+        }
+        opponentHp={opponentHp}
+        playerPubkey={youKey ?? ""}
         opponentPubkey={
           decoded && youKey
             ? youKey === decoded.playerOne
@@ -475,10 +490,12 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               : decoded.playerOne
             : ""
         }
-        opponentHp={opponentHp}
-        opponentHitSignal={opponentHitSignal}
         liveCount={decoded?.liveCount ?? 0}
         blankCount={decoded?.blankCount ?? 0}
+        cards={(decoded?.yourHand ?? []).map((c) => c ?? "")}
+        onSelectCard={(idx) => setSelectedSlot(idx)}
+        selectedCardIndex={selectedSlot}
+        disabled={!turnIsYours || rolet.busy}
       />
 
       {/* Hit flash overlay (red, when player takes damage) */}

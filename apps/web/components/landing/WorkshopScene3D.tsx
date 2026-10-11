@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { PerformanceMonitor, useTexture } from "@react-three/drei";
 import * as THREE from "three";
-import { C } from "./theme";
+import { C, CH } from "./theme";
 
 /*
  * Landing world: the art-director-locked still (cabinet, half a revolver in
@@ -18,7 +18,7 @@ import { C } from "./theme";
 
 const PLATE_URL = "/art/landing/workshop-locked.webp";
 const DIST = 6.4;
-const SODIUM = new THREE.Color(C.sodium);
+const SODIUM = new THREE.Color(CH.sodium);
 
 function targetDpr() {
   if (typeof window === "undefined") return 1;
@@ -111,7 +111,7 @@ function LockedPlate({ still }: { still: boolean }) {
         <meshBasicMaterial
           ref={glowMat}
           map={glow}
-          color={C.sodium}
+          color={CH.sodium}
           transparent
           opacity={0.55}
           depthWrite={false}
