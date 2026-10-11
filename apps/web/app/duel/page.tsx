@@ -310,6 +310,20 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
     }
   }, [decoded, committed, rolet, matchId, youKey, play]);
 
+  // The session key still holds SOL after the match. Return it to the wallet
+  // once the commit and the settlement have had time to land.
+  const sweptRef = useRef(false);
+  const endStatus = decoded?.status;
+  useEffect(() => {
+    if (endStatus !== "completed" || sweptRef.current) return;
+    const timer = setTimeout(() => {
+      if (sweptRef.current) return;
+      sweptRef.current = true;
+      rolet.sweepSession();
+    }, 45000);
+    return () => clearTimeout(timer);
+  }, [endStatus, rolet]);
+
   const handleArm = async () => {
     await rolet.startSession(60 * 60);
   };

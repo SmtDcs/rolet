@@ -74,6 +74,25 @@ export function sessionArmMessage(): string {
   return "Session key armed. The rest of the match runs without wallet prompts.";
 }
 
+/**
+ * What is left on a session key after the match belongs to the player. The key
+ * pays its own fee and sends the rest back, so nothing is stranded on a key
+ * nobody keeps.
+ */
+export function sessionSweepPlan(input: {
+  balance: number;
+  fee: number;
+}): { sweep: boolean; lamports: number } {
+  const lamports = input.balance - input.fee;
+  if (!Number.isFinite(lamports) || lamports <= 0) return { sweep: false, lamports: 0 };
+  return { sweep: true, lamports };
+}
+
+/** The public devnet RPC throttles hard; callers back off instead of failing. */
+export function rateLimitedError(message: string): boolean {
+  return /too many requests/i.test(message) || message.includes("429");
+}
+
 /** Quiet reads every 4s. Each failed read doubles the wait, up to 16s. */
 export function pollWaitMs(failures: number): number {
   const n = Math.max(0, Math.floor(failures));

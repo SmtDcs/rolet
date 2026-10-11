@@ -13,6 +13,8 @@ import {
   SESSION_FUND_LAMPORTS,
   timeoutClaimable,
   sessionAttemptFresh,
+  sessionSweepPlan,
+  rateLimitedError,
   turnRoute,
 } from "./chainPace";
 
@@ -92,4 +94,26 @@ test("an expired blockhash is sent again by the session key", () => {
 test("a delegated match sends turns to the rollup", () => {
   assert.equal(turnRoute(true), "rollup");
   assert.equal(turnRoute(false), "base");
+});
+
+test("the leftovers on a session key go back to the wallet", () => {
+  assert.deepEqual(sessionSweepPlan({ balance: 9_000_000, fee: 5_000 }), {
+    sweep: true,
+    lamports: 8_995_000,
+  });
+  assert.deepEqual(sessionSweepPlan({ balance: 5_000, fee: 5_000 }), {
+    sweep: false,
+    lamports: 0,
+  });
+  assert.deepEqual(sessionSweepPlan({ balance: 0, fee: 5_000 }), {
+    sweep: false,
+    lamports: 0,
+  });
+});
+
+test("a throttled RPC call is recognised so it can be retried", () => {
+  assert.equal(rateLimitedError("429 Too Many Requests"), true);
+  assert.equal(rateLimitedError("Server responded with 429 Too Many Requests"), true);
+  assert.equal(rateLimitedError("Too many requests for a specific RPC call"), true);
+  assert.equal(rateLimitedError("Blockhash not found"), false);
 });

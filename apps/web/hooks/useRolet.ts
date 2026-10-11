@@ -16,9 +16,11 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
   blockhashExpired,
   expiredChainError,
+  rateLimitedError,
   readSignature,
   sessionArmMessage,
   sessionFundPlan,
+  sessionSweepPlan,
   SESSION_FUND_LAMPORTS,
   turnRoute,
 } from "@/lib/chainPace";
@@ -157,6 +159,11 @@ function persistSessionKey(walletKey: string, sk: SessionKeyState) {
   );
 }
 
+function clearSessionKey(walletKey: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(`rolet:session:${walletKey}`);
+}
+
 // ============================================================
 // PDA helpers
 // ============================================================
@@ -234,6 +241,26 @@ function recallSecret(matchId: string): Uint8Array | null {
 // ============================================================
 // useRolet — main integration hook
 // ============================================================
+
+/**
+ * The public devnet RPC answers 429 under load. Waiting and asking again
+ * keeps a turn alive instead of showing a failure the player cannot act on.
+ */
+async function retryOnThrottle<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
+  let last: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      last = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!rateLimitedError(msg) || attempt === attempts - 1) throw err;
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+  }
+  throw last;
+}
+
 function installHttpConfirmation(conn: Connection) {
   const marked = conn as Connection & { __roletHttpConfirm?: true };
   if (marked.__roletHttpConfirm) return;
@@ -357,17 +384,21 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       let lastErr: unknown;
       // A 429 can hold the first signature past its block height. The session
       // key signs the replacement. The wallet is not asked again.
-      for (let attempt = 0; attempt < 2; attempt++) {
+      for (let attempt = 0; attempt < 3; attempt++) {
         tx.signatures = [];
         tx.feePayer = keypair.publicKey;
-        const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
+        const { blockhash, lastValidBlockHeight } = await retryOnThrottle(() =>
+          conn.getLatestBlockhash("confirmed")
+        );
         tx.recentBlockhash = blockhash;
         tx.sign(keypair);
         try {
-          const sig = await conn.sendRawTransaction(tx.serialize(), {
-            skipPreflight: true,
-            maxRetries: 2,
-          });
+          const sig = await retryOnThrottle(() =>
+            conn.sendRawTransaction(tx.serialize(), {
+              skipPreflight: true,
+              maxRetries: 2,
+            })
+          );
           await conn.confirmTransaction(
             { signature: sig, blockhash, lastValidBlockHeight },
             "confirmed"
@@ -376,7 +407,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         } catch (err) {
           lastErr = err;
           const msg = err instanceof Error ? err.message : String(err);
-          if (attempt === 0 && expiredChainError(msg)) continue;
+          if (attempt < 2 && (expiredChainError(msg) || rateLimitedError(msg))) continue;
           throw err;
         }
       }
@@ -397,10 +428,15 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         throw new Error("Wallet not connected");
       }
       tx.feePayer = wallet.publicKey;
-      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
+      const { blockhash, lastValidBlockHeight } = await retryOnThrottle(() =>
+        conn.getLatestBlockhash("confirmed")
+      );
       tx.recentBlockhash = blockhash;
       const signed = await wallet.signTransaction(tx);
-      const sig = await conn.sendRawTransaction(signed.serialize(), { maxRetries: 2 });
+      const serialized = signed.serialize();
+      const sig = await retryOnThrottle(() =>
+        conn.sendRawTransaction(serialized, { maxRetries: 2 })
+      );
       await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
       return sig;
     },
@@ -409,6 +445,49 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
 
   /** The account that signs game instructions: the session key when armed. */
   const activeSigner = sessionKey?.keypair.publicKey ?? wallet.publicKey ?? null;
+
+  /**
+   * Ends the session: the key pays its own fee and returns the rest of its SOL
+   * to the wallet, then it is forgotten. Without this the leftovers of every
+   * session stay on a key nobody keeps.
+   */
+  const sweepSession = useCallback(async () => {
+    const kp = sessionKey?.keypair;
+    const owner = wallet.publicKey;
+    if (!kp || !owner) return null;
+    try {
+      const balance = await retryOnThrottle(() => l1Connection.getBalance(kp.publicKey));
+      const { sweep, lamports } = sessionSweepPlan({ balance, fee: 5_000 });
+      if (sweep) {
+        const tx = new Transaction().add(
+          SystemProgram.transfer({ fromPubkey: kp.publicKey, toPubkey: owner, lamports })
+        );
+        tx.feePayer = kp.publicKey;
+        const { blockhash, lastValidBlockHeight } = await retryOnThrottle(() =>
+          l1Connection.getLatestBlockhash("confirmed")
+        );
+        tx.recentBlockhash = blockhash;
+        tx.sign(kp);
+        const sig = await retryOnThrottle(() =>
+          l1Connection.sendRawTransaction(tx.serialize(), { maxRetries: 2 })
+        );
+        await l1Connection.confirmTransaction(
+          { signature: sig, blockhash, lastValidBlockHeight },
+          "confirmed"
+        );
+        setSessionKey(null);
+        clearSessionKey(owner.toBase58());
+        emitToast("info", `Session closed · ${(lamports / LAMPORTS_PER_SOL).toFixed(4)} SOL returned`);
+        return sig;
+      }
+      setSessionKey(null);
+      clearSessionKey(owner.toBase58());
+      return null;
+    } catch {
+      // A failed sweep must never block the end of a match.
+      return null;
+    }
+  }, [sessionKey, wallet.publicKey, l1Connection]);
 
   /**
    * Arms a gasless session: generates a local keypair, registers it on-chain
@@ -1269,6 +1348,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       findOpenLobby,
       fetchLobby,
       closeLobby,
+      sweepSession,
       stashSecret,
       recallSecret,
     }),
@@ -1300,6 +1380,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       findOpenLobby,
       fetchLobby,
       closeLobby,
+      sweepSession,
     ]
   );
 }
