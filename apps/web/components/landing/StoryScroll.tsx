@@ -56,11 +56,27 @@ function Kicker({ children }: { children: React.ReactNode }) {
 }
 
 function Dot({ live }: { live: boolean }) {
+  // Colours go through style, not SVG attributes: presentation attributes do
+  // not resolve var() custom properties.
+  const ink = live ? C.signal : C.patina;
   return (
-    <span
-      className="inline-block h-3.5 w-3.5 rounded-full"
-      style={{ background: live ? C.signal : C.patina }}
-    />
+    <svg
+      width="19"
+      height="9"
+      viewBox="0 0 19 9"
+      aria-hidden
+      className="inline-block shrink-0 align-middle"
+    >
+      <rect x="16.5" y="0.5" width="2" height="8" style={{ fill: ink }} />
+      <rect
+        x="2.5"
+        y="1"
+        width="14"
+        height="7"
+        style={{ fill: live ? ink : C.soot, stroke: ink, strokeWidth: 1 }}
+      />
+      {live && <path d="M2.5 1c-2.2 1.1-2.2 5.9 0 7z" style={{ fill: ink }} />}
+    </svg>
   );
 }
 
@@ -134,43 +150,95 @@ function BenchFigure() {
 }
 
 function Cylinder() {
-  const size = 168;
-  const hole = 28;
-  const radius = 60;
+  const size = 196;
+  const c = size / 2;
+  const chambers = Array.from({ length: 8 }, (_, i) => {
+    const a = (i * Math.PI) / 4 - Math.PI / 2;
+    return {
+      i,
+      x: c + Math.cos(a) * 58,
+      y: c + Math.sin(a) * 58,
+      lx: c + Math.cos(a) * 76,
+      ly: c + Math.sin(a) * 76,
+      next: i === 0,
+    };
+  });
+  // SVG presentation attributes do not resolve var() custom properties, so
+  // every colour is applied through style instead.
+  const tick = { stroke: C.graphite };
   return (
-    <div className="relative mx-auto shrink-0" style={{ width: size, height: size }}>
-      <div className="absolute inset-3 rounded-full border" style={{ borderColor: C.graphite, background: C.gunmetal }} />
-      {Array.from({ length: 8 }, (_, i) => {
-        const angle = (i * Math.PI) / 4 - Math.PI / 2;
-        const x = size / 2 + Math.cos(angle) * radius - hole / 2;
-        const y = size / 2 + Math.sin(angle) * radius - hole / 2;
-        const next = i === 0;
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className="mx-auto shrink-0"
+      role="img"
+      aria-label="Technical drawing of an eight chamber cylinder. The chamber at twelve o'clock is next. Chamber order is not shown."
+    >
+      {Array.from({ length: 32 }, (_, i) => {
+        const a = (i * Math.PI) / 16 - Math.PI / 2;
+        const long = i % 4 === 0;
+        const r1 = 92;
+        const r2 = long ? 82 : 87;
         return (
-          <span
+          <line
             key={i}
-            className="absolute flex items-center justify-center rounded-full border text-xs"
-            style={{
-              width: hole,
-              height: hole,
-              left: x,
-              top: y,
-              borderColor: next ? C.brass : C.graphite,
-              color: next ? C.brass : C.worn,
-              fontFamily: F.mono,
-              background: C.soot,
-            }}
-          >
-            ?
-          </span>
+            x1={c + Math.cos(a) * r1}
+            y1={c + Math.sin(a) * r1}
+            x2={c + Math.cos(a) * r2}
+            y2={c + Math.sin(a) * r2}
+            style={{ ...tick, strokeWidth: long ? 1 : 0.5 }}
+          />
         );
       })}
-      <span
-        className="absolute left-1/2 top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] uppercase tracking-[0.14em]"
-        style={{ fontFamily: F.mono, color: C.brass, background: C.soot, boxShadow: `inset 0 0 0 1px ${C.brass}` }}
-      >
-        Next
-      </span>
-    </div>
+
+      <circle cx={c} cy={c} r={80} style={{ fill: C.gunmetal, stroke: C.graphite, strokeWidth: 1 }} />
+      <circle cx={c} cy={c} r={72} style={{ fill: "none", stroke: C.graphite, strokeWidth: 1 }} />
+
+      {chambers.map((h) => (
+        <g key={h.i}>
+          <circle
+            cx={h.x}
+            cy={h.y}
+            r={15}
+            style={{
+              fill: C.soot,
+              stroke: h.next ? C.brass : C.graphite,
+              strokeWidth: 1,
+            }}
+          />
+          <circle
+            cx={h.x}
+            cy={h.y}
+            r={9.5}
+            style={{ fill: "none", stroke: C.graphite, strokeWidth: 0.75 }}
+          />
+          <circle
+            cx={h.x}
+            cy={h.y}
+            r={2}
+            style={{ fill: h.next ? C.brass : C.worn, opacity: h.next ? 1 : 0.45 }}
+          />
+          <text
+            x={h.lx}
+            y={h.ly}
+            fontSize="8"
+            fontFamily={F.mono}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            style={{ fill: C.brass, opacity: 0.75 }}
+          >
+            {String(h.i + 1).padStart(2, "0")}
+          </text>
+        </g>
+      ))}
+
+      <circle cx={c} cy={c} r={15} style={{ fill: C.soot, stroke: C.brass, strokeWidth: 1 }} />
+      <circle cx={c} cy={c} r={3.5} style={{ fill: C.brass }} />
+
+      <line x1={c} y1={c - 17} x2={c} y2={c - 38} style={{ stroke: C.brass, strokeWidth: 1 }} />
+      <path d={`M${c} ${c - 45} l4.5 6.5 h-9 z`} style={{ fill: C.brass }} />
+    </svg>
   );
 }
 
@@ -178,7 +246,7 @@ function LoadFigure() {
   return (
     <Sheet>
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-8">
-        <div role="img" aria-label="Eight chambers in a ring. The top hole is next. Every hole is still hidden.">
+        <div>
           <Cylinder />
           <p className="mt-2 text-center text-xs uppercase tracking-[0.16em]" style={{ fontFamily: F.mono, color: C.worn }}>
             Order hidden
