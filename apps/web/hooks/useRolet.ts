@@ -40,8 +40,15 @@ const ROLET_PROGRAM_ID = new PublicKey(
   (idl as { address: string }).address
 );
 
-/** Program pins the EU validator. The router forwards a delegated match there. */
-const ER_ROUTER = "https://devnet-router.magicblock.app";
+/**
+ * Turn traffic goes straight to the validator that holds the match. The EU
+ * validator is the one the program pins in delegate_match. The router answers
+ * for delegated accounts only, so a turn that also reads PlayerProfile is sent
+ * to the validator itself.
+ */
+const ER_ENDPOINT =
+  process.env.NEXT_PUBLIC_MAGICBLOCK_ER_ENDPOINT ??
+  "https://devnet-eu.magicblock.app";
 const DELEGATION_PROGRAM_ID = new PublicKey(
   "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
 );
@@ -273,7 +280,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   const [sessionKey, setSessionKey] = useState<SessionKeyState | null>(null);
 
   const erConnection = useMemo(() => {
-    const conn = new Connection(ER_ROUTER, {
+    const conn = new Connection(ER_ENDPOINT, {
       commitment: "confirmed",
       disableRetryOnRateLimit: true,
     });

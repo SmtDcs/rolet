@@ -34,7 +34,7 @@ MagicBlock's Anchor guide, not the 0.32 guess:
 
 ## Resume point (2026-10-11)
 
-Branch `experiment/magicblock-anchor1`, plan commit `5faa78a`. Working tree after that is uncommitted.
+Branch `experiment/magicblock-anchor1`. Commits: `5faa78a` (plan), `aae989d` (program + web).
 
 Done:
 
@@ -43,11 +43,20 @@ Done:
 - `cargo check -p rolet` passed. Cargo resolved `anchor-lang` 1.2.1 from the 1.0.2 requirement. SDK 0.17.3 with feature `anchor` compiled.
 - `mpl-core` is removed from the program. `CORE_ASSET_V1` is 1. Keccak uses `solana_keccak_hasher`. SlotHashes id is `solana_sysvar::slot_hashes::ID`. `CpiContext` takes `system_program.key()`.
 - `delegate_match` and `commit_and_undelegate_match` are in `lib.rs`. `#[ephemeral]` is on the program module. Match account only. EU validator is pinned. Lobby instructions stay on devnet.
-- The web hook routes turns and the commit through `https://devnet-router.magicblock.app` only when the match account owner is the delegation program. `settle_match` stays on devnet. 34 unit tests passed. `tsc --noEmit` passed. The IDL in `apps/web/idl` does not yet contain the new instructions, so do not restart `next start` until a successful build copies a new IDL and a new program id.
-- Platform-tools v1.52 are extracted under `~/.cache/solana/v1.52/platform-tools`. The SBF build of this branch was restarted after that.
+- `anchor build` succeeded and the program is deployed: `mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH`, ProgramData `Dwn4SBwhsawarL8gnDDN8oEEzpSGdPdJFt5hoi2Kw18e`, authority `CeoeQQj6233aJ1SMKzrdVrVeLZVJ8C5zwXT7JNdfj8f4`.
+- A full two-wallet match ran end to end on the new program: open, join, reveal x2, init, delegate on devnet; 11 pull_trigger turns on `https://devnet-eu.magicblock.app`; commit_and_undelegate on the rollup; settle on devnet. Match `1791714224465`, winner `GoeHXdTuSeJVeX9AREqtyMJ7SYuABbdGnsCbSRSs1XMv`.
+- The rollup serves non-delegated accounts. `PlayerProfile` was read on the rollup with owner `mspQc...` even though only `MatchState` is delegated. The Magic Router does not answer `getAccountInfo` for that profile, so turns go to the EU validator endpoint directly. `ER_ENDPOINT` in `useRolet.ts` takes `NEXT_PUBLIC_MAGICBLOCK_ER_ENDPOINT`, default `https://devnet-eu.magicblock.app`.
+- 34 unit tests passed. `tsc --noEmit` passed.
+- Platform-tools v1.52 are extracted under `~/.cache/solana/v1.52/platform-tools`.
 - `declare_id` on this branch is `mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH`. The keypair is `apps/server/target/deploy/rolet-er-keypair.json`, and that same key is currently `target/deploy/rolet-keypair.json` so Anchor deploys the new id.
 - The live program keypair was copied to `apps/server/target/deploy/rolet-keypair.live-backup.json` before that swap. Both files are under `target/` and must not be committed. Do not deploy the backup. Do not upgrade `Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792`.
-- Live demo is still `next start` on port 3001 and tunnel `https://limit-printing-meal-florists.trycloudflare.com`.
+- Live demo runs from `feature/duel-2d` on port 3001, tunnel `https://cuts-resort-compute-naturally.trycloudflare.com`.
+
+Known issues:
+
+- On this branch `apps/web/.env.local` still points `NEXT_PUBLIC_ROLET_PROGRAM_ID` at the live program. A browser match needs that value changed to `mspQc...` and the server restarted. Test scripts must also read the experiment IDL, not the feature branch one.
+- `claim_timeout` compares `last_action_slot` with the ER clock, whose slots are not the base-layer slots. Timeout claims need a separate look.
+- The delegate transaction costs the player a deposit (about 0.0029 SOL of rent for the match account plus the delegation accounts).
 
 ## Out of scope
 
