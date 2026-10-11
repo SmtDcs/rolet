@@ -582,7 +582,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
           <motion.div
             key={d.id}
             className="pointer-events-none fixed z-[95] font-display font-bold select-none"
-            style={{ left: `${d.x}%`, top: "45%", color: d.value < 0 ? "#ff3333" : "#33ff88" }}
+            style={{ left: `${d.x}%`, top: "45%", color: d.value < 0 ? "var(--color-alert)" : "var(--color-patina)" }}
             initial={{ opacity: 1, y: 0, scale: 1.4 }}
             animate={{ opacity: 0, y: -90, scale: 0.8 }}
             exit={{ opacity: 0 }}
@@ -895,10 +895,10 @@ function CCTVViewport({
         }}
       >
         {/* Corner brackets (CCTV monitor style) — dimmer */}
-        <div className="pointer-events-none absolute top-1 left-1 h-5 w-5 border-t border-l border-[var(--color-alert)]/60/60" />
-        <div className="pointer-events-none absolute top-1 right-1 h-5 w-5 border-t border-r border-[var(--color-alert)]/60/60" />
-        <div className="pointer-events-none absolute bottom-1 left-1 h-5 w-5 border-b border-l border-[var(--color-alert)]/60/60" />
-        <div className="pointer-events-none absolute bottom-1 right-1 h-5 w-5 border-b border-r border-[var(--color-alert)]/60/60" />
+        <div className="pointer-events-none absolute top-1 left-1 h-5 w-5 border-t border-l border-[var(--color-alert)]/60" />
+        <div className="pointer-events-none absolute top-1 right-1 h-5 w-5 border-t border-r border-[var(--color-alert)]/60" />
+        <div className="pointer-events-none absolute bottom-1 left-1 h-5 w-5 border-b border-l border-[var(--color-alert)]/60" />
+        <div className="pointer-events-none absolute bottom-1 right-1 h-5 w-5 border-b border-r border-[var(--color-alert)]/60" />
 
         {/* Scanline overlay — barely visible */}
         <div

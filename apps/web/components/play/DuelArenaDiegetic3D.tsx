@@ -100,10 +100,10 @@ function ProceduralTableMesh() {
         <torusGeometry args={[1.09, 0.015, 12, 48]} />
         <meshStandardMaterial color="#c6a15b" roughness={0.3} metalness={0.9} />
       </mesh>
-      {/* Green Velvet Baize Inset */}
+      {/* Inset surface — worn bench wood, not baize */}
       <mesh position={[0, 0.745, 0]} receiveShadow>
         <cylinderGeometry args={[1.05, 1.05, 0.01, 48]} />
-        <meshStandardMaterial color="#152b1e" roughness={0.95} />
+        <meshStandardMaterial color="#2a1d14" roughness={0.92} />
       </mesh>
     </group>
   );
@@ -111,7 +111,24 @@ function ProceduralTableMesh() {
 
 function LoadedTableGLTF() {
   const { scene } = useGLTF("/models/arena_table.glb");
-  const cloned = React.useMemo(() => scene.clone(), [scene]);
+  const cloned = React.useMemo(() => {
+    const copy = scene.clone();
+    // The source asset ships a casino-green playing surface. Any material whose
+    // green clearly dominates is repainted to bench wood, so the table belongs
+    // to a workshop rather than a card room.
+    copy.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      const material = mesh.material as THREE.MeshStandardMaterial | undefined;
+      if (!material || !material.color) return;
+      const { r, g, b } = material.color;
+      if (g > r * 1.15 && g > b * 1.15) {
+        material.color.set("#2a1d14");
+        material.roughness = 0.92;
+        material.metalness = 0.05;
+      }
+    });
+    return copy;
+  }, [scene]);
   return <primitive object={cloned} scale={1.25} position={[0, -0.68, 0]} />;
 }
 

@@ -278,17 +278,17 @@ export default function DuelBoard2D({
             {/* Brass rail line */}
             <div className="absolute inset-[7px] rounded-[50%] border border-[#c9a227]/35" />
 
-            {/* Baize */}
+            {/* Bench top — worn wood, not baize */}
             <div
               className="absolute inset-[18px] overflow-hidden rounded-[50%]"
               style={{
                 background:
-                  "radial-gradient(ellipse at 50% 24%, #20543a 0%, #16391f 46%, #0e2414 100%)",
+                  "radial-gradient(ellipse at 50% 24%, #3a2a1d 0%, #241a12 46%, #140d08 100%)",
                 boxShadow:
                   "inset 0 10px 30px rgba(0,0,0,0.55), inset 0 -4px 14px rgba(0,0,0,0.5)",
               }}
             >
-              {/* Fabric noise */}
+              {/* Grain */}
               <div
                 className="absolute inset-0 opacity-[0.16] mix-blend-overlay"
                 style={{ filter: "url(#rolet-noise)" }}
