@@ -2,20 +2,17 @@
 // Combines Tasks 1-3: data structures, ER game loop, L1 settlement.
 
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::keccak;
-use mpl_core::types::Key as CoreKey;
+use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral};
+use ephemeral_rollups_sdk::cpi::DelegateConfig;
+use ephemeral_rollups_sdk::ephem::MagicIntentBundleBuilder;
+use solana_keccak_hasher::hashv as keccak_hashv;
+/// mpl-core `Key::AssetV1`. Kept as a byte so this program does not link mpl-core.
+const CORE_ASSET_V1: u8 = 1;
 
-// PLAN_B: MagicBlock ER SDK is NOT linked into this Rust program. The SDK
-// (versions 0.10–0.13) ships with a transitive dlp_api crate that pulls in a
-// newer solana-instruction than Anchor 0.30.1 brings, causing Address vs
-// Pubkey type splits. Workaround: delegation lifecycle (delegate, commit,
-// undelegate) is handled entirely from the frontend via the TypeScript SDK
-// (@magicblock-labs/ephemeral-rollups-sdk). Once delegated, MatchState
-// reads/writes happen via the ER endpoint and our existing instructions
-// (play_card, pull_trigger) execute there unchanged — the runtime is the
-// same Solana runtime, the SDK only mediates account ownership transitions.
+/// MagicBlock devnet EU validator. A delegated match runs there.
+pub const ER_VALIDATOR: Pubkey = pubkey!("MEUGGrYPxKk17hCr7wpT6s8dtNokZj5U2L57vjYMS8e");
 
-declare_id!("Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792");
+declare_id!("mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH");
 
 // ============================================================
 // Constants
@@ -38,6 +35,7 @@ pub const SEED_DELAY_SLOTS: u64 = 2;
 /// it only reclaims rent — no durability refund (RISK-A).
 pub const LAUNCH_WINDOW_SLOTS: u64 = 300;
 
+#[ephemeral]
 #[program]
 pub mod rolet {
     use super::*;
@@ -83,13 +81,12 @@ pub mod rolet {
             find_seed_slot_hash(&data, lobby.seed_slot)?
         };
 
-        let seed = keccak::hashv(&[
+        let seed = k_hash(&[
             &lobby.host_secret,
             &lobby.guest_secret,
             &slot_entropy,
             &match_id.to_le_bytes(),
-        ])
-        .0;
+        ]);
         lobby.launched = true;
 
         let m = &mut ctx.accounts.match_state;
@@ -227,13 +224,12 @@ pub mod rolet {
             Card::Shuffler => {
                 // Re-shuffle ONLY the un-fired chambers using fresh entropy.
                 let clock = Clock::get()?;
-                let reseed = keccak::hashv(&[
+                let reseed = k_hash(&[
                     &m.match_id.to_le_bytes(),
                     &m.turn_number.to_le_bytes(),
                     &clock.slot.to_le_bytes(),
                     b"SHUFFLER",
-                ])
-                .0;
+                ]);
                 // Collect unfired contents
                 let mut unfired: Vec<(usize, Chamber)> = m
                     .gun
@@ -249,7 +245,7 @@ pub mod rolet {
                     for i in (1..n).rev() {
                         let j = (stream[i % 32] as usize) % (i + 1);
                         unfired.swap(i, j);
-                        stream = keccak::hashv(&[&stream, &[i as u8]]).0;
+                        stream = k_hash(&[&stream, &[i as u8]]);
                     }
                     // Write back into the same indices
                     let indices: Vec<usize> = unfired.iter().map(|(i, _)| *i).collect();
@@ -292,13 +288,12 @@ pub mod rolet {
             Card::RandomInsight => {
                 // Reveal a pseudorandom unfired chamber.
                 let clock = Clock::get()?;
-                let pick_seed = keccak::hashv(&[
+                let pick_seed = k_hash(&[
                     &m.match_id.to_le_bytes(),
                     &m.turn_number.to_le_bytes(),
                     &clock.slot.to_le_bytes(),
                     b"INSIGHT",
-                ])
-                .0;
+                ]);
                 let unfired: Vec<u8> = m
                     .gun
                     .chambers
@@ -329,13 +324,12 @@ pub mod rolet {
                 let prev = m.gun.chambers[idx];
                 require!(prev != Chamber::Empty, RoletError::ChamberAlreadyFired);
                 let clock = Clock::get()?;
-                let roll = keccak::hashv(&[
+                let roll = k_hash(&[
                     &m.match_id.to_le_bytes(),
                     &m.turn_number.to_le_bytes(),
                     &clock.slot.to_le_bytes(),
                     b"FATE",
-                ])
-                .0[0];
+                ])[0];
                 let next = if roll & 1 == 0 { Chamber::Live } else { Chamber::Blank };
                 // Update counts based on transition
                 match (prev, next) {
@@ -450,12 +444,11 @@ pub mod rolet {
 
         if m.gun.loaded_count == 0 && m.gun.blank_count == 0 {
             let clock = Clock::get()?;
-            let reseed = keccak::hashv(&[
+            let reseed = k_hash(&[
                 &m.match_id.to_le_bytes(),
                 &m.turn_number.to_le_bytes(),
                 &clock.slot.to_le_bytes(),
-            ])
-            .0;
+            ]);
             m.gun = build_gun(&reseed);
         }
 
@@ -519,7 +512,7 @@ pub mod rolet {
 
         anchor_lang::system_program::transfer(
             anchor_lang::context::CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.system_program.key(),
                 anchor_lang::system_program::Transfer {
                     from: ctx.accounts.treasury_sol.to_account_info(),
                     to: ctx.accounts.winner.to_account_info(),
@@ -638,7 +631,7 @@ pub mod rolet {
 
         anchor_lang::system_program::transfer(
             anchor_lang::context::CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.system_program.key(),
                 anchor_lang::system_program::Transfer {
                     from: ctx.accounts.buyer.to_account_info(),
                     to: ctx.accounts.treasury_sol.to_account_info(),
@@ -649,7 +642,7 @@ pub mod rolet {
 
         anchor_lang::system_program::transfer(
             anchor_lang::context::CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.system_program.key(),
                 anchor_lang::system_program::Transfer {
                     from: ctx.accounts.buyer.to_account_info(),
                     to: ctx.accounts.ops_wallet.to_account_info(),
@@ -733,10 +726,6 @@ pub mod rolet {
         });
         Ok(())
     }
-
-    // PLAN_B: delegate_match_state / undelegate_match_state moved to the
-    // frontend (@magicblock-labs/ephemeral-rollups-sdk constructs the
-    // Delegation Program CPIs directly).
 
     pub fn init_vault(
         ctx: Context<InitVault>,
@@ -1009,6 +998,53 @@ pub mod rolet {
         });
         Ok(())
     }
+
+    /// Lock MatchState onto the EU rollup. Lobby accounts stay on devnet.
+    /// The account must stay untyped: ownership moves to the delegation program
+    /// before Anchor would write it back.
+    pub fn delegate_match(ctx: Context<DelegateMatch>, match_id: u64) -> Result<()> {
+        let state = read_match_state(&ctx.accounts.match_state.to_account_info())?;
+        require!(state.match_id == match_id, RoletError::LobbyMismatch);
+        require!(state.status == MatchStatus::Active, RoletError::MatchNotActive);
+        require!(
+            ctx.accounts.payer.key() == state.player_one
+                || ctx.accounts.payer.key() == state.player_two,
+            RoletError::NotAParticipant
+        );
+        let match_id_le = match_id.to_le_bytes();
+        ctx.accounts.delegate_match_state(
+            &ctx.accounts.payer,
+            &[b"match", match_id_le.as_ref()],
+            DelegateConfig {
+                commit_frequency_ms: 30_000,
+                validator: Some(ER_VALIDATOR),
+            },
+        )?;
+        Ok(())
+    }
+
+    /// Commit the rollup copy and return MatchState to this program.
+    /// settle_match stays on devnet and runs only after this lands.
+    pub fn commit_and_undelegate_match(ctx: Context<CommitMatch>) -> Result<()> {
+        let state = read_match_state(&ctx.accounts.match_state.to_account_info())?;
+        require!(
+            state.status == MatchStatus::Active || state.status == MatchStatus::Completed,
+            RoletError::MatchNotActive
+        );
+        require!(
+            ctx.accounts.payer.key() == state.player_one
+                || ctx.accounts.payer.key() == state.player_two,
+            RoletError::NotAParticipant
+        );
+        MagicIntentBundleBuilder::new(
+            ctx.accounts.payer.to_account_info(),
+            ctx.accounts.magic_context.to_account_info(),
+            ctx.accounts.magic_program.to_account_info(),
+        )
+        .commit_and_undelegate(&[ctx.accounts.match_state.to_account_info()])
+        .build_and_invoke()?;
+        Ok(())
+    }
 }
 
 // ============================================================
@@ -1031,7 +1067,7 @@ pub struct CharacterNftInfo {
 pub fn fetch_character_asset(ai: &AccountInfo) -> Result<CharacterNftInfo> {
     let data = ai.try_borrow_data()?;
     require!(data.len() >= 66, RoletError::InvalidCharacterNft);
-    require!(data[0] == CoreKey::AssetV1 as u8, RoletError::InvalidCharacterNft);
+    require!(data[0] == CORE_ASSET_V1, RoletError::InvalidCharacterNft);
 
     let owner = Pubkey::try_from(&data[1..33]).map_err(|_| error!(RoletError::InvalidCharacterNft))?;
 
@@ -1043,6 +1079,11 @@ pub fn fetch_character_asset(ai: &AccountInfo) -> Result<CharacterNftInfo> {
     };
 
     Ok(CharacterNftInfo { update_authority, owner })
+}
+
+fn read_match_state(ai: &AccountInfo) -> Result<MatchState> {
+    let bytes = ai.try_borrow_data()?.to_vec();
+    MatchState::try_deserialize(&mut &bytes[..]).map_err(|_| error!(RoletError::MatchNotActive))
 }
 
 fn resolve_actor(
@@ -1070,11 +1111,15 @@ fn resolve_actor(
 /// u64 len, then [slot u64 LE, hash 32] * len). Skipped slots are handled by
 /// taking the earliest entry >= seed_slot; if the window no longer proves
 /// which entry that is (sysvar keeps ~512 slots), the seed has expired.
+fn k_hash(parts: &[&[u8]]) -> [u8; 32] {
+    keccak_hashv(parts).to_bytes()
+}
+
 /// Commitment preimage: keccak256(secret || player_pubkey || match_id_le).
 /// Binding the player and match makes a commit non-transferable between
 /// seats and lobbies (RISK-B). Client (useRolet.ts) must hash identically.
 pub fn lobby_commitment(secret: &[u8; 32], player: &Pubkey, match_id: u64) -> [u8; 32] {
-    keccak::hashv(&[secret.as_ref(), player.as_ref(), &match_id.to_le_bytes()]).0
+    k_hash(&[secret.as_ref(), player.as_ref(), &match_id.to_le_bytes()])
 }
 
 fn find_seed_slot_hash(data: &[u8], seed_slot: u64) -> Result<[u8; 32]> {
@@ -1111,11 +1156,11 @@ fn build_gun(seed: &[u8; 32]) -> GunState {
     for i in 0..BLANK_ROUNDS as usize {
         chambers[LIVE_ROUNDS as usize + i] = Chamber::Blank;
     }
-    let mut stream = keccak::hashv(&[seed, b"GUN"]).0;
+    let mut stream = k_hash(&[seed, b"GUN"]);
     for i in (1..CHAMBER_COUNT as usize).rev() {
         let j = (stream[i % 32] as usize) % (i + 1);
         chambers.swap(i, j);
-        stream = keccak::hashv(&[&stream, &[i as u8]]).0;
+        stream = k_hash(&[&stream, &[i as u8]]);
     }
     GunState {
         chambers,
@@ -1127,12 +1172,12 @@ fn build_gun(seed: &[u8; 32]) -> GunState {
 }
 
 fn deal_hand(seed: &[u8; 32], domain: u8) -> CardHand {
-    let mut stream = keccak::hashv(&[seed, &[domain]]).0;
+    let mut stream = k_hash(&[seed, &[domain]]);
     let mut slots: [Option<Card>; HAND_SIZE] = [None; HAND_SIZE];
     for i in 0..HAND_SIZE {
         let pick = stream[i] % CARD_VARIANTS;
         slots[i] = Some(card_from_index(pick));
-        stream = keccak::hashv(&[&stream, &[i as u8, domain]]).0;
+        stream = k_hash(&[&stream, &[i as u8, domain]]);
     }
     CardHand { slots }
 }
@@ -1351,9 +1396,35 @@ pub struct InitMatch<'info> {
     )]
     pub payer: Signer<'info>,
     /// CHECK: SlotHashes sysvar — read-only, address-validated
-    #[account(address = anchor_lang::solana_program::sysvar::slot_hashes::ID)]
+    #[account(address = solana_sysvar::slot_hashes::ID)]
     pub slot_hashes: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
+}
+
+#[delegate]
+#[derive(Accounts)]
+#[instruction(match_id: u64)]
+pub struct DelegateMatch<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: match PDA. Untyped because delegation changes its owner.
+    #[account(
+        mut,
+        del,
+        seeds = [b"match", match_id.to_le_bytes().as_ref()],
+        bump,
+    )]
+    pub match_state: UncheckedAccount<'info>,
+}
+
+#[commit]
+#[derive(Accounts)]
+pub struct CommitMatch<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    /// CHECK: delegated match account. Data is the rollup copy during this ix.
+    #[account(mut)]
+    pub match_state: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]

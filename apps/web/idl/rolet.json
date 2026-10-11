@@ -1,5 +1,5 @@
 {
-  "address": "Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792",
+  "address": "mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH",
   "metadata": {
     "name": "rolet",
     "version": "0.1.0",
@@ -7,6 +7,384 @@
     "description": "ROLET — fully on-chain tactical chamber duel for Solana"
   },
   "instructions": [
+    {
+      "name": "claim_timeout",
+      "discriminator": [
+        130,
+        234,
+        45,
+        53,
+        120,
+        90,
+        86,
+        178
+      ],
+      "accounts": [
+        {
+          "name": "match_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state.match_id",
+                "account": "MatchState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimant",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_lobby",
+      "discriminator": [
+        4,
+        105,
+        152,
+        106,
+        82,
+        6,
+        43,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "lobby",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  98,
+                  98,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lobby.match_id",
+                "account": "LobbyState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "host_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "host"
+              }
+            ]
+          }
+        },
+        {
+          "name": "guest_profile",
+          "docs": [
+            "Required only when a guest joined but the match was never launched",
+            "(refunds the guest's durability too). Authority checked in handler."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "guest_profile.authority",
+                "account": "PlayerProfile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "host",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "lobby"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "commit_and_undelegate_match",
+      "docs": [
+        "Commit the rollup copy and return MatchState to this program.",
+        "settle_match stays on devnet and runs only after this lands."
+      ],
+      "discriminator": [
+        209,
+        187,
+        244,
+        226,
+        15,
+        248,
+        69,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "match_state",
+          "writable": true
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "delegate_match",
+      "docs": [
+        "Lock MatchState onto the EU rollup. Lobby accounts stay on devnet.",
+        "The account must stay untyped: ownership moves to the delegation program",
+        "before Anchor would write it back."
+      ],
+      "discriminator": [
+        30,
+        116,
+        9,
+        69,
+        147,
+        61,
+        133,
+        238
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buffer_match_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                11,
+                127,
+                3,
+                213,
+                113,
+                148,
+                220,
+                66,
+                219,
+                31,
+                240,
+                157,
+                15,
+                203,
+                154,
+                192,
+                27,
+                183,
+                126,
+                128,
+                139,
+                249,
+                8,
+                127,
+                197,
+                146,
+                61,
+                46,
+                251,
+                35,
+                219,
+                108
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_match_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_match_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "match_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "match_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner_program",
+          "address": "mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "match_id",
+          "type": "u64"
+        }
+      ]
+    },
     {
       "name": "init_match",
       "discriminator": [
@@ -92,170 +470,45 @@
       ]
     },
     {
-      "name": "play_card",
+      "name": "init_vault",
       "discriminator": [
-        63,
+        77,
+        79,
+        85,
         150,
-        161,
-        24,
-        68,
-        231,
-        108,
-        9
-      ],
-      "accounts": [
-        {
-          "name": "match_state",
-          "writable": true
-        },
-        {
-          "name": "current_profile"
-        },
-        {
-          "name": "actor",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "slot",
-          "type": "u8"
-        },
-        {
-          "name": "card",
-          "type": {
-            "defined": {
-              "name": "Card"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "pull_trigger",
-      "discriminator": [
-        117,
-        91,
-        127,
-        197,
-        236,
-        221,
-        236,
-        6
-      ],
-      "accounts": [
-        {
-          "name": "match_state",
-          "writable": true
-        },
-        {
-          "name": "current_profile"
-        },
-        {
-          "name": "actor",
-          "writable": true,
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "target_self",
-          "type": "bool"
-        }
-      ]
-    },
-    {
-      "name": "register_session_key",
-      "discriminator": [
-        69,
-        94,
-        60,
-        44,
-        49,
-        199,
-        183,
-        233
-      ],
-      "accounts": [
-        {
-          "name": "profile",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  114,
-                  111,
-                  102,
-                  105,
-                  108,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
-              }
-            ]
-          }
-        },
-        {
-          "name": "authority",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "session_pubkey",
-          "type": "pubkey"
-        },
-        {
-          "name": "duration_seconds",
-          "type": "i64"
-        }
-      ]
-    },
-    {
-      "name": "settle_match",
-      "discriminator": [
-        71,
-        124,
-        117,
-        96,
-        191,
+        33,
         217,
-        116,
-        24
+        52,
+        106
       ],
       "accounts": [
         {
-          "name": "match_state",
-          "writable": true
-        },
-        {
-          "name": "profile_one",
-          "writable": true
-        },
-        {
-          "name": "profile_two",
-          "writable": true
-        },
-        {
           "name": "vault",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "treasury_sol",
           "writable": true
         },
         {
-          "name": "winner",
-          "writable": true
+          "name": "ops_wallet"
         },
         {
-          "name": "rent_refund",
+          "name": "authority",
           "writable": true,
           "signer": true
         },
@@ -264,23 +517,55 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "reward_sol",
+          "type": "u64"
+        },
+        {
+          "name": "character_price_sol",
+          "type": "u64"
+        }
+      ]
     },
     {
-      "name": "set_character_nft",
+      "name": "join_lobby",
       "discriminator": [
-        1,
-        54,
-        4,
-        186,
-        169,
-        216,
-        90,
-        44
+        127,
+        102,
+        119,
+        190,
+        215,
+        223,
+        212,
+        159
       ],
       "accounts": [
         {
-          "name": "profile",
+          "name": "lobby",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  98,
+                  98,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lobby.match_id",
+                "account": "LobbyState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "guest_profile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -298,85 +583,25 @@
               },
               {
                 "kind": "account",
-                "path": "authority"
+                "path": "guest"
               }
             ]
           }
         },
         {
-          "name": "character_nft"
-        },
-        {
-          "name": "authority",
-          "writable": true,
+          "name": "guest",
           "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "sns_domain",
-          "type": "string"
-        },
-        {
-          "name": "durability_max",
-          "type": "u8"
-        }
-      ]
-    },
-    {
-      "name": "purchase_character",
-      "discriminator": [
-        106,
-        152,
-        20,
-        133,
-        31,
-        138,
-        120,
-        36
-      ],
-      "accounts": [
-        {
-          "name": "profile",
-          "writable": true
-        },
-        {
-          "name": "character_nft"
-        },
-        {
-          "name": "vault",
-          "writable": true
-        },
-        {
-          "name": "treasury_sol",
-          "writable": true
-        },
-        {
-          "name": "ops_wallet",
-          "writable": true
-        },
-        {
-          "name": "buyer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "sns_domain",
-          "type": "string"
-        },
-        {
-          "name": "durability_max",
-          "type": "u8"
+          "name": "guest_commit",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ]
     },
@@ -466,24 +691,283 @@
       ]
     },
     {
-      "name": "join_lobby",
+      "name": "play_card",
       "discriminator": [
-        127,
-        102,
-        119,
-        190,
-        215,
-        223,
-        212,
-        159
+        63,
+        150,
+        161,
+        24,
+        68,
+        231,
+        108,
+        9
       ],
       "accounts": [
         {
-          "name": "lobby",
+          "name": "match_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state.match_id",
+                "account": "MatchState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "current_profile",
+          "docs": [
+            "Profile of whoever's turn it currently is — used to verify session",
+            "keys. Anchor reads this from L1 even when the rest of the ix is",
+            "executing inside the Ephemeral Rollup."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "current_profile.authority",
+                "account": "PlayerProfile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "actor",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "slot",
+          "type": "u8"
+        },
+        {
+          "name": "card",
+          "type": {
+            "defined": {
+              "name": "Card"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "process_undelegation",
+      "discriminator": [
+        196,
+        28,
+        41,
+        206,
+        48,
+        37,
+        51,
+        167
+      ],
+      "accounts": [
+        {
+          "name": "base_account",
           "writable": true
         },
         {
-          "name": "guest_profile",
+          "name": "buffer",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  110,
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  101,
+                  45,
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "base_account"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                181,
+                183,
+                0,
+                225,
+                242,
+                87,
+                58,
+                192,
+                204,
+                6,
+                34,
+                1,
+                52,
+                74,
+                207,
+                151,
+                184,
+                53,
+                6,
+                235,
+                140,
+                229,
+                25,
+                152,
+                204,
+                98,
+                126,
+                24,
+                147,
+                128,
+                167,
+                62
+              ]
+            }
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "account_seeds",
+          "type": {
+            "vec": "bytes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "pull_trigger",
+      "discriminator": [
+        117,
+        91,
+        127,
+        197,
+        236,
+        221,
+        236,
+        6
+      ],
+      "accounts": [
+        {
+          "name": "match_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state.match_id",
+                "account": "MatchState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "current_profile",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "current_profile.authority",
+                "account": "PlayerProfile"
+              }
+            ]
+          }
+        },
+        {
+          "name": "actor",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "target_self",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "purchase_character",
+      "discriminator": [
+        106,
+        152,
+        20,
+        133,
+        31,
+        138,
+        120,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "profile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -501,19 +985,183 @@
               },
               {
                 "kind": "account",
-                "path": "guest"
+                "path": "buyer"
               }
             ]
           }
         },
         {
-          "name": "guest",
+          "name": "character_nft"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_sol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  45,
+                  115,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "ops_wallet",
+          "writable": true
+        },
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "sns_domain",
+          "type": "string"
+        },
+        {
+          "name": "durability_max",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "register_session_key",
+      "discriminator": [
+        69,
+        94,
+        60,
+        44,
+        49,
+        199,
+        183,
+        233
+      ],
+      "accounts": [
+        {
+          "name": "profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
           "signer": true
         }
       ],
       "args": [
         {
-          "name": "guest_commit",
+          "name": "session_pubkey",
+          "type": "pubkey"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "reveal_secret",
+      "discriminator": [
+        126,
+        156,
+        142,
+        60,
+        92,
+        135,
+        177,
+        144
+      ],
+      "accounts": [
+        {
+          "name": "lobby",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  98,
+                  98,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "lobby.match_id",
+                "account": "LobbyState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "secret",
           "type": {
             "array": [
               "u8",
@@ -524,24 +1172,20 @@
       ]
     },
     {
-      "name": "close_lobby",
+      "name": "set_character_nft",
       "discriminator": [
+        1,
+        54,
         4,
-        105,
-        152,
-        106,
-        82,
-        6,
-        43,
-        7
+        186,
+        169,
+        216,
+        90,
+        44
       ],
       "accounts": [
         {
-          "name": "lobby",
-          "writable": true
-        },
-        {
-          "name": "host_profile",
+          "name": "profile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -559,35 +1203,195 @@
               },
               {
                 "kind": "account",
-                "path": "host"
+                "path": "authority"
               }
             ]
           }
         },
         {
-          "name": "guest_profile",
-          "writable": true,
-          "optional": true
+          "name": "character_nft"
         },
         {
-          "name": "host",
+          "name": "authority",
           "writable": true,
           "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "sns_domain",
+          "type": "string"
+        },
+        {
+          "name": "durability_max",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "settle_match",
+      "discriminator": [
+        71,
+        124,
+        117,
+        96,
+        191,
+        217,
+        116,
+        24
+      ],
+      "accounts": [
+        {
+          "name": "match_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  97,
+                  116,
+                  99,
+                  104
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state.match_id",
+                "account": "MatchState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "profile_one",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state.player_one",
+                "account": "MatchState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "profile_two",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "match_state.player_two",
+                "account": "MatchState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_sol",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  101,
+                  97,
+                  115,
+                  117,
+                  114,
+                  121,
+                  45,
+                  115,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "winner",
+          "writable": true
+        },
+        {
+          "name": "rent_refund",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "init_vault",
+      "name": "update_vault_params",
       "discriminator": [
-        77,
-        79,
-        85,
-        150,
-        33,
-        217,
-        52,
-        106
+        70,
+        157,
+        73,
+        56,
+        190,
+        227,
+        31,
+        133
       ],
       "accounts": [
         {
@@ -609,159 +1413,28 @@
           }
         },
         {
-          "name": "treasury_sol",
-          "writable": true
-        },
-        {
-          "name": "ops_wallet",
-          "writable": true
-        },
-        {
           "name": "authority",
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
           "name": "reward_sol",
-          "type": "u64"
+          "type": {
+            "option": "u64"
+          }
         },
         {
           "name": "character_price_sol",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "update_vault_params",
-      "accounts": [
-        {
-          "name": "vault",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
-          "name": "authority",
-          "isMut": true,
-          "isSigner": true
-        }
-      ],
-      "args": [
-        {
-          "name": "rewardSol",
-          "type": {
-            "option": "u64"
-          }
-        },
-        {
-          "name": "characterPriceSol",
           "type": {
             "option": "u64"
           }
         }
-      ],
-      "discriminator": [
-        70,
-        157,
-        73,
-        56,
-        190,
-        227,
-        31,
-        133
       ]
-    },
-    {
-      "name": "reveal_secret",
-      "discriminator": [
-        126,
-        156,
-        142,
-        60,
-        92,
-        135,
-        177,
-        144
-      ],
-      "accounts": [
-        {
-          "name": "lobby",
-          "writable": true
-        },
-        {
-          "name": "player",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "secret",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "claim_timeout",
-      "discriminator": [
-        130,
-        234,
-        45,
-        53,
-        120,
-        90,
-        86,
-        178
-      ],
-      "accounts": [
-        {
-          "name": "match_state",
-          "writable": true
-        },
-        {
-          "name": "claimant",
-          "signer": true
-        }
-      ],
-      "args": []
     }
   ],
   "accounts": [
-    {
-      "name": "MatchState",
-      "discriminator": [
-        250,
-        209,
-        137,
-        70,
-        235,
-        96,
-        121,
-        216
-      ]
-    },
-    {
-      "name": "PlayerProfile",
-      "discriminator": [
-        82,
-        226,
-        99,
-        87,
-        164,
-        130,
-        181,
-        80
-      ]
-    },
     {
       "name": "GameVault",
       "discriminator": [
@@ -787,22 +1460,35 @@
         204,
         85
       ]
+    },
+    {
+      "name": "MatchState",
+      "discriminator": [
+        250,
+        209,
+        137,
+        70,
+        235,
+        96,
+        121,
+        216
+      ]
+    },
+    {
+      "name": "PlayerProfile",
+      "discriminator": [
+        82,
+        226,
+        99,
+        87,
+        164,
+        130,
+        181,
+        80
+      ]
     }
   ],
   "events": [
-    {
-      "name": "MatchInitialized",
-      "discriminator": [
-        84,
-        37,
-        198,
-        148,
-        168,
-        35,
-        167,
-        44
-      ]
-    },
     {
       "name": "CardPlayed",
       "discriminator": [
@@ -817,68 +1503,16 @@
       ]
     },
     {
-      "name": "TriggerPulled",
+      "name": "LobbyClosed",
       "discriminator": [
-        23,
-        210,
-        11,
-        191,
-        18,
-        243,
-        239,
-        103
-      ]
-    },
-    {
-      "name": "MatchSettled",
-      "discriminator": [
-        243,
-        201,
-        134,
-        151,
-        193,
-        131,
-        223,
-        150
-      ]
-    },
-    {
-      "name": "ProfileCreated",
-      "discriminator": [
-        134,
+        7,
         233,
-        199,
-        153,
-        77,
-        206,
-        128,
-        94
-      ]
-    },
-    {
-      "name": "VaultInitialized",
-      "discriminator": [
-        180,
-        43,
-        207,
-        2,
-        18,
-        71,
-        3,
-        75
-      ]
-    },
-    {
-      "name": "SessionKeyRegistered",
-      "discriminator": [
-        17,
-        83,
-        253,
-        120,
-        241,
-        172,
-        15,
-        204
+        210,
+        36,
+        203,
+        140,
+        14,
+        47
       ]
     },
     {
@@ -908,33 +1542,55 @@
       ]
     },
     {
-      "name": "VaultParamsUpdated",
-      "fields": [
-        {
-          "name": "authority",
-          "type": "pubkey",
-          "index": false
-        },
-        {
-          "name": "rewardSol",
-          "type": "u64",
-          "index": false
-        },
-        {
-          "name": "characterPriceSol",
-          "type": "u64",
-          "index": false
-        }
-      ],
+      "name": "MatchForfeited",
       "discriminator": [
-        73,
-        89,
-        143,
-        32,
-        156,
-        92,
-        183,
-        37
+        154,
+        253,
+        133,
+        187,
+        123,
+        209,
+        207,
+        139
+      ]
+    },
+    {
+      "name": "MatchInitialized",
+      "discriminator": [
+        84,
+        37,
+        198,
+        148,
+        168,
+        35,
+        167,
+        44
+      ]
+    },
+    {
+      "name": "MatchSettled",
+      "discriminator": [
+        243,
+        201,
+        134,
+        151,
+        193,
+        131,
+        223,
+        150
+      ]
+    },
+    {
+      "name": "ProfileCreated",
+      "discriminator": [
+        134,
+        233,
+        199,
+        153,
+        77,
+        206,
+        128,
+        94
       ]
     },
     {
@@ -951,29 +1607,55 @@
       ]
     },
     {
-      "name": "LobbyClosed",
+      "name": "SessionKeyRegistered",
       "discriminator": [
-        7,
-        233,
-        210,
-        36,
-        203,
-        140,
-        14,
-        47
+        17,
+        83,
+        253,
+        120,
+        241,
+        172,
+        15,
+        204
       ]
     },
     {
-      "name": "MatchForfeited",
+      "name": "TriggerPulled",
       "discriminator": [
-        154,
-        253,
-        133,
-        187,
-        123,
-        209,
+        23,
+        210,
+        11,
+        191,
+        18,
+        243,
+        239,
+        103
+      ]
+    },
+    {
+      "name": "VaultInitialized",
+      "discriminator": [
+        180,
+        43,
         207,
-        139
+        2,
+        18,
+        71,
+        3,
+        75
+      ]
+    },
+    {
+      "name": "VaultParamsUpdated",
+      "discriminator": [
+        73,
+        89,
+        143,
+        32,
+        156,
+        92,
+        183,
+        37
       ]
     }
   ],
@@ -1250,6 +1932,53 @@
       }
     },
     {
+      "name": "CardHand",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "slots",
+            "type": {
+              "array": [
+                {
+                  "option": {
+                    "defined": {
+                      "name": "Card"
+                    }
+                  }
+                },
+                4
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardPlayed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "actor",
+            "type": "pubkey"
+          },
+          {
+            "name": "card",
+            "type": {
+              "defined": {
+                "name": "Card"
+              }
+            }
+          },
+          {
+            "name": "detail",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "Chamber",
       "type": {
         "kind": "enum",
@@ -1267,21 +1996,63 @@
       }
     },
     {
-      "name": "MatchStatus",
+      "name": "GameVault",
       "type": {
-        "kind": "enum",
-        "variants": [
+        "kind": "struct",
+        "fields": [
           {
-            "name": "AwaitingOpponent"
+            "name": "authority",
+            "type": "pubkey"
           },
           {
-            "name": "Active"
+            "name": "treasury_sol",
+            "docs": [
+              "SOL treasury PDA that receives NFT revenue share and pays winners."
+            ],
+            "type": "pubkey"
           },
           {
-            "name": "Completed"
+            "name": "ops_wallet",
+            "docs": [
+              "Team wallet receiving the non-vault share (30%) of NFT revenue."
+            ],
+            "type": "pubkey"
           },
           {
-            "name": "Abandoned"
+            "name": "character_price_sol",
+            "docs": [
+              "Character NFT price, in lamports."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reward_sol",
+            "docs": [
+              "Base winner reward per match, in lamports."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "total_paid_out",
+            "docs": [
+              "Cumulative lamports paid out to winners."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "matches_settled",
+            "type": "u64"
+          },
+          {
+            "name": "treasury_bump",
+            "docs": [
+              "Canonical bump of the treasury_sol PDA (program-owned)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
@@ -1324,56 +2095,224 @@
       }
     },
     {
-      "name": "CardHand",
+      "name": "LobbyClosed",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "slots",
-            "type": {
-              "array": [
-                {
-                  "option": {
-                    "defined": {
-                      "name": "Card"
-                    }
-                  }
-                },
-                4
-              ]
-            }
+            "name": "match_id",
+            "type": "u64"
+          },
+          {
+            "name": "host",
+            "type": "pubkey"
+          },
+          {
+            "name": "refunded",
+            "type": "bool"
           }
         ]
       }
     },
     {
-      "name": "PlayerStats",
+      "name": "LobbyOpened",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "matches_played",
-            "type": "u32"
-          },
-          {
-            "name": "wins",
-            "type": "u32"
-          },
-          {
-            "name": "losses",
-            "type": "u32"
-          },
-          {
-            "name": "total_damage_dealt",
+            "name": "match_id",
             "type": "u64"
           },
           {
-            "name": "total_rewards_claimed",
+            "name": "host",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LobbyReady",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "match_id",
             "type": "u64"
           },
           {
-            "name": "elo_rating",
-            "type": "u16"
+            "name": "host",
+            "type": "pubkey"
+          },
+          {
+            "name": "guest",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LobbyState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "match_id",
+            "type": "u64"
+          },
+          {
+            "name": "host",
+            "type": "pubkey"
+          },
+          {
+            "name": "host_commit",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "guest",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "guest_commit",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "guest_secret",
+            "docs": [
+              "Zero until the guest calls reveal_secret (never set at join)."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "host_secret",
+            "docs": [
+              "Zero until the host calls reveal_secret."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "host_revealed",
+            "type": "bool"
+          },
+          {
+            "name": "guest_revealed",
+            "type": "bool"
+          },
+          {
+            "name": "seed_slot",
+            "docs": [
+              "Pinned future slot whose hash seeds the match (set on final reveal)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "launched",
+            "docs": [
+              "True once init_match has created the MatchState for this lobby."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MatchForfeited",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "match_id",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "staller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MatchInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "match_id",
+            "type": "u64"
+          },
+          {
+            "name": "seed",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "first_turn",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MatchSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "match_id",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser",
+            "type": "pubkey"
+          },
+          {
+            "name": "reward",
+            "type": "u64"
+          },
+          {
+            "name": "p1_durability_remaining",
+            "type": "u8"
+          },
+          {
+            "name": "p2_durability_remaining",
+            "type": "u8"
           }
         ]
       }
@@ -1475,6 +2414,9 @@
           },
           {
             "name": "skip_turn_for",
+            "docs": [
+              "Player whose next turn will be skipped entirely (LastChance card)."
+            ],
             "type": {
               "option": "pubkey"
             }
@@ -1490,6 +2432,26 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MatchStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "AwaitingOpponent"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Completed"
+          },
+          {
+            "name": "Abandoned"
           }
         ]
       }
@@ -1549,7 +2511,39 @@
       }
     },
     {
-      "name": "GameVault",
+      "name": "PlayerStats",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "matches_played",
+            "type": "u32"
+          },
+          {
+            "name": "wins",
+            "type": "u32"
+          },
+          {
+            "name": "losses",
+            "type": "u32"
+          },
+          {
+            "name": "total_damage_dealt",
+            "type": "u64"
+          },
+          {
+            "name": "total_rewards_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "elo_rating",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProfileCreated",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1558,42 +2552,18 @@
             "type": "pubkey"
           },
           {
-            "name": "treasury_sol",
+            "name": "sns_domain",
+            "type": "string"
+          },
+          {
+            "name": "character_nft",
             "type": "pubkey"
-          },
-          {
-            "name": "ops_wallet",
-            "type": "pubkey"
-          },
-          {
-            "name": "character_price_sol",
-            "type": "u64"
-          },
-          {
-            "name": "reward_sol",
-            "type": "u64"
-          },
-          {
-            "name": "total_paid_out",
-            "type": "u64"
-          },
-          {
-            "name": "matches_settled",
-            "type": "u64"
-          },
-          {
-            "name": "treasury_bump",
-            "type": "u8"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "MatchInitialized",
+      "name": "SecretRevealed",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1602,41 +2572,35 @@
             "type": "u64"
           },
           {
-            "name": "seed",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
+            "name": "player",
+            "type": "pubkey"
           },
           {
-            "name": "first_turn",
-            "type": "pubkey"
+            "name": "seed_slot",
+            "docs": [
+              "0 until both secrets are revealed."
+            ],
+            "type": "u64"
           }
         ]
       }
     },
     {
-      "name": "CardPlayed",
+      "name": "SessionKeyRegistered",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "actor",
+            "name": "authority",
             "type": "pubkey"
           },
           {
-            "name": "card",
-            "type": {
-              "defined": {
-                "name": "Card"
-              }
-            }
+            "name": "session_key",
+            "type": "pubkey"
           },
           {
-            "name": "detail",
-            "type": "u64"
+            "name": "expires_at",
+            "type": "i64"
           }
         ]
       }
@@ -1666,58 +2630,6 @@
       }
     },
     {
-      "name": "MatchSettled",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "match_id",
-            "type": "u64"
-          },
-          {
-            "name": "winner",
-            "type": "pubkey"
-          },
-          {
-            "name": "loser",
-            "type": "pubkey"
-          },
-          {
-            "name": "reward",
-            "type": "u64"
-          },
-          {
-            "name": "p1_durability_remaining",
-            "type": "u8"
-          },
-          {
-            "name": "p2_durability_remaining",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "ProfileCreated",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "sns_domain",
-            "type": "string"
-          },
-          {
-            "name": "character_nft",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
       "name": "VaultInitialized",
       "type": {
         "kind": "struct",
@@ -1738,140 +2650,6 @@
       }
     },
     {
-      "name": "SessionKeyRegistered",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "session_key",
-            "type": "pubkey"
-          },
-          {
-            "name": "expires_at",
-            "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LobbyState",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "match_id",
-            "type": "u64"
-          },
-          {
-            "name": "host",
-            "type": "pubkey"
-          },
-          {
-            "name": "host_commit",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "guest",
-            "type": {
-              "option": "pubkey"
-            }
-          },
-          {
-            "name": "guest_commit",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "guest_secret",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "host_secret",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "host_revealed",
-            "type": "bool"
-          },
-          {
-            "name": "guest_revealed",
-            "type": "bool"
-          },
-          {
-            "name": "seed_slot",
-            "type": "u64"
-          },
-          {
-            "name": "launched",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LobbyOpened",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "match_id",
-            "type": "u64"
-          },
-          {
-            "name": "host",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LobbyReady",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "match_id",
-            "type": "u64"
-          },
-          {
-            "name": "host",
-            "type": "pubkey"
-          },
-          {
-            "name": "guest",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
       "name": "VaultParamsUpdated",
       "type": {
         "kind": "struct",
@@ -1881,72 +2659,12 @@
             "type": "pubkey"
           },
           {
-            "name": "rewardSol",
+            "name": "reward_sol",
             "type": "u64"
           },
           {
-            "name": "characterPriceSol",
+            "name": "character_price_sol",
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "SecretRevealed",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "match_id",
-            "type": "u64"
-          },
-          {
-            "name": "player",
-            "type": "pubkey"
-          },
-          {
-            "name": "seed_slot",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LobbyClosed",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "match_id",
-            "type": "u64"
-          },
-          {
-            "name": "host",
-            "type": "pubkey"
-          },
-          {
-            "name": "refunded",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "MatchForfeited",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "match_id",
-            "type": "u64"
-          },
-          {
-            "name": "winner",
-            "type": "pubkey"
-          },
-          {
-            "name": "staller",
-            "type": "pubkey"
           }
         ]
       }

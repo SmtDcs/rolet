@@ -32,6 +32,23 @@ MagicBlock's Anchor guide, not the 0.32 guess:
 6. Web client on this branch: router for turns, delegate after init, commit before settle.
 7. One two-wallet match on the new id. If it fails, checkout `feature/duel-2d`.
 
+## Resume point (2026-10-11)
+
+Branch `experiment/magicblock-anchor1`, plan commit `5faa78a`. Working tree after that is uncommitted.
+
+Done:
+
+- Anchor CLI 1.0.2 is installed. `avm` still selects 0.30.1. Binary: `~/.avm/bin/anchor-1.0.2`.
+- Solana 3.1.9 is at `~/.local/share/solana/install/releases/3.1.9`. Active `solana` stays 1.18.17.
+- `cargo check -p rolet` passed. Cargo resolved `anchor-lang` 1.2.1 from the 1.0.2 requirement. SDK 0.17.3 with feature `anchor` compiled.
+- `mpl-core` is removed from the program. `CORE_ASSET_V1` is 1. Keccak uses `solana_keccak_hasher`. SlotHashes id is `solana_sysvar::slot_hashes::ID`. `CpiContext` takes `system_program.key()`.
+- `delegate_match` and `commit_and_undelegate_match` are in `lib.rs`. `#[ephemeral]` is on the program module. Match account only. EU validator is pinned. Lobby instructions stay on devnet.
+- The web hook routes turns and the commit through `https://devnet-router.magicblock.app` only when the match account owner is the delegation program. `settle_match` stays on devnet. 34 unit tests passed. `tsc --noEmit` passed. The IDL in `apps/web/idl` does not yet contain the new instructions, so do not restart `next start` until a successful build copies a new IDL and a new program id.
+- Platform-tools v1.52 are extracted under `~/.cache/solana/v1.52/platform-tools`. The SBF build of this branch was restarted after that.
+- `declare_id` on this branch is `mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH`. The keypair is `apps/server/target/deploy/rolet-er-keypair.json`, and that same key is currently `target/deploy/rolet-keypair.json` so Anchor deploys the new id.
+- The live program keypair was copied to `apps/server/target/deploy/rolet-keypair.live-backup.json` before that swap. Both files are under `target/` and must not be committed. Do not deploy the backup. Do not upgrade `Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792`.
+- Live demo is still `next start` on port 3001 and tunnel `https://limit-printing-meal-florists.trycloudflare.com`.
+
 ## Out of scope
 
 - Merging to `main`

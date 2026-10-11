@@ -13,6 +13,7 @@ import {
   timeoutClaimable,
   sessionAttemptFresh,
   shouldArmSession,
+  turnRoute,
 } from "./chainPace";
 
 test("only the host sends the launch transaction", () => {
@@ -89,4 +90,9 @@ test("an expired blockhash is sent again by the session key", () => {
   assert.equal(expiredChainError("Signature abc has expired: block height exceeded."), true);
   assert.equal(expiredChainError("Transaction simulation failed: Blockhash not found."), true);
   assert.equal(expiredChainError("Wallet not connected"), false);
+});
+
+test("a delegated match sends turns to the rollup", () => {
+  assert.equal(turnRoute(true), "rollup");
+  assert.equal(turnRoute(false), "base");
 });

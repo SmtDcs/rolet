@@ -12,10 +12,6 @@ import {
   LAMPORTS_PER_SOL,
   type Commitment,
 } from "@solana/web3.js";
-import {
-  createDelegateInstruction,
-  createCommitAndUndelegateInstruction,
-} from "@magicblock-labs/ephemeral-rollups-sdk";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
   blockhashExpired,
@@ -24,6 +20,7 @@ import {
   sessionArmMessage,
   sessionFundPlan,
   shouldArmSession,
+  turnRoute,
 } from "@/lib/chainPace";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import bs58 from "bs58";
@@ -43,9 +40,13 @@ const ROLET_PROGRAM_ID = new PublicKey(
   (idl as { address: string }).address
 );
 
-const ER_ENDPOINT =
-  process.env.NEXT_PUBLIC_MAGICBLOCK_ER_ENDPOINT ??
-  "https://devnet.magicblock.app";
+/** Program pins the EU validator. The router forwards a delegated match there. */
+const ER_ROUTER = "https://devnet-router.magicblock.app";
+const DELEGATION_PROGRAM_ID = new PublicKey(
+  "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+);
+const MAGIC_PROGRAM_ID = new PublicKey("Magic11111111111111111111111111111111111111");
+const MAGIC_CONTEXT_ID = new PublicKey("MagicContext1111111111111111111111111111111");
 
 const MATCH_SEED = Buffer.from("match");
 const PROFILE_SEED = Buffer.from("profile");
@@ -271,13 +272,14 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   const [busy, setBusy] = useState(false);
   const [sessionKey, setSessionKey] = useState<SessionKeyState | null>(null);
 
-  const erConnection = useMemo(
-    () =>
-      ephemeral
-        ? new Connection(ER_ENDPOINT, { commitment: "processed" })
-        : null,
-    [ephemeral]
-  );
+  const erConnection = useMemo(() => {
+    const conn = new Connection(ER_ROUTER, {
+      commitment: "confirmed",
+      disableRetryOnRateLimit: true,
+    });
+    installHttpConfirmation(conn);
+    return conn;
+  }, []);
 
   const connection = ephemeral && erConnection ? erConnection : l1Connection;
 
@@ -334,17 +336,16 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   );
 
   const programER = useMemo(
-    () => (ephemeral && erConnection ? buildProgram(erConnection, true) : null),
-    [buildProgram, ephemeral, erConnection]
+    () => buildProgram(erConnection, true),
+    [buildProgram, erConnection]
   );
 
   // Backwards-compat: existing call sites read `program`. Default to L1.
   const program = programL1;
 
   const sendWithSessionKey = useCallback(
-    async (tx: Transaction): Promise<string> => {
+    async (tx: Transaction, conn: Connection = l1Connection): Promise<string> => {
       if (!sessionKey) throw new Error("No active session key");
-      const conn = l1Connection;
       const keypair = sessionKey.keypair;
       let lastErr: unknown;
       // A 429 can hold the first signature past its block height. The session
@@ -435,34 +436,98 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
     [program, wallet, l1Connection]
   );
 
-  /**
-   * Push a freshly-init'd MatchState into the MagicBlock ER. Sends a
-   * standalone L1 tx via the @magicblock-labs/ephemeral-rollups-sdk that
-   * transfers ownership of the PDA to the delegation program. After this
-   * succeeds, all reads/writes against the PDA happen via the ER endpoint.
-   *
-   * Gracefully no-ops on localnet (delegation program isn't deployed there).
-   */
-  const delegateMatch = useCallback(
-    async (_matchId: BN) => {
-      // ER delegation permanently disabled — MagicBlock SDK has a Rust-side
-      // dep conflict with Anchor 0.30.1 (§14). Attempting the delegation ix
-      // causes Solflare to reject with "Network mismatch" because the
-      // MagicBlock program ID is unrecognised on devnet. Match runs on L1.
-      return null;
+  const matchIsDelegated = useCallback(
+    async (matchId: BN) => {
+      const info = await l1Connection.getAccountInfo(matchPda(matchId));
+      return turnRoute(!!info && info.owner.equals(DELEGATION_PROGRAM_ID)) === "rollup";
     },
-    []
+    [l1Connection]
   );
 
-  // ER delegation is blocked (§14 — MagicBlock Rust SDK dependency conflicts,
-  // no ETA). Match always runs on L1; nothing to commit or undelegate.
-  // Keeping the signature so call sites don't need touching.
-  const commitAndUndelegateMatch = useCallback(
-    async (_matchId: BN) => {
-      emitToast("info", "Match was L1-only; no commit needed");
-      return null;
+  /**
+   * One devnet transaction. The program CPIs the delegation program and
+   * locks MatchState on the EU rollup. Lobby instructions stay here.
+   */
+  const delegateMatch = useCallback(
+    async (matchId: BN) => {
+      if (!programL1 || !wallet.publicKey) {
+        emitToast("error", "Wallet not connected");
+        return null;
+      }
+      setBusy(true);
+      try {
+        const matchState = matchPda(matchId);
+        const [bufferMatchState] = PublicKey.findProgramAddressSync(
+          [Buffer.from("buffer"), matchState.toBuffer()],
+          ROLET_PROGRAM_ID
+        );
+        const [delegationRecordMatchState] = PublicKey.findProgramAddressSync(
+          [Buffer.from("delegation"), matchState.toBuffer()],
+          DELEGATION_PROGRAM_ID
+        );
+        const [delegationMetadataMatchState] = PublicKey.findProgramAddressSync(
+          [Buffer.from("delegation-metadata"), matchState.toBuffer()],
+          DELEGATION_PROGRAM_ID
+        );
+        const sig = await programL1.methods
+          .delegateMatch(matchId)
+          .accounts({
+            payer: wallet.publicKey,
+            matchState,
+            bufferMatchState,
+            delegationRecordMatchState,
+            delegationMetadataMatchState,
+            ownerProgram: ROLET_PROGRAM_ID,
+            delegationProgram: DELEGATION_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          } as never)
+          .rpc({ commitment: "confirmed" });
+        emitToast("success", `Match delegated · ${sig.slice(0, 6)}…`);
+        return sig;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        emitToast("error", `delegate_match failed · ${msg}`);
+        return null;
+      } finally {
+        setBusy(false);
+      }
     },
-    []
+    [programL1, wallet.publicKey]
+  );
+
+  const commitAndUndelegateMatch = useCallback(
+    async (matchId: BN) => {
+      if (!programER || !wallet.publicKey) {
+        emitToast("error", "Wallet not connected");
+        return null;
+      }
+      setBusy(true);
+      try {
+        const sig = await programER.methods
+          .commitAndUndelegateMatch()
+          .accounts({
+            payer: wallet.publicKey,
+            matchState: matchPda(matchId),
+            magicProgram: MAGIC_PROGRAM_ID,
+            magicContext: MAGIC_CONTEXT_ID,
+          } as never)
+          .rpc({ commitment: "confirmed" });
+        for (let i = 0; i < 15; i++) {
+          const info = await l1Connection.getAccountInfo(matchPda(matchId));
+          if (info && info.owner.equals(ROLET_PROGRAM_ID)) break;
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+        emitToast("success", `Match returned to devnet · ${sig.slice(0, 6)}…`);
+        return sig;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        emitToast("error", `commit_and_undelegate failed · ${msg}`);
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [programER, wallet.publicKey, l1Connection]
   );
 
   /**
@@ -602,19 +667,24 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
             : wallet.publicKey,
         };
 
-        // Actor is a Signer on-chain — when a session key is armed it must
-        // sign the tx itself (wallet signing won't satisfy the constraint).
-        // Always route through L1 (ER delegation not implemented).
+        // The session key signs when it is armed. A delegated match is sent
+        // to the router. A base-layer match stays on devnet.
+        const rollup = await matchIsDelegated(matchId);
+        const turnProgram = rollup ? programER : programL1;
+        if (!turnProgram) {
+          emitToast("error", "Wallet not connected");
+          return null;
+        }
         let sig: string;
         if (sessionKey) {
-          const ix = await programL1.methods
+          const ix = await turnProgram.methods
             .playCard(slot, cardArg(card) as never)
             .accounts(accounts as never)
             .instruction();
           const tx = new Transaction().add(ix);
-          sig = await sendWithSessionKey(tx);
+          sig = await sendWithSessionKey(tx, rollup ? erConnection : l1Connection);
         } else {
-          sig = await programL1.methods
+          sig = await turnProgram.methods
             .playCard(slot, cardArg(card) as never)
             .accounts(accounts as never)
             .rpc();
@@ -630,7 +700,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet.publicKey, sessionKey, ephemeral, sendWithSessionKey]
+    [programL1, programER, wallet.publicKey, sessionKey, ephemeral, sendWithSessionKey, matchIsDelegated, erConnection, l1Connection]
   );
 
   const pullTrigger = useCallback(
@@ -657,17 +727,22 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
             : wallet.publicKey,
         };
 
-        // Actor is a Signer on-chain — session key must sign, not wallet.
+        const rollup = await matchIsDelegated(matchId);
+        const turnProgram = rollup ? programER : programL1;
+        if (!turnProgram) {
+          emitToast("error", "Wallet not connected");
+          return null;
+        }
         let sig: string;
         if (sessionKey) {
-          const ix = await programL1.methods
+          const ix = await turnProgram.methods
             .pullTrigger(targetSelf)
             .accounts(accounts as never)
             .instruction();
           const tx = new Transaction().add(ix);
-          sig = await sendWithSessionKey(tx);
+          sig = await sendWithSessionKey(tx, rollup ? erConnection : l1Connection);
         } else {
-          sig = await programL1.methods
+          sig = await turnProgram.methods
             .pullTrigger(targetSelf)
             .accounts(accounts as never)
             .rpc();
@@ -697,7 +772,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet.publicKey, sessionKey, ephemeral, sendWithSessionKey]
+    [programL1, programER, wallet.publicKey, sessionKey, ephemeral, sendWithSessionKey, matchIsDelegated, erConnection, l1Connection]
   );
 
   const fetchVault = useCallback(async () => {
@@ -1027,7 +1102,13 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       }
       setBusy(true);
       try {
-        const sig = await programL1.methods
+        const rollup = await matchIsDelegated(matchId);
+        const turnProgram = rollup ? programER : programL1;
+        if (!turnProgram) {
+          emitToast("error", "Wallet not connected");
+          return null;
+        }
+        const sig = await turnProgram.methods
           .claimTimeout()
           .accounts({
             matchState: matchPda(matchId),
@@ -1044,7 +1125,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet.publicKey]
+    [programL1, programER, wallet.publicKey, matchIsDelegated]
   );
 
   const subscribeMatch = useCallback(
@@ -1059,15 +1140,26 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
 
   const fetchMatch = useCallback(
     async (matchId: BN) => {
-      if (!program) return null;
+      if (!programL1) return null;
+      const pda = matchPda(matchId);
+      try {
+        const info = await l1Connection.getAccountInfo(pda);
+        if (info && info.owner.equals(ROLET_PROGRAM_ID)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return await (programL1.account as any).matchState.fetch(pda);
+        }
+      } catch {
+        // A delegated account is not readable as MatchState on devnet.
+      }
+      if (!programER) return null;
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return await (program.account as any).matchState.fetch(matchPda(matchId));
+        return await (programER.account as any).matchState.fetch(pda);
       } catch {
         return null;
       }
     },
-    [program]
+    [programL1, programER, l1Connection]
   );
 
   const fetchMatchHistory = useCallback(async (limit = 10) => {

@@ -1,15 +1,16 @@
 [toolchain]
-anchor_version = "0.30.1"
+anchor_version = "1.0.2"
+solana_version = "3.1.9"
 
 [features]
 resolution = true
 skip-lint = false
 
 [programs.localnet]
-rolet = "Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792"
+rolet = "mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH"
 
 [programs.devnet]
-rolet = "Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792"
+rolet = "mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH"
 
 [registry]
 url = "https://api.apr.dev"

@@ -84,3 +84,11 @@ export function expiredChainError(message: string): boolean {
     message.includes("Blockhash not found")
   );
 }
+
+/**
+ * Turns and the end-of-match commit run on the rollup only while the
+ * delegation program owns the match account. Settlement stays on devnet.
+ */
+export function turnRoute(ownerIsDelegationProgram: boolean): "rollup" | "base" {
+  return ownerIsDelegationProgram ? "rollup" : "base";
+}
