@@ -55,7 +55,7 @@ export function LedgerSection() {
   ];
 
   return (
-    <section className="border-t border-[var(--color-line)]">
+    <section className="border-t border-[var(--color-line)] bg-[var(--color-void)]">
       <div className="mx-auto w-full max-w-6xl px-6 py-20">
         <div className="frame" data-frame="THE LEDGER">
           <p className="label">Read from the chain, not from a dashboard</p>
