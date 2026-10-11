@@ -1,85 +1,70 @@
-> **AI / CLI oturumları: önce [`docs/CLI_HANDOFF.md`](docs/CLI_HANDOFF.md) dosyasını okuyun** — proje durumu, ekonomi, mimari, sıradaki iş ve yasaklar orada.
+> **AI / CLI sessions: read [`docs/CLI_HANDOFF.md`](docs/CLI_HANDOFF.md) first** — project state, economy, architecture, next work and hard rules live there.
 
 # ROLET
 
 <p align="center">
   <img src="https://img.shields.io/badge/Solana-Devnet-9945FF?logo=solana&logoColor=white" />
-  <img src="https://img.shields.io/badge/Anchor-0.30.1-blue" />
+  <img src="https://img.shields.io/badge/Anchor-1.0.2-blue" />
+  <img src="https://img.shields.io/badge/MagicBlock-Ephemeral%20Rollup-6E56CF" />
   <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white" />
   <img src="https://img.shields.io/badge/License-MIT-green" />
 </p>
 
 <p align="center">
-  <strong>Fully on-chain turn-based tactical chamber duel on Solana.</strong><br/>
-  Eight chambers. Twelve tactical cards. One winner claims the vault.
+  <strong>Turn-based tactical chamber duel on Solana. Two wallets, one revolver, one vault.</strong><br/>
+  Eight chambers. Twelve tactical cards. Turns settle on an ephemeral rollup.
 </p>
 
 <p align="center">
   <a href="https://github.com/SmtDcs/rolet">GitHub Repository</a> ·
-  <a href="https://rolet-web-server.vercel.app">Live Demo (Devnet)</a> ·
-  <a href="https://explorer.solana.com/address/Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792?cluster=devnet">On-chain Program</a>
+  <a href="https://explorer.solana.com/address/mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH?cluster=devnet">On-chain Program (devnet)</a>
 </p>
 
 ---
 
 ## What is it?
 
-Two players share a revolver loaded with **5 live + 3 blank** rounds across 8 chambers. On each turn a player can either play a tactical card or pull the trigger. First to 0 HP loses. Winner claims the SOL reward from the on-chain treasury.
+Two players share a revolver loaded with **5 live + 3 blank** rounds across 8 chambers. On each turn a player either plays a tactical card or pulls the trigger. First to 0 HP loses. The winner is paid a fixed SOL reward from an on-chain treasury PDA.
 
-Twelve unique cards change everything — reveal the next chamber with **HawkEye**, eject it with **BulletExtractor**, shield the next shot with **Blocker**, deal double damage with **DoubleStrike**, and more.
+Twelve cards change the outcome: reveal the next chamber with **HawkEye**, eject it with **BulletExtractor**, shield the next shot with **Blocker**, deal double damage with **DoubleStrike**, and eight more.
 
-Chambers, cards, and payouts live on Solana. A queue only introduces the two wallets. No database.
+Chambers, cards, hits and payouts are Solana instructions and account state. The only server-side part is the match queue, which introduces two wallets to each other and nothing else.
 
----
-
-## Key Features
-
-| Feature | Description |
-|---|---|
-| **Match queue** | The server pairs two wallets. One opens the lobby. The other joins that room. Players do not pick the room. |
-| **Session Keys** | One wallet signature to start; all in-match turns are gasless via an ephemeral keypair |
-| **Commit-Reveal RNG** | Host and guest blind their entropy on-chain; RNG seeds from `hash(host ‖ guest)` — neither side can manipulate the outcome |
-| **SNS Identity** | Player profiles verify `.sol` domains via Bonfida SNS on registration |
-| **12 Tactical Cards** | Fully on-chain card logic — HawkEye, Shuffler, LastChance, HandOfFate, and 8 more |
-| **Character NFT Economy** | Buy a Metaplex Core character (1 SOL, 10 durability); each Web3 duel consumes 1 durability |
-| **SOL Payouts** | Winners are paid in SOL from the treasury PDA — no inflationary token |
-| **3D Arena** | React Three Fiber scene with GLB models, post-processing, and paper-card workshop aesthetic |
+**One wallet prompt per player.** A single session transaction funds and registers an ephemeral key; every later step — opening the lobby, revealing, seeding the match, delegating, every turn, and settling — is signed by that key.
 
 ---
 
-## Game Flow
+## How a match runs
 
 ```
-Player A                              Player B
-────────                              ────────
-/profile → init_player_profile        /profile → init_player_profile
-↓
-/duel → Find a match
-  └─ both wallets sign a queue message
-  └─ the server names one host
-  └─ open_lobby(host_commit)
-     (burns 1 durability)
-                                       the server sends them to that room
-                                         └─ join_lobby(guest_commit only)
-                                         └─ burns 1 durability
-↓                                     ↓
-reveal_secret on both seats
+Player A                                Player B
+────────                                ────────
+/profile  → buy a character (0.1 SOL)   /profile  → buy a character (0.1 SOL)
+/duel     → FIND MATCH                  /duel     → FIND MATCH
+  └─ each wallet signs one queue message
+  └─ the server names one of them host
+                            ▼
+  session transaction (1 prompt): fund a fresh key + register_session_key
+                            ▼
+open_lobby(host_commit)  ───────────►   join_lobby(guest_commit)
+  └─ burns 1 durability                   └─ burns 1 durability
+reveal_secret ──────────────────────►   reveal_secret
   commit = keccak(secret ‖ player ‖ match_id)
-↓
-init_match (either player; client retries until the seed slot)
-  seed = keccak(host_secret ‖ guest_secret ‖ slot_hash ‖ match_id)
-  MatchState PDA created; lobby marked launched
-↓                                     ↓
-register_session_key                  register_session_key
-(1 popup while waiting — then gasless turns)
-↓                                     ↓
-         Turn loop (popup-free)
-         ├─ pull_trigger → HP damage
-         ├─ play_card → card effect
-         └─ next turn...
-↓
-settle_match → winner claims SOL from treasury
+                            ▼
+init_match  →  seed = keccak(host_secret ‖ guest_secret ‖ future slot hash ‖ match_id)
+delegate_match  →  MatchState moves to the MagicBlock ephemeral rollup (EU validator)
+                            ▼
+        turns execute on the rollup — no wallet prompts
+        ├─ pull_trigger → chamber fires, HP damage
+        ├─ play_card    → HawkEye, Blocker, DoubleStrike, …
+        └─ next turn
+                            ▼
+commit_and_undelegate_match  →  state returns to L1
+settle_match  →  fixed reward from the treasury PDA to the winner
+sweepSession  →  the leftover SOL on the session key goes back to the wallet
 ```
+
+`Player A` and `Player B` are interchangeable after the lobby opens; either seat can drive the match forward.
 
 ---
 
@@ -87,29 +72,38 @@ settle_match → winner claims SOL from treasury
 
 ```mermaid
 graph TD
-    subgraph Solana["Solana L1 · Devnet"]
+    subgraph L1["Solana L1 · Devnet"]
         PP[PlayerProfile PDA]
         LS[LobbyState PDA]
         MS[MatchState PDA]
-        GV[GameVault PDA]
+        GV[GameVault PDA<br/>+ SOL treasury]
     end
 
-    subgraph Frontend["Next.js Frontend"]
-        UR[useRolet hook · Anchor client]
-        SK[Session Keypair · gasless turns]
-        CR[Commit-Reveal · keccak256]
+    subgraph ER["MagicBlock Ephemeral Rollup · EU"]
+        MSR[MatchState · delegated copy]
     end
 
+    subgraph Frontend["Next.js"]
+        UR[useRolet · Anchor client]
+        SK[Session keypair]
+        CR[Commit-reveal · keccak256]
+    end
+
+    Q[Match queue · in-memory] -.introduces the two wallets.-> LS
     Host -->|open_lobby + reveal_secret| LS
     Guest -->|join_lobby + reveal_secret| LS
     Either -->|init_match| MS
+    MS -->|delegate_match| MSR
+    MSR -->|turns| MSR
+    MSR -->|commit_and_undelegate| MS
     MS -->|settle_match| GV
-    GV -->|transfer SOL| Winner
+    GV -->|reward SOL| Winner
 
-    UR -->|HTTP poll 1.5s| Solana
-    SK -->|signs turns locally| UR
+    SK -->|signs every game instruction| UR
     CR -->|seed| MS
 ```
+
+Why the rollup: turns are the hot path. Delegating `MatchState` puts them on a sub-second rollup, while the lobby, the character economy and the payout stay on L1 where the money lives. Only one account is delegated, on purpose.
 
 ---
 
@@ -117,18 +111,35 @@ graph TD
 
 | Instruction | Description |
 |---|---|
-| `set_character_nft` | Equip a validated Core character NFT on the profile |
-| `purchase_character` | Charge `character_price_sol`; 5% ops, 95% treasury; equip character |
-| `open_lobby` | Host creates LobbyState PDA with `host_commit`; burns 1 durability |
+| `set_character_nft` | Equip a validated Metaplex Core character on the profile (unpaid path) |
+| `purchase_character` | Charge `character_price_sol`; split 5% ops / 95% treasury; equip the character |
+| `register_session_key` | Store the ephemeral pubkey and its expiry on `PlayerProfile` |
+| `open_lobby` | Host creates `LobbyState` with `host_commit`; burns 1 durability |
 | `join_lobby` | Guest submits `guest_commit` only (no secret); burns 1 durability |
-| `reveal_secret` | Host or guest reveals a secret bound to their pubkey and `match_id` |
-| `init_match` | After both reveals, seed from a future slot hash and create MatchState. Host or guest may call it |
-| `close_lobby` | Refund durability only before both reveals. After both reveals, refund is rejected until the launch window expires; then rent only |
-| `register_session_key` | Store ephemeral pubkey + expiry on PlayerProfile |
-| `pull_trigger` | Fire current chamber; apply HP damage |
-| `play_card` | Activate one of 12 tactical cards |
-| `settle_match` | Pay fixed `reward_sol` from the treasury PDA to the winner |
-| `claim_timeout` | If the player to move stalls for 150 slots, the waiting player wins |
+| `reveal_secret` | Either seat reveals a secret bound to its pubkey and `match_id` |
+| `init_match` | After both reveals, seeds from a future slot hash and creates `MatchState` |
+| `delegate_match` | Moves `MatchState` to the ephemeral rollup (owner becomes the delegation program) |
+| `pull_trigger` | Fire the current chamber; apply HP damage |
+| `play_card` | Resolve one of 12 tactical cards |
+| `commit_and_undelegate_match` | Commits the rollup copy and returns `MatchState` to the program |
+| `settle_match` | Pay the fixed `reward_sol` from the treasury PDA to the winner |
+| `claim_timeout` | If the player to move stalls past `TURN_TIMEOUT_SLOTS`, the waiting player wins |
+| `close_lobby` | Refund durability only before both reveals; after that, rent only |
+
+**Signing model.** Every one of these takes the wallet as an unsigned `authority` (it seeds the PDAs and passes the participant checks) plus a `signer` that may be the wallet's registered session key. `init` pays rent from `signer`, so a funded session key covers lobby and match accounts. This is what turns a match from roughly ten wallet prompts into one.
+
+---
+
+## Economy
+
+| Parameter | Value |
+|---|---|
+| Character price | 0.1 SOL, 10 durability; each match burns 1 |
+| Purchase split | 5% ops wallet / 95% treasury |
+| Match reward | fixed 0.02 SOL from the treasury PDA |
+| Session funding | 0.02 SOL moved from the wallet into the session key, returned at the end |
+
+No token. Winners are paid in SOL.
 
 ---
 
@@ -136,42 +147,60 @@ graph TD
 
 | Layer | Tech |
 |---|---|
-| Program | Anchor 0.30.1 · Rust · Solana Devnet |
+| Program | Anchor 1.0.2 · Rust · Solana CLI 3.1.9 |
+| Rollup | MagicBlock `ephemeral-rollups-sdk` 0.17.3 · EU devnet validator |
 | Frontend | Next.js 16 · React 19 · Tailwind v4 |
-| 3D | React Three Fiber v9 · drei · @react-three/postprocessing |
-| Wallet | Phantom / Solflare via `@solana/wallet-adapter` |
+| Client | `@coral-xyz/anchor` 0.32 · `@solana/web3.js` · session keypair |
+| Character NFT | Metaplex Core (`@metaplex-foundation/mpl-core`) minted client-side |
+| Wallet | Phantom / Solflare via Wallet Standard |
 | Identity | Bonfida SNS |
-| Token | — (removed; winners are paid in SOL) |
+| Queue | One Node process, in-memory — no database, no Redis |
 
 ---
 
 ## Quickstart
 
-**Prerequisites:** Rust, Solana CLI, Anchor 0.30.1, Node 20+, pnpm
+**Prerequisites:** Rust, Solana CLI 3.1.9, Anchor 1.0.2, Node 20+, pnpm
 
 ```bash
-# Install dependencies
 pnpm install
 
-# Run the frontend (devnet)
+cp apps/web/.env.example apps/web/.env.local
+# fill in:
+#   NEXT_PUBLIC_RPC_ENDPOINT=/api/rpc            (the proxy route)
+#   NEXT_PUBLIC_SOLANA_NETWORK=devnet
+#   NEXT_PUBLIC_ROLET_PROGRAM_ID=mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH
+#   NEXT_PUBLIC_MAGICBLOCK_ER_ENDPOINT=https://devnet-eu.magicblock.app
+#   RPCFAST_BACKEND_URL=<your RPC provider's devnet URL>
+#   RPCFAST_API_KEY=<your key>
+
 cd apps/web
-cp .env.example .env.local   # set NEXT_PUBLIC_RPC_ENDPOINT
-pnpm dev
+pnpm build && pnpm start --port 3001
 ```
 
-Open `http://localhost:3001`. Set wallet network to **Devnet**.
+Open `http://localhost:3001`, set the wallet to **Devnet**, and buy a character at `/profile` before your first match.
 
-### Deploy the program yourself (optional)
+Both players need a character and some devnet SOL. The queue lives in one Node process, so run a single instance — it will not work behind a platform that spreads requests across isolates.
+
+### Build and deploy the program
 
 ```bash
 cd apps/server
-anchor build
-solana program deploy target/deploy/rolet.so \
-  --url https://api.devnet.solana.com
+PATH="$HOME/.local/share/solana/install/releases/3.1.9/bin:$PATH" ~/.avm/bin/anchor-1.0.2 build
 
-# Bootstrap vault (one-time)
-npx tsx scripts/bootstrap-vault.ts
+solana program deploy target/deploy/rolet.so \
+  --program-id target/deploy/<your-keypair>.json \
+  --keypair ~/.config/solana/id.json \
+  --url https://api.devnet.solana.com
 ```
+
+If the new binary is less than 10 KB larger than the deployed one, `solana program deploy` refuses and asks for a minimum extension; grow the account first:
+
+```bash
+solana program extend <PROGRAM_ID> 20480 --url https://api.devnet.solana.com
+```
+
+Bootstrap the vault once (`reward_sol`, `character_price_sol`, ops wallet, treasury), then fund the treasury PDA so rewards can be paid.
 
 ---
 
@@ -181,28 +210,47 @@ npx tsx scripts/bootstrap-vault.ts
 rolet/
 ├── apps/
 │   ├── server/
-│   │   ├── programs/rolet/src/lib.rs   # Anchor program (~1.9k LOC)
-│   │   └── scripts/bootstrap-vault.ts
+│   │   ├── programs/rolet/src/lib.rs     # Anchor program
+│   │   ├── Anchor.toml                   # toolchain: anchor 1.0.2, solana 3.1.9
+│   │   └── target/idl/rolet.json         # generated IDL (copied into the web app)
 │   └── web/
-│       ├── app/                        # Routes: /, /duel, /profile, /leaderboard
-│       ├── components/                 # DuelArena3D, HandRack3D, Nav
-│       ├── hooks/
-│       │   ├── useRolet.ts             # Anchor client + full game logic
-│       │   └── useSound.ts             # Sound effects + mute toggle
-│       ├── public/
-│       │   ├── models/                 # GLB assets (table, revolver, lantern, bullet)
-│       │   └── sounds/                 # OGG sound effects
-│       └── idl/rolet.json              # Anchor IDL
-└── packages/shared/
+│       ├── app/                          # routes: /, /duel, /profile, /leaderboard
+│       ├── app/api/rpc/route.ts          # RPC proxy with one retry on a thrown fetch
+│       ├── app/api/matchmaking/route.ts  # the in-memory queue
+│       ├── components/                   # duel bench, landing scroll, nav
+│       ├── hooks/useRolet.ts             # Anchor client, session keys, all game calls
+│       ├── lib/chainPace.ts              # pure rules (seat, launch gate, turns)
+│       ├── lib/chainPace.test.ts         # node:test unit suite
+│       └── idl/rolet.json                # IDL the client loads
+└── docs/
+    ├── CLI_HANDOFF.md                    # start here as an agent
+    ├── MAGICBLOCK-ANCHOR1-PLAN.md        # how the rollup integration was built
+    └── SESSION-SCOPE-PLAN.md             # how the one-prompt flow was built
 ```
+
+---
+
+## Tests
+
+Pure game rules are unit-tested with `node:test`:
+
+```bash
+cd apps/web
+../../apps/server/node_modules/.bin/tsx --test lib/chainPace.test.ts lib/seat.test.ts lib/matchQueue.test.ts
+```
+
+Covered: queue states, seat decisions, reveal gating, launch readiness, session funding and sweeping, RPC backoff, payout protection against a fresh match, and the rollup routing decision.
 
 ---
 
 ## Known Limitations
 
-- **Expired seed window:** `join_lobby` no longer sends the guest secret. Both players reveal through `reveal_secret`, and the seed is a slot hash that does not exist yet at reveal time. If nobody calls `init_match` before `seed_slot + 300` slots, that hash expires. `close_lobby` then returns rent only and does not refund durability.
-- **MagicBlock ER (Planned):** Ephemeral Rollup delegation is planned for sub-second finality. The SDK currently has a type conflict with Anchor 0.30; the live demo runs fully on Solana L1 devnet with session keys.
-- **Self-attested NFT authority (MVP):** The program validates a character NFT by checking its Core asset `update_authority` field against the program ID. That field is written by whoever mints the asset (client-side `createV1`), so a determined user can mint their own asset with the program ID as update authority and pass validation. A program-signed mint (CPI) or a program-owned Metaplex Core collection check is the production fix.
+- **The queue is one process.** It holds pairings in memory, so it must run as a single instance. A multi-instance host would split the queue across isolates; a shared store is the fix if this ever needs to scale horizontally.
+- **`claim_timeout` is unusable while a match is delegated.** It compares the last action slot with the rollup clock, whose slot numbers are not base-layer slots. A timeout path for delegated matches needs its own accounting.
+- **Session leftovers need the tab to stay open.** `sweepSession` returns the session key's remaining SOL to the wallet on a timer after the match ends. If the player closes the tab immediately, that key keeps its balance.
+- **Character ownership is self-attested.** The program validates a Core asset by checking that its `update_authority` equals the program ID, and the client writes that field at mint time. A program-signed mint (CPI) or a program-owned Core collection check is the production fix.
+- **Public devnet RPC throttles.** `api.devnet.solana.com` answers 429 under match traffic. The client now backs off and retries, but a dedicated devnet endpoint (`RPCFAST_BACKEND_URL`) is the real fix.
+- **Devnet only.** The program, the vault and the characters live on devnet.
 
 ---
 
@@ -212,6 +260,6 @@ MIT
 
 ## Asset Credits
 
-- **Character & card art** — Paper-card workshop handcrafted assets.
+- **Character & card art** — paper-card workshop assets made for this project.
 - **Table, revolver, lantern, bullet models** — Quaternius (CC0).
 - **Sound effects** — CC0/free-license sources bundled in `public/sounds/`.
