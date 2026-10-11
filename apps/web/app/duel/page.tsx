@@ -552,18 +552,18 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
             exit={{ opacity: 0, y: 24, scale: 0.95 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className={`px-12 py-4 border-2 backdrop-blur-sm ${
+            <div className={`px-12 py-4 border-2 ${
               turnIsYours
-                ? "border-red-500 bg-black/70"
-                : "border-zinc-600 bg-black/60"
+                ? "border-[var(--color-alert)]/70 bg-black/70"
+                : "border-[var(--color-line-strong)] bg-black/60"
             }`}>
               <div className={`font-display tracking-[0.5em] text-4xl ${
-                turnIsYours ? "text-red-400 text-bleed" : "text-zinc-400"
+                turnIsYours ? "text-[var(--color-alert)] text-bleed" : "text-[var(--color-phosphor-dim)]"
               }`}>
                 {turnIsYours ? "YOUR TURN" : "ENEMY TURN"}
               </div>
               <div className={`mt-1 text-center text-[9px] tracking-[0.6em] ${
-                turnIsYours ? "text-rust" : "text-zinc-600"
+                turnIsYours ? "text-rust" : "text-[var(--color-phosphor-faint)]"
               }`}>
                 {turnIsYours ? "// WEAPON ARMED — CHOOSE ACTION" : "// OPPONENT IS DECIDING"}
               </div>
@@ -630,17 +630,17 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       />
 
       {/* Top bar */}
-      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-4 py-4 border-b border-rust/40 bg-black/40 backdrop-blur-sm sm:px-6">
-        <Link href="/" className="shrink-0 text-[10px] tracking-[0.4em] text-rust hover:text-red-500 crt-text">
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-4 py-4 border-b border-rust/40 bg-black/40 sm:px-6">
+        <Link href="/" className="shrink-0 text-[10px] tracking-[0.4em] text-rust hover:text-[var(--color-alert)] crt-text">
           ◄ ABANDON ROOM
         </Link>
-        <span className="min-w-0 truncate px-2 text-[9px] tracking-[0.35em] text-zinc-400 crt-text sm:text-[10px]">
+        <span className="min-w-0 truncate px-2 text-[9px] tracking-[0.35em] text-[var(--color-phosphor-dim)] crt-text sm:text-[10px]">
           MATCH 0x{matchId.toString(16).toUpperCase()} · L1://solana-devnet
         </span>
         <div className="flex items-center gap-4">
           <button
             onClick={toggleMute}
-            className="flex items-center gap-1.5 text-[10px] tracking-[0.4em] text-rust hover:text-red-500 crt-text"
+            className="flex items-center gap-1.5 text-[10px] tracking-[0.4em] text-rust hover:text-[var(--color-alert)] crt-text"
           >
             {muted ? (
               <>
@@ -654,7 +654,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               </>
             )}
           </button>
-          <span className="text-[10px] tracking-[0.4em] text-red-500 animate-pulse crt-text">
+          <span className="text-[10px] tracking-[0.4em] text-[var(--color-alert)] animate-pulse crt-text">
             ● {decoded?.status?.toUpperCase() ?? "AWAITING"}
           </span>
         </div>
@@ -701,7 +701,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               </div>
               <Link
                 href="/duel"
-                className="border border-red-700 bg-red-950/40 px-4 py-2 text-[10px] tracking-[0.3em] text-red-300 hover:bg-red-900/60"
+                className="border border-[var(--color-alert)]/50 bg-[var(--color-void)] px-4 py-2 text-[10px] tracking-[0.3em] text-[var(--color-alert)] hover:bg-[var(--color-alert)]/25"
               >
                 ► NEW MATCH
               </Link>
@@ -709,8 +709,8 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
           )}
           {decoded?.status !== "completed" && !rolet.sessionKey && rolet.busy && (
             <div className="border border-rust/40 bg-black/60 px-4 py-3 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
-              <span className="text-[10px] tracking-[0.3em] text-zinc-500">
+              <span className="h-2 w-2 bg-[var(--color-alert)] animate-pulse" />
+              <span className="text-[10px] tracking-[0.3em] text-[var(--color-phosphor-faint)]">
                 // ARMING SESSION KEY…
               </span>
             </div>
@@ -718,17 +718,17 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
 
           <div className="grid grid-cols-2 gap-3 items-end lg:grid-cols-12">
             {/* Slim player vitals — Buckshot pixelated HP */}
-            <div className="order-2 col-span-1 crt-frame crt-grain border border-rust/60 bg-black/70 backdrop-blur-sm p-2 lg:order-1 lg:col-span-2">
+            <div className="order-2 col-span-1 crt-frame crt-grain border border-rust/60 bg-black/70 p-2 lg:order-1 lg:col-span-2">
               <div className="flex items-center justify-between text-[8px] tracking-[0.35em] text-rust crt-text">
                 <span>// SUBJECT_01</span>
-                <span className={turnIsYours ? "text-red-400 animate-pulse" : "text-zinc-600"}>
+                <span className={turnIsYours ? "text-[var(--color-alert)] animate-pulse" : "text-[var(--color-phosphor-faint)]"}>
                   {turnIsYours ? "TURN" : "WAIT"}
                 </span>
               </div>
               <div className="mt-2">
                 <HpBar hp={playerHp} maxHp={4} accent="player" />
               </div>
-              <div className="mt-1 text-center text-[9px] tracking-[0.3em] text-zinc-400 crt-text">
+              <div className="mt-1 text-center text-[9px] tracking-[0.3em] text-[var(--color-phosphor-dim)] crt-text">
                 HP {playerHp}/4
               </div>
             </div>
@@ -748,7 +748,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
                 <button
                   onClick={handlePlayCard}
                   disabled={rolet.busy || !turnIsYours}
-                  className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 border border-red-500 bg-black/85 backdrop-blur-sm px-4 py-1.5 text-[10px] tracking-[0.4em] text-red-300 font-bold shadow-[0_0_18px_rgba(220,30,30,0.6)] hover:bg-red-950/60 disabled:opacity-40 crt-text"
+                  className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 border border-[var(--color-alert)]/70 bg-black/85 px-4 py-1.5 text-[10px] tracking-[0.4em] text-[var(--color-alert)] font-bold shadow-[0_0_18px_rgba(220,30,30,0.6)] hover:bg-[var(--color-void)] disabled:opacity-40 crt-text"
                 >
                   ▶ PLAY {CARD_LABEL[decoded.yourHand[selectedSlot]!].toUpperCase()}
                 </button>
@@ -756,7 +756,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
             </div>
 
             {/* Slim action panel — grain texture, pixelated border */}
-            <div className="order-3 col-span-1 lg:col-span-3 crt-frame crt-grain border border-rust/60 bg-black/70 backdrop-blur-sm p-2 flex flex-col gap-2">
+            <div className="order-3 col-span-1 lg:col-span-3 crt-frame crt-grain border border-rust/60 bg-black/70 p-2 flex flex-col gap-2">
               <div className="text-[8px] tracking-[0.4em] text-rust crt-text">// FIRING SOLUTION</div>
               <div className="grid grid-cols-2 gap-1">
                 <TargetButton label="OPP" active={target === "opponent"} onClick={() => { setTarget("opponent"); play("uiSelect"); }} />
@@ -778,7 +778,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
                 className={`group relative py-2.5 border-2 font-display tracking-[0.3em] text-sm transition-colors overflow-hidden ${
                   !turnIsYours || rolet.busy
                     ? "border-rust/40 text-rust/40 cursor-not-allowed"
-                    : "border-red-600 bg-gradient-to-b from-red-950/60 to-black text-red-400 text-bleed hover:text-red-100 hover:animate-red-alert"
+                    : "border-[var(--color-alert)]/60 bg-[var(--color-void)] text-[var(--color-alert)] text-bleed hover:text-[var(--color-phosphor)]"
                 }`}
               >
                 <span className="crt-text relative z-10">▼ PULL TRIGGER</span>
@@ -816,11 +816,11 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
           </div>
 
           {/* Compact 1-line log */}
-          <div className="crt-frame crt-grain border border-rust/50 bg-black/70 backdrop-blur-sm px-3 py-1.5 flex items-center justify-between">
-            <div className="font-mono text-[10px] leading-none tracking-wide text-zinc-300 truncate crt-text">
+          <div className="crt-frame crt-grain border border-rust/50 bg-black/70 px-3 py-1.5 flex items-center justify-between">
+            <div className="font-mono text-[10px] leading-none tracking-wide text-[var(--color-phosphor-dim)] truncate crt-text">
               {log[0]}
             </div>
-            <div className="text-[9px] tracking-[0.4em] text-zinc-600 shrink-0 ml-2 crt-text">
+            <div className="text-[9px] tracking-[0.4em] text-[var(--color-phosphor-faint)] shrink-0 ml-2 crt-text">
               {rolet.sessionKey ? `SK ${rolet.sessionKey.toBase58().slice(0, 6)}…` : "NO SK"}
             </div>
           </div>
@@ -831,12 +831,12 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               {toasts.map((t) => (
                 <div
                   key={t.id}
-                  className={`border px-4 py-2 bg-black/80 text-[10px] tracking-[0.3em] backdrop-blur-sm ${
+                  className={`border px-4 py-2 bg-black/80 text-[10px] tracking-[0.3em] ${
                     t.level === "error"
-                      ? "border-red-700 text-red-400"
+                      ? "border-[var(--color-alert)]/50 text-[var(--color-alert)]"
                       : t.level === "success"
-                      ? "border-rust text-red-300"
-                      : "border-zinc-700 text-zinc-400"
+                      ? "border-rust text-[var(--color-alert)]"
+                      : "border-[var(--color-line-strong)] text-[var(--color-phosphor-dim)]"
                   }`}
                 >
                   {t.level === "error" ? "!! " : t.level === "success" ? ">> " : ".. "}
@@ -895,10 +895,10 @@ function CCTVViewport({
         }}
       >
         {/* Corner brackets (CCTV monitor style) — dimmer */}
-        <div className="pointer-events-none absolute top-1 left-1 h-5 w-5 border-t border-l border-red-600/60" />
-        <div className="pointer-events-none absolute top-1 right-1 h-5 w-5 border-t border-r border-red-600/60" />
-        <div className="pointer-events-none absolute bottom-1 left-1 h-5 w-5 border-b border-l border-red-600/60" />
-        <div className="pointer-events-none absolute bottom-1 right-1 h-5 w-5 border-b border-r border-red-600/60" />
+        <div className="pointer-events-none absolute top-1 left-1 h-5 w-5 border-t border-l border-[var(--color-alert)]/60/60" />
+        <div className="pointer-events-none absolute top-1 right-1 h-5 w-5 border-t border-r border-[var(--color-alert)]/60/60" />
+        <div className="pointer-events-none absolute bottom-1 left-1 h-5 w-5 border-b border-l border-[var(--color-alert)]/60/60" />
+        <div className="pointer-events-none absolute bottom-1 right-1 h-5 w-5 border-b border-r border-[var(--color-alert)]/60/60" />
 
         {/* Scanline overlay — barely visible */}
         <div
@@ -923,10 +923,10 @@ function CCTVViewport({
         {/* CCTV chrome — top row */}
         <div className="absolute top-2 left-3 right-3 flex items-center justify-between text-[10px] tracking-[0.35em] font-mono font-bold drop-shadow-[0_0_4px_rgba(0,0,0,0.9)]">
           <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_rgba(255,0,0,0.9)]" />
-            <span className="text-red-400">● REC</span>
+            <span className="h-1.5 w-1.5 bg-[var(--color-alert)] animate-pulse shadow-[0_0_6px_rgba(255,0,0,0.9)]" />
+            <span className="text-[var(--color-alert)]">● REC</span>
             <span className="text-amber-200/90">CAM_01</span>
-            <span className="text-zinc-500">·</span>
+            <span className="text-[var(--color-phosphor-faint)]">·</span>
             <span className="text-amber-200/90">ARENA-MAIN</span>
           </div>
           <div className="flex items-center gap-3">
@@ -940,7 +940,7 @@ function CCTVViewport({
           <div className="flex items-center gap-3 text-[10px] tracking-[0.35em] font-bold">
             <span className="text-amber-200/90">8 CHAMBERS</span>
             <span className="text-rust">·</span>
-            <span className="text-zinc-300/80">{liveCount + blankCount} LOADED</span>
+            <span className="text-[var(--color-phosphor-dim)]/80">{liveCount + blankCount} LOADED</span>
           </div>
           <div className="flex gap-1.5 items-center">
             {chambers.map((c, i) => {
@@ -956,7 +956,7 @@ function CCTVViewport({
                   transition={isCurrent ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
                   className={`h-3 w-6 border ${
                     loaded
-                      ? "bg-zinc-600/60 border-zinc-500/80"
+                      ? "bg-[var(--color-line-strong)] border-[var(--color-line-strong)]"
                       : "bg-transparent border-rust/20"
                   } ${isCurrent ? "-translate-y-0.5" : ""}`}
                 />
@@ -970,7 +970,7 @@ function CCTVViewport({
 
         {/* Bottom-status strip */}
         <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[10px] tracking-[0.35em] font-mono font-bold drop-shadow-[0_0_4px_rgba(0,0,0,0.95)]">
-          <span className={turnIsYours ? "text-red-400" : "text-amber-200/85"}>
+          <span className={turnIsYours ? "text-[var(--color-alert)]" : "text-amber-200/85"}>
             {turnIsYours ? "▶ FIRING SOLUTION ARMED" : "◌ AWAITING OPPONENT"}
           </span>
           <span className="hidden text-amber-100/70 sm:inline">
@@ -993,8 +993,8 @@ function OpponentHud({
   status: string;
 }) {
   return (
-    <div className="mt-3 flex items-center gap-4 border border-rust/60 bg-black/70 backdrop-blur-sm px-4 py-2">
-      <div className="text-[10px] tracking-[0.4em] text-zinc-500">OPPONENT</div>
+    <div className="mt-3 flex items-center gap-4 border border-rust/60 bg-black/70 px-4 py-2">
+      <div className="text-[10px] tracking-[0.4em] text-[var(--color-phosphor-faint)]">OPPONENT</div>
       <HpBar hp={hp} maxHp={maxHp} accent="opponent" />
       <div className="text-[10px] tracking-[0.4em] text-rust">
         STATUS · {status.toUpperCase()}
@@ -1027,7 +1027,7 @@ function HpBar({
         return (
           <motion.div
             key={i}
-            className="relative flex-1 h-6 border border-zinc-800"
+            className="relative flex-1 h-6 border border-[var(--color-line)]"
             style={{ imageRendering: "pixelated" as const }}
             animate={
               alive && low
@@ -1095,26 +1095,26 @@ function CompletedBanner({
     <div
       className={`border-2 px-4 py-4 flex items-center justify-between ${
         youWon
-          ? "border-red-500 bg-gradient-to-r from-[#1a0606] via-[#3a0606]/80 to-[#1a0606] animate-blood"
+          ? "border-[var(--color-alert)]/70 bg-[var(--color-void)] border border-[var(--color-alert)] animate-blood"
           : "border-rust bg-black/70"
       }`}
     >
       <div>
         <div
           className={`text-[10px] tracking-[0.5em] ${
-            youWon ? "text-red-400 text-bleed" : "text-rust"
+            youWon ? "text-[var(--color-alert)] text-bleed" : "text-rust"
           }`}
         >
           // MATCH RESOLVED
         </div>
         <div
           className={`mt-1 font-display tracking-[0.4em] text-2xl ${
-            youWon ? "text-red-400 text-bleed" : "text-zinc-500"
+            youWon ? "text-[var(--color-alert)] text-bleed" : "text-[var(--color-phosphor-faint)]"
           }`}
         >
           {youWon ? "YOU WIN" : "GHOST WINS"}
         </div>
-        <div className="mt-1 text-[10px] tracking-[0.3em] text-zinc-600">
+        <div className="mt-1 text-[10px] tracking-[0.3em] text-[var(--color-phosphor-faint)]">
           {youWon
             ? `claim your reward · ${rewardSol} SOL will be transferred`
             : "match closed · no reward · character durability decremented"}
@@ -1125,8 +1125,8 @@ function CompletedBanner({
         disabled={busy}
         className={`border-2 px-6 py-3 font-display tracking-[0.4em] text-sm ${
           youWon
-            ? "border-red-600 bg-black/60 text-red-400 hover:text-red-200"
-            : "border-rust bg-black/40 text-rust hover:text-zinc-400"
+            ? "border-[var(--color-alert)]/60 bg-black/60 text-[var(--color-alert)] hover:text-[var(--color-phosphor)]"
+            : "border-rust bg-black/40 text-rust hover:text-[var(--color-phosphor-dim)]"
         } disabled:opacity-40 disabled:cursor-not-allowed`}
       >
         {busy ? "SETTLING…" : youWon ? "▼ CLAIM REWARD ▼" : "▼ ACKNOWLEDGE ▼"}
@@ -1149,8 +1149,8 @@ function TargetButton({
       onClick={onClick}
       className={`py-2 border text-[10px] tracking-[0.3em] transition-all ${
         active
-          ? "border-red-600 bg-red-950/60 text-red-300 shadow-[0_0_12px_rgba(220,30,30,0.5)]"
-          : "border-rust/60 bg-black/40 text-zinc-500 hover:border-rust hover:text-zinc-300"
+          ? "border-[var(--color-alert)]/60 bg-[var(--color-void)] text-[var(--color-alert)] shadow-[0_0_12px_rgba(220,30,30,0.5)]"
+          : "border-rust/60 bg-black/40 text-[var(--color-phosphor-faint)] hover:border-rust hover:text-[var(--color-phosphor-dim)]"
       }`}
     >
       {active ? "▣" : "□"} {label}
