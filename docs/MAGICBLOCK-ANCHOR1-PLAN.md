@@ -32,6 +32,16 @@ MagicBlock's Anchor guide, not the 0.32 guess:
 6. Web client on this branch: router for turns, delegate after init, commit before settle.
 7. One two-wallet match on the new id. If it fails, checkout `feature/duel-2d`.
 
+## Cutover (2026-10-11)
+
+The demo now runs on the MagicBlock program.
+
+- `apps/web/.env.local`: `NEXT_PUBLIC_ROLET_PROGRAM_ID=mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH`, `NEXT_PUBLIC_MAGICBLOCK_ER_ENDPOINT=https://devnet-eu.magicblock.app`. The file is gitignored.
+- The server is `pnpm build && pnpm exec next start --port 3001` on this branch. Tunnel `https://cuts-resort-compute-naturally.trycloudflare.com`.
+- Vault: reward 0.02 SOL, character price 0.1 SOL, ops wallet `CeoeQQj6233aJ1SMKzrdVrVeLZVJ8C5zwXT7JNdfj8f4`, treasury `FykUPLero34cmYj5CFG2gZ1URHC9DCNLR5rYTaVxGprG` funded with 0.33 SOL.
+- Two profiles exist on the new program: `CeoeQQj6233aJ1SMKzrdVrVeLZVJ8C5zwXT7JNdfj8f4` and `GoeHXdTuSeJVeX9AREqtyMJ7SYuABbdGnsCbSRSs1XMv`. Any other wallet needs a character first; `/duel` sends it to `/profile`, which mints and charges the vault price.
+- Rollback: `git checkout feature/duel-2d`, set `NEXT_PUBLIC_ROLET_PROGRAM_ID=Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792`, and restart the server.
+
 ## Resume point (2026-10-11)
 
 Branch `experiment/magicblock-anchor1`. Commits: `5faa78a` (plan), `aae989d` (program + web).
@@ -50,13 +60,13 @@ Done:
 - Platform-tools v1.52 are extracted under `~/.cache/solana/v1.52/platform-tools`.
 - `declare_id` on this branch is `mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH`. The keypair is `apps/server/target/deploy/rolet-er-keypair.json`, and that same key is currently `target/deploy/rolet-keypair.json` so Anchor deploys the new id.
 - The live program keypair was copied to `apps/server/target/deploy/rolet-keypair.live-backup.json` before that swap. Both files are under `target/` and must not be committed. Do not deploy the backup. Do not upgrade `Gwh17ftx2mhKNV7BFgGXDYbtpxC1gw6gJbXEk3xYE792`.
-- Live demo runs from `feature/duel-2d` on port 3001, tunnel `https://cuts-resort-compute-naturally.trycloudflare.com`.
+- Live demo now runs from this branch on port 3001, tunnel `https://cuts-resort-compute-naturally.trycloudflare.com`. `feature/duel-2d` keeps the pre-MagicBlock code and is the rollback path.
 
 Known issues:
 
-- On this branch `apps/web/.env.local` still points `NEXT_PUBLIC_ROLET_PROGRAM_ID` at the live program. A browser match needs that value changed to `mspQc...` and the server restarted. Test scripts must also read the experiment IDL, not the feature branch one.
 - `claim_timeout` compares `last_action_slot` with the ER clock, whose slots are not the base-layer slots. Timeout claims need a separate look.
 - The delegate transaction costs the player a deposit (about 0.0029 SOL of rent for the match account plus the delegation accounts).
+- A wallet without a character on the new program is sent to `/profile`, which mints one and charges the vault price (0.1 SOL).
 
 ## Out of scope
 
