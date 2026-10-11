@@ -1,6 +1,9 @@
 # ROLET web. One Node process: the match queue lives in memory, so this image
 # must run as a single replica.
 FROM node:20-alpine AS builder
+# Wallet and crypto packages build native addons through node-gyp; the usb
+# package also needs libudev headers.
+RUN apk add --no-cache python3 make g++ linux-headers eudev-dev
 RUN corepack enable
 WORKDIR /app
 # Public client values, inlined at build time. They are not secrets.
