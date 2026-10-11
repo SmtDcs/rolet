@@ -4,6 +4,7 @@ import { RoadmapStrip } from "@/components/landing/RoadmapStrip";
 import { LedgerSection } from "@/components/landing/LedgerSection";
 import { ArsenalSection } from "@/components/landing/ArsenalSection";
 import { PlayOwnEarnSection } from "@/components/landing/PlayOwnEarnSection";
+import { FirstMatchSection } from "@/components/landing/FirstMatchSection";
 import { StoryScroll } from "@/components/landing/StoryScroll";
 import { EconomyCtaSection } from "@/components/landing/EconomyCtaSection";
 import { DocsSection } from "@/components/landing/DocsSection";
@@ -22,12 +23,14 @@ export default function LandingPage() {
         <LandingNavbar />
         <main>
           {/* 1 hero · 2 roadmap · 3 ledger · 4 arsenal · 5 play/own/earn
-              6 workshop story · 7 vault · 8 whitepaper · 9 community · 10 footer */}
+              6 first match · 7 workshop story · 8 vault · 9 whitepaper
+              10 community · 11 footer */}
           <HeroSection />
           <RoadmapStrip />
           <LedgerSection />
           <ArsenalSection />
           <PlayOwnEarnSection />
+          <FirstMatchSection />
           <StoryScroll />
           <EconomyCtaSection />
           <DocsSection />
