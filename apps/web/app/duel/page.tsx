@@ -632,10 +632,10 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-4 py-4 border-b border-rust/40 bg-black/40 sm:px-6">
         <Link href="/" className="shrink-0 text-[10px] tracking-[0.4em] text-rust hover:text-[var(--color-alert)] crt-text">
-          ◄ ABANDON ROOM
+          ◄ Leave the table
         </Link>
         <span className="min-w-0 truncate px-2 text-[9px] tracking-[0.35em] text-[var(--color-phosphor-dim)] crt-text sm:text-[10px]">
-          MATCH 0x{matchId.toString(16).toUpperCase()} · L1://solana-devnet
+          0x{matchId.toString(16).toUpperCase()} · devnet
         </span>
         <div className="flex items-center gap-4">
           <button
@@ -663,19 +663,12 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-rows-[auto_1fr_auto] gap-1.5 px-6 pt-12 pb-2 overflow-hidden">
         {/* OPPONENT HUD ONLY (HP bar + status) — 3D shows through behind */}
         <section className="relative flex justify-center pt-1">
-          <OpponentHud hp={opponentHp} maxHp={4} status={opponentStatus} />
+          <OpponentHud hp={opponentHp} maxHp={4} />
         </section>
 
         {/* CCTV VIEWPORT — 3D scene shows through this framed window */}
         <section className="relative flex items-stretch justify-center">
-          <CCTVViewport
-            chambers={decoded?.chambers ?? Array(8).fill("empty")}
-            currentChamber={decoded?.currentChamber ?? 0}
-            liveCount={decoded?.liveCount ?? 0}
-            blankCount={decoded?.blankCount ?? 0}
-            turnIsYours={turnIsYours}
-            matchHex={matchId.toString(16)}
-          />
+          <SceneFrame />
         </section>
 
         {/* PLAYER HUD */}
@@ -720,7 +713,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
             {/* Slim player vitals — Buckshot pixelated HP */}
             <div className="order-2 col-span-1 crt-frame crt-grain border border-rust/60 bg-black/70 p-2 lg:order-1 lg:col-span-2">
               <div className="flex items-center justify-between text-[8px] tracking-[0.35em] text-rust crt-text">
-                <span>// SUBJECT_01</span>
+                <span>You</span>
                 <span className={turnIsYours ? "text-[var(--color-alert)] animate-pulse" : "text-[var(--color-phosphor-faint)]"}>
                   {turnIsYours ? "TURN" : "WAIT"}
                 </span>
@@ -755,42 +748,21 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               )}
             </div>
 
-            {/* Slim action panel — grain texture, pixelated border */}
-            <div className="order-3 col-span-1 lg:col-span-3 crt-frame crt-grain border border-rust/60 bg-black/70 p-2 flex flex-col gap-2">
-              <div className="text-[8px] tracking-[0.4em] text-rust crt-text">// FIRING SOLUTION</div>
+            {/* The only action panel. Two target choices and one commit. */}
+            <div className="order-3 col-span-1 flex flex-col gap-2 border border-[var(--color-line-strong)] bg-[var(--color-void)] p-2 lg:col-span-3">
               <div className="grid grid-cols-2 gap-1">
                 <TargetButton label="OPP" active={target === "opponent"} onClick={() => { setTarget("opponent"); play("uiSelect"); }} />
                 <TargetButton label="SELF" active={target === "self"} onClick={() => { setTarget("self"); play("uiSelect"); }} />
               </div>
-              <motion.button
+              <button
                 onClick={handlePullTrigger}
                 disabled={!turnIsYours || rolet.busy}
-                animate={turnIsYours && !rolet.busy ? {
-                  boxShadow: [
-                    "0 0 10px rgba(220,30,30,0.4), inset 0 0 12px rgba(120,0,0,0.3)",
-                    "0 0 28px rgba(255,30,30,0.85), inset 0 0 22px rgba(180,0,0,0.55)",
-                    "0 0 10px rgba(220,30,30,0.4), inset 0 0 12px rgba(120,0,0,0.3)",
-                  ],
-                } : { boxShadow: "none" }}
-                whileHover={turnIsYours && !rolet.busy ? { scale: 1.04 } : {}}
-                whileTap={turnIsYours && !rolet.busy ? { scale: 0.96 } : {}}
-                transition={turnIsYours && !rolet.busy ? { boxShadow: { duration: 1.6, repeat: Infinity, ease: "easeInOut" } } : {}}
-                className={`group relative py-2.5 border-2 font-display tracking-[0.3em] text-sm transition-colors overflow-hidden ${
-                  !turnIsYours || rolet.busy
-                    ? "border-rust/40 text-rust/40 cursor-not-allowed"
-                    : "border-[var(--color-alert)]/60 bg-[var(--color-void)] text-[var(--color-alert)] text-bleed hover:text-[var(--color-phosphor)]"
+                className={`btn w-full ${
+                  turnIsYours && !rolet.busy ? "btn-primary" : ""
                 }`}
               >
-                <span className="crt-text relative z-10">▼ PULL TRIGGER</span>
-                {turnIsYours && !rolet.busy && (
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity"
-                    style={{
-                      backgroundImage:
-                        "repeating-linear-gradient(0deg, rgba(255,30,30,0.18) 0 1px, transparent 1px 3px)",
-                    }}
-                  />
-                )}
-              </motion.button>
+                Pull the trigger
+              </button>
               {timeoutClaimable({
                 status: decoded?.status ?? "",
                 yourTurn: turnIsYours,
@@ -819,9 +791,6 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
           <div className="crt-frame crt-grain border border-rust/50 bg-black/70 px-3 py-1.5 flex items-center justify-between">
             <div className="font-mono text-[10px] leading-none tracking-wide text-[var(--color-phosphor-dim)] truncate crt-text">
               {log[0]}
-            </div>
-            <div className="text-[9px] tracking-[0.4em] text-[var(--color-phosphor-faint)] shrink-0 ml-2 crt-text">
-              {rolet.sessionKey ? `SK ${rolet.sessionKey.toBase58().slice(0, 6)}…` : "NO SK"}
             </div>
           </div>
 
@@ -855,150 +824,33 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
 // PRESENTATIONAL COMPONENTS — visuals from Task 5, unchanged
 // ============================================================
 // ── CCTV-style viewport — 3D scene shows through this frame ──────────────────
-function CCTVViewport({
-  chambers,
-  currentChamber,
-  liveCount,
-  blankCount,
-  turnIsYours,
-  matchHex,
-}: {
-  chambers: Chamber[];
-  currentChamber: number;
-  liveCount: number;
-  blankCount: number;
-  turnIsYours: boolean;
-  matchHex: string;
-}) {
-  const [time, setTime] = useState("");
-  useEffect(() => {
-    const update = () => {
-      const d = new Date();
-      const pad = (n: number) => String(n).padStart(2, "0");
-      setTime(`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`);
-    };
-    update();
-    const t = setInterval(update, 1000);
-    return () => clearInterval(t);
-  }, []);
-
+/**
+ * A thin frame around the scene. The previous version wrapped it in CCTV
+ * chrome — REC, camera ids, a wall clock, a chamber row, a bitrate readout and
+ * a tracking smear — which read as a surveillance feed and buried the three
+ * things a player needs: whose turn it is, the two life totals, and the action.
+ */
+function SceneFrame() {
   return (
     <div className="pointer-events-none relative w-full max-w-5xl">
-      {/* CCTV frame — transparent interior so 3D shows through.
-          pointer-events-none on the outer wrapper so clicks pass to the
-          Canvas behind (gun is interactive). */}
-      <div
-        className="relative aspect-[16/6] max-h-[38vh] border border-rust/40 bg-transparent"
-        style={{
-          boxShadow:
-            "inset 0 0 30px rgba(120,30,10,0.18), 0 0 16px rgba(60,10,5,0.4)",
-        }}
-      >
-        {/* Corner brackets (CCTV monitor style) — dimmer */}
-        <div className="pointer-events-none absolute top-1 left-1 h-5 w-5 border-t border-l border-[var(--color-alert)]/60" />
-        <div className="pointer-events-none absolute top-1 right-1 h-5 w-5 border-t border-r border-[var(--color-alert)]/60" />
-        <div className="pointer-events-none absolute bottom-1 left-1 h-5 w-5 border-b border-l border-[var(--color-alert)]/60" />
-        <div className="pointer-events-none absolute bottom-1 right-1 h-5 w-5 border-b border-r border-[var(--color-alert)]/60" />
-
-        {/* Scanline overlay — barely visible */}
+      <div className="relative aspect-[16/6] max-h-[38vh] border border-[var(--color-line-strong)]">
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-screen"
+          className="pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-screen"
           style={{
             backgroundImage:
               "repeating-linear-gradient(0deg, rgba(255,200,180,0.4) 0 1px, transparent 1px 3px)",
           }}
         />
-
-        {/* Transient tracking smear — the feed is not perfectly clean */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div
-            className="absolute inset-x-0 h-14 animate-[rolet-track_8s_linear_infinite]"
-            style={{
-              background:
-                "linear-gradient(180deg, transparent, rgba(255,240,220,0.05) 45%, rgba(255,240,220,0.11) 50%, rgba(255,240,220,0.05) 55%, transparent)",
-            }}
-          />
-        </div>
-
-        {/* CCTV chrome — top row */}
-        <div className="absolute top-2 left-3 right-3 flex items-center justify-between text-[10px] tracking-[0.35em] font-mono font-bold drop-shadow-[0_0_4px_rgba(0,0,0,0.9)]">
-          <div className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 bg-[var(--color-alert)] animate-pulse shadow-[0_0_6px_rgba(255,0,0,0.9)]" />
-            <span className="text-[var(--color-alert)]">● REC</span>
-            <span className="text-amber-200/90">CAM_01</span>
-            <span className="text-[var(--color-phosphor-faint)]">·</span>
-            <span className="text-amber-200/90">ARENA-MAIN</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-amber-100/80">0x{matchHex.slice(0, 6).toUpperCase()}</span>
-            <span className="text-amber-300/90">{time}</span>
-          </div>
-        </div>
-
-        {/* Chamber indicator row — positions only, no live/blank revealed */}
-        <div className="absolute top-9 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 drop-shadow-[0_0_4px_rgba(0,0,0,0.95)]">
-          <div className="flex items-center gap-3 text-[10px] tracking-[0.35em] font-bold">
-            <span className="text-amber-200/90">8 CHAMBERS</span>
-            <span className="text-rust">·</span>
-            <span className="text-[var(--color-phosphor-dim)]/80">{liveCount + blankCount} LOADED</span>
-          </div>
-          <div className="flex gap-1.5 items-center">
-            {chambers.map((c, i) => {
-              const isCurrent = i === currentChamber;
-              const loaded = c !== "empty";
-              return (
-                <motion.div
-                  key={i}
-                  animate={isCurrent ? {
-                    scaleY: [1.6, 1.9, 1.6],
-                    boxShadow: ["0 0 8px rgba(220,30,30,0.8)", "0 0 22px rgba(255,40,40,1)", "0 0 8px rgba(220,30,30,0.8)"],
-                  } : { scaleY: 1, boxShadow: "none" }}
-                  transition={isCurrent ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
-                  className={`h-3 w-6 border ${
-                    loaded
-                      ? "bg-[var(--color-line-strong)] border-[var(--color-line-strong)]"
-                      : "bg-transparent border-rust/20"
-                  } ${isCurrent ? "-translate-y-0.5" : ""}`}
-                />
-              );
-            })}
-          </div>
-
-          {/* Ghost eyes removed — the 3D characters now carry the presence.
-              Keeping the chamber row clean and readable. */}
-        </div>
-
-        {/* Bottom-status strip */}
-        <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[10px] tracking-[0.35em] font-mono font-bold drop-shadow-[0_0_4px_rgba(0,0,0,0.95)]">
-          <span className={turnIsYours ? "text-[var(--color-alert)]" : "text-amber-200/85"}>
-            {turnIsYours ? "▶ FIRING SOLUTION ARMED" : "◌ AWAITING OPPONENT"}
-          </span>
-          <span className="hidden text-amber-100/70 sm:inline">
-            FEED · 1280x720 · 30FPS · DEVNET
-          </span>
-        </div>
-
       </div>
     </div>
   );
 }
 
-function OpponentHud({
-  hp,
-  maxHp,
-  status,
-}: {
-  hp: number;
-  maxHp: number;
-  status: string;
-}) {
+function OpponentHud({ hp, maxHp }: { hp: number; maxHp: number }) {
   return (
     <div className="mt-3 flex items-center gap-4 border border-rust/60 bg-black/70 px-4 py-2">
       <div className="text-[10px] tracking-[0.4em] text-[var(--color-phosphor-faint)]">OPPONENT</div>
       <HpBar hp={hp} maxHp={maxHp} accent="opponent" />
-      <div className="text-[10px] tracking-[0.4em] text-rust">
-        STATUS · {status.toUpperCase()}
-      </div>
     </div>
   );
 }
