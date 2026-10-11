@@ -1,0 +1,20 @@
+# Keep the upload small: railway up sends the working directory, and the Rust
+# target directory alone is 3.2 GB. The container build only needs sources.
+node_modules
+**/node_modules
+.next
+**/.next
+**/tsconfig.tsbuildinfo
+apps/server/target
+apps/server/programs
+apps/server/migrations
+apps/server/tests
+apps/server/node_modules
+assets
+docs
+.git
+.vercel
+*.keypair.json
+**/*-keypair.json
+**/*-keypair.*.json
+*.md
