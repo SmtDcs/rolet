@@ -50,14 +50,18 @@ export function seedReady(curSlot: number, seedSlot: number | null): boolean {
   return curSlot > seedSlot;
 }
 
-/** Devnet airdrop is the only funding. A miss must not transfer SOL out of the wallet. */
-export function sessionFundPlan(airdropLanded: boolean): "register" | "skip" {
-  return airdropLanded ? "register" : "skip";
-}
+/** SOL the wallet moves into a fresh session key so it can pay its own fees. */
+export const SESSION_FUND_LAMPORTS = 20_000_000;
 
-/** A session key with no lamports cannot pay a turn. Leave the wallet as signer. */
-export function shouldArmSession(funded: boolean): boolean {
-  return funded;
+/**
+ * The session key is funded and registered in one wallet-signed transaction.
+ * The wallet must hold at least the transfer plus fees.
+ */
+export function sessionFundPlan(input: {
+  walletBalance: number;
+  required: number;
+}): "register" | "insufficient" {
+  return input.walletBalance >= input.required ? "register" : "insufficient";
 }
 
 /** A remount inside ten minutes must not register another session key. */
@@ -66,10 +70,8 @@ export function sessionAttemptFresh(previousMs: number | null, now: number): boo
   return now - previousMs > 10 * 60 * 1000;
 }
 
-export function sessionArmMessage(funded: boolean): string {
-  return funded
-    ? "Session key armed. Turns stay on this device."
-    : "Session key has no fee. Turns will ask the wallet.";
+export function sessionArmMessage(): string {
+  return "Session key armed. The rest of the match runs without wallet prompts.";
 }
 
 /** Quiet reads every 4s. Each failed read doubles the wait, up to 16s. */

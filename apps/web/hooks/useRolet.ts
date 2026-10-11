@@ -19,7 +19,7 @@ import {
   readSignature,
   sessionArmMessage,
   sessionFundPlan,
-  shouldArmSession,
+  SESSION_FUND_LAMPORTS,
   turnRoute,
 } from "@/lib/chainPace";
 import { keccak_256 } from "@noble/hashes/sha3.js";
@@ -386,52 +386,85 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   );
 
   /**
+   * Sends a game transaction as the player. The session key signs whenever it
+   * is armed, so the wallet is not asked once per step. The wallet signs only
+   * as a fallback.
+   */
+  const sendAsPlayer = useCallback(
+    async (tx: Transaction, conn: Connection = l1Connection): Promise<string> => {
+      if (sessionKey) return sendWithSessionKey(tx, conn);
+      if (!wallet.publicKey || !wallet.signTransaction) {
+        throw new Error("Wallet not connected");
+      }
+      tx.feePayer = wallet.publicKey;
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
+      tx.recentBlockhash = blockhash;
+      const signed = await wallet.signTransaction(tx);
+      const sig = await conn.sendRawTransaction(signed.serialize(), { maxRetries: 2 });
+      await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+      return sig;
+    },
+    [sessionKey, sendWithSessionKey, wallet]
+  );
+
+  /** The account that signs game instructions: the session key when armed. */
+  const activeSigner = sessionKey?.keypair.publicKey ?? wallet.publicKey ?? null;
+
+  /**
    * Arms a gasless session: generates a local keypair, registers it on-chain
    * via `register_session_key` (single Phantom popup), then airdrops it a
    * small amount of SOL so it can pay tx fees inside the ER.
    */
+  /**
+   * Opens a session with one wallet transaction: the wallet funds a fresh key
+   * and registers it on-chain. Every later game step is signed by that key, so
+   * the wallet is not asked again during the match.
+   */
   const startSession = useCallback(
     async (durationSeconds = 60 * 60) => {
-      if (!program || !wallet.publicKey) {
+      if (!program || !wallet.publicKey || !wallet.signTransaction) {
         throw new Error("Connect wallet first");
       }
       setBusy(true);
       try {
+        const balance = await l1Connection.getBalance(wallet.publicKey);
+        if (sessionFundPlan({ walletBalance: balance, required: SESSION_FUND_LAMPORTS }) === "insufficient") {
+          throw new Error("Not enough SOL to open a session");
+        }
+
         const kp = Keypair.generate();
-
-        // Fund from the devnet faucet only. Never pull SOL out of the player's wallet.
-        let funded = false;
-        try {
-          const airdropSig = await l1Connection.requestAirdrop(kp.publicKey, 0.005 * LAMPORTS_PER_SOL);
-          await l1Connection.confirmTransaction(airdropSig, "confirmed");
-          funded = true;
-        } catch {
-          funded = false;
-        }
-        if (sessionFundPlan(funded) === "skip") {
-          emitToast("info", sessionArmMessage(false));
-          return null;
-        }
-
-        const regSig = await program.methods
+        const fundIx = SystemProgram.transfer({
+          fromPubkey: wallet.publicKey,
+          toPubkey: kp.publicKey,
+          lamports: SESSION_FUND_LAMPORTS,
+        });
+        const regIx = await program.methods
           .registerSessionKey(kp.publicKey, new BN(durationSeconds))
           .accounts({
             profile: profilePda(wallet.publicKey),
             authority: wallet.publicKey,
           } as never)
-          .rpc({ commitment: "confirmed" });
-        emitToast("success", `Session registered · ${regSig.slice(0, 6)}…`);
+          .instruction();
 
-        if (shouldArmSession(funded)) {
-          const state: SessionKeyState = {
-            keypair: kp,
-            expiresAt: Math.floor(Date.now() / 1000) + durationSeconds,
-          };
-          setSessionKey(state);
-          persistSessionKey(wallet.publicKey.toBase58(), state);
-        }
-        emitToast("info", sessionArmMessage(funded));
-        return funded ? kp.publicKey : null;
+        const tx = new Transaction().add(fundIx, regIx);
+        tx.feePayer = wallet.publicKey;
+        const { blockhash, lastValidBlockHeight } = await l1Connection.getLatestBlockhash("confirmed");
+        tx.recentBlockhash = blockhash;
+        const signed = await wallet.signTransaction(tx);
+        const sig = await l1Connection.sendRawTransaction(signed.serialize(), { maxRetries: 2 });
+        await l1Connection.confirmTransaction(
+          { signature: sig, blockhash, lastValidBlockHeight },
+          "confirmed"
+        );
+
+        const state: SessionKeyState = {
+          keypair: kp,
+          expiresAt: Math.floor(Date.now() / 1000) + durationSeconds,
+        };
+        setSessionKey(state);
+        persistSessionKey(wallet.publicKey.toBase58(), state);
+        emitToast("info", sessionArmMessage());
+        return kp.publicKey;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         emitToast("error", `start_session failed · ${msg}`);
@@ -510,15 +543,18 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       }
       setBusy(true);
       try {
-        const sig = await programER.methods
+        const ix = await programER.methods
           .commitAndUndelegateMatch()
           .accounts({
-            payer: wallet.publicKey,
+            payer: activeSigner,
             matchState: matchPda(matchId),
+            launcherProfile: profilePda(wallet.publicKey),
+            authority: wallet.publicKey,
             magicProgram: MAGIC_PROGRAM_ID,
             magicContext: MAGIC_CONTEXT_ID,
           } as never)
-          .rpc({ commitment: "confirmed" });
+          .instruction();
+        const sig = await sendAsPlayer(new Transaction().add(ix), erConnection);
         for (let i = 0; i < 15; i++) {
           const info = await l1Connection.getAccountInfo(matchPda(matchId));
           if (info && info.owner.equals(ROLET_PROGRAM_ID)) break;
@@ -534,7 +570,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programER, wallet.publicKey, l1Connection]
+    [programER, wallet.publicKey, l1Connection, activeSigner, sendAsPlayer, erConnection]
   );
 
   /**
@@ -604,18 +640,21 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
           throw new Error("Lobby missing host or guest");
         }
 
-        const sig = await program.methods
+        const ix = await program.methods
           .initMatch(matchId)
           .accounts({
             matchState: matchPda(matchId),
             lobby: lobbyPda(matchId),
             playerOne: p1,
             playerTwo: p2,
-            payer: wallet.publicKey,
+            launcherProfile: profilePda(wallet.publicKey),
+            authority: wallet.publicKey,
+            signer: activeSigner,
             slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
             systemProgram: SystemProgram.programId,
           } as never)
-          .rpc({ commitment: "confirmed" });
+          .instruction();
+        const sig = await sendAsPlayer(new Transaction().add(ix));
 
         emitToast("success", `Match seeded · ${sig.slice(0, 8)}…`);
         return sig;
@@ -638,7 +677,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [program, programL1, wallet.publicKey]
+    [program, programL1, wallet.publicKey, activeSigner, sendAsPlayer]
   );
 
 
@@ -967,15 +1006,17 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       setBusy(true);
       try {
         const hostCommit = boundCommitFor(matchId, wallet.publicKey, hostSecret);
-        const sig = await programL1.methods
+        const ix = await programL1.methods
           .openLobby(matchId, Array.from(hostCommit))
           .accounts({
             lobby: lobbyPda(matchId),
             hostProfile: profilePda(wallet.publicKey),
-            host: wallet.publicKey,
+            authority: wallet.publicKey,
+            signer: activeSigner,
             systemProgram: SystemProgram.programId,
           } as never)
-          .rpc({ commitment: "confirmed" });
+          .instruction();
+        const sig = await sendAsPlayer(new Transaction().add(ix));
         emitToast("success", `Lobby opened · ${sig.slice(0, 6)}…`);
         return sig;
       } catch (err) {
@@ -986,7 +1027,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet.publicKey]
+    [programL1, wallet.publicKey, activeSigner, sendAsPlayer]
   );
 
   const joinLobby = useCallback(
@@ -998,14 +1039,16 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       setBusy(true);
       try {
         const guestCommit = boundCommitFor(matchId, wallet.publicKey, guestSecret);
-        const sig = await programL1.methods
+        const ix = await programL1.methods
           .joinLobby(Array.from(guestCommit))
           .accounts({
             lobby: lobbyPda(matchId),
             guestProfile: profilePda(wallet.publicKey),
-            guest: wallet.publicKey,
+            authority: wallet.publicKey,
+            signer: activeSigner,
           } as never)
-          .rpc({ commitment: "confirmed" });
+          .instruction();
+        const sig = await sendAsPlayer(new Transaction().add(ix));
         emitToast("success", `Joined lobby · ${sig.slice(0, 6)}…`);
         return sig;
       } catch (err) {
@@ -1016,7 +1059,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet.publicKey]
+    [programL1, wallet.publicKey, activeSigner, sendAsPlayer]
   );
 
   const revealSecret = useCallback(
@@ -1031,13 +1074,16 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         if (!s) {
           throw new Error("No secret found for match to reveal");
         }
-        const sig = await programL1.methods
+        const ix = await programL1.methods
           .revealSecret(Array.from(s))
           .accounts({
             lobby: lobbyPda(matchId),
-            player: wallet.publicKey,
+            playerProfile: profilePda(wallet.publicKey),
+            authority: wallet.publicKey,
+            signer: activeSigner,
           } as never)
-          .rpc({ commitment: "confirmed" });
+          .instruction();
+        const sig = await sendAsPlayer(new Transaction().add(ix));
         emitToast("success", `Secret revealed · ${sig.slice(0, 6)}…`);
         return sig;
       } catch (err) {
@@ -1048,7 +1094,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet.publicKey]
+    [programL1, wallet.publicKey, activeSigner, sendAsPlayer]
   );
 
   const fetchLobby = useCallback(
@@ -1079,15 +1125,17 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
           // lobby state might already be closed or unreadable
         }
 
-        const sig = await programL1.methods
+        const ix = await programL1.methods
           .closeLobby()
           .accounts({
             lobby: lobbyPda(matchId),
             hostProfile: profilePda(wallet.publicKey),
             guestProfile,
-            host: wallet.publicKey,
+            authority: wallet.publicKey,
+            signer: activeSigner,
           } as never)
-          .rpc({ commitment: "confirmed" });
+          .instruction();
+        const sig = await sendAsPlayer(new Transaction().add(ix));
         emitToast("info", `Lobby closed · ${sig.slice(0, 6)}…`);
         return sig;
       } catch (err) {
@@ -1098,7 +1146,7 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
         setBusy(false);
       }
     },
-    [programL1, wallet.publicKey]
+    [programL1, wallet.publicKey, activeSigner, sendAsPlayer]
   );
 
   const claimTimeout = useCallback(

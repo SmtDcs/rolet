@@ -105,7 +105,7 @@
               },
               {
                 "kind": "account",
-                "path": "host"
+                "path": "authority"
               }
             ]
           }
@@ -141,12 +141,12 @@
           }
         },
         {
-          "name": "host",
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "lobby"
-          ]
+          "name": "authority",
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "signer": true
         }
       ],
       "args": []
@@ -170,12 +170,44 @@
       "accounts": [
         {
           "name": "payer",
+          "docs": [
+            "Pays the commit fee. The session key when one is armed, else the wallet."
+          ],
           "writable": true,
           "signer": true
         },
         {
           "name": "match_state",
           "writable": true
+        },
+        {
+          "name": "launcher_profile",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Wallet of the participant. Seeds and the participant check only."
+          ]
         },
         {
           "name": "magic_program",
@@ -209,6 +241,10 @@
       "accounts": [
         {
           "name": "payer",
+          "docs": [
+            "Wallet of the participant. The delegation CPI needs a real signer, so",
+            "this one step cannot use a session key."
+          ],
           "writable": true,
           "signer": true
         },
@@ -449,7 +485,34 @@
           "name": "player_two"
         },
         {
-          "name": "payer",
+          "name": "launcher_profile",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true
+        },
+        {
+          "name": "signer",
           "writable": true,
           "signer": true
         },
@@ -583,13 +646,21 @@
               },
               {
                 "kind": "account",
-                "path": "guest"
+                "path": "authority"
               }
             ]
           }
         },
         {
-          "name": "guest",
+          "name": "authority",
+          "docs": [
+            "Wallet. Seeds and rent only; the signer may be its session key."
+          ],
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "writable": true,
           "signer": true
         }
       ],
@@ -659,13 +730,19 @@
               },
               {
                 "kind": "account",
-                "path": "host"
+                "path": "authority"
               }
             ]
           }
         },
         {
-          "name": "host",
+          "name": "authority",
+          "docs": [
+            "Wallet. Seeds only; never signs. The session key pays the rent."
+          ]
+        },
+        {
+          "name": "signer",
           "writable": true,
           "signer": true
         },
@@ -1155,7 +1232,33 @@
           }
         },
         {
-          "name": "player",
+          "name": "player_profile",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  102,
+                  105,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority"
+        },
+        {
+          "name": "signer",
           "signer": true
         }
       ],

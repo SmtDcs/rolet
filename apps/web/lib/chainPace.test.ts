@@ -10,9 +10,9 @@ import {
   seedReady,
   sessionFundPlan,
   sessionArmMessage,
+  SESSION_FUND_LAMPORTS,
   timeoutClaimable,
   sessionAttemptFresh,
-  shouldArmSession,
   turnRoute,
 } from "./chainPace";
 
@@ -29,11 +29,13 @@ test("launch waits until the seed slot is known to be in the past", () => {
   assert.equal(seedReady(101, 100), true);
 });
 
-test("an unfunded session key is not armed", () => {
-  assert.equal(shouldArmSession(false), false);
-  assert.equal(shouldArmSession(true), true);
-  assert.equal(sessionArmMessage(true), "Session key armed. Turns stay on this device.");
-  assert.equal(sessionArmMessage(false), "Session key has no fee. Turns will ask the wallet.");
+test("the session key is funded from the wallet when the wallet can cover it", () => {
+  assert.equal(sessionFundPlan({ walletBalance: 50_000_000, required: SESSION_FUND_LAMPORTS }), "register");
+  assert.equal(sessionFundPlan({ walletBalance: 1_000, required: SESSION_FUND_LAMPORTS }), "insufficient");
+  assert.equal(
+    sessionArmMessage(),
+    "Session key armed. The rest of the match runs without wallet prompts."
+  );
 });
 
 test("a failed read waits longer, and a quiet read stays at four seconds", () => {
@@ -47,11 +49,6 @@ test("a refresh does not register a second session key inside ten minutes", () =
   assert.equal(sessionAttemptFresh(null, now), true);
   assert.equal(sessionAttemptFresh(now - 60_000, now), false);
   assert.equal(sessionAttemptFresh(now - 11 * 60_000, now), true);
-});
-
-test("a failed airdrop does not take SOL from the wallet", () => {
-  assert.equal(sessionFundPlan(true), "register");
-  assert.equal(sessionFundPlan(false), "skip");
 });
 
 test("a fresh match does not offer a timeout claim", () => {

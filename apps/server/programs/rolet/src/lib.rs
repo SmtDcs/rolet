@@ -53,6 +53,13 @@ pub mod rolet {
         let lobby = &mut ctx.accounts.lobby;
         require!(!lobby.launched, RoletError::LobbyAlreadyLaunched);
         require!(lobby.guest.is_some(), RoletError::LobbyNotReady);
+        // The launcher is a participant, signing with the wallet or its key.
+        resolve_actor(
+            ctx.accounts.signer.key(),
+            &ctx.accounts.launcher_profile,
+            ctx.accounts.authority.key(),
+            Clock::get()?.unix_timestamp,
+        )?;
         require!(
             lobby.host_revealed && lobby.guest_revealed,
             RoletError::SecretsNotRevealed
@@ -792,6 +799,13 @@ pub mod rolet {
         match_id: u64,
         host_commit: [u8; 32],
     ) -> Result<()> {
+        // The signer is the wallet or its registered, unexpired session key.
+        resolve_actor(
+            ctx.accounts.signer.key(),
+            &ctx.accounts.host_profile,
+            ctx.accounts.authority.key(),
+            Clock::get()?.unix_timestamp,
+        )?;
         let host_profile = &mut ctx.accounts.host_profile;
         require!(
             host_profile.durability_remaining > 0,
@@ -801,7 +815,7 @@ pub mod rolet {
 
         let lobby = &mut ctx.accounts.lobby;
         lobby.match_id = match_id;
-        lobby.host = ctx.accounts.host.key();
+        lobby.host = ctx.accounts.authority.key();
         lobby.host_commit = host_commit;
         lobby.guest = None;
         lobby.guest_commit = [0u8; 32];
@@ -821,11 +835,17 @@ pub mod rolet {
     // the secret is revealed later via reveal_secret.
     // --------------------------------------------------------
     pub fn join_lobby(ctx: Context<JoinLobby>, guest_commit: [u8; 32]) -> Result<()> {
+        resolve_actor(
+            ctx.accounts.signer.key(),
+            &ctx.accounts.guest_profile,
+            ctx.accounts.authority.key(),
+            Clock::get()?.unix_timestamp,
+        )?;
         let lobby = &mut ctx.accounts.lobby;
         require!(lobby.guest.is_none(), RoletError::LobbyFull);
         require!(!lobby.launched, RoletError::LobbyAlreadyLaunched);
         require!(
-            ctx.accounts.guest.key() != lobby.host,
+            ctx.accounts.authority.key() != lobby.host,
             RoletError::CannotSelfMatch
         );
 
@@ -841,14 +861,14 @@ pub mod rolet {
         // copied commit unrevealable; this rejects it up front.)
         require!(guest_commit != lobby.host_commit, RoletError::DuplicateCommit);
 
-        lobby.guest = Some(ctx.accounts.guest.key());
+        lobby.guest = Some(ctx.accounts.authority.key());
         lobby.guest_commit = guest_commit;
         lobby.guest_secret = [0u8; 32];
         lobby.guest_revealed = false;
         emit!(LobbyReady {
             match_id: lobby.match_id,
             host: lobby.host,
-            guest: ctx.accounts.guest.key(),
+            guest: ctx.accounts.authority.key(),
         });
         Ok(())
     }
@@ -862,7 +882,12 @@ pub mod rolet {
         let lobby = &mut ctx.accounts.lobby;
         require!(!lobby.launched, RoletError::LobbyAlreadyLaunched);
         let guest = lobby.guest.ok_or(RoletError::LobbyNotReady)?;
-        let player = ctx.accounts.player.key();
+        let player = resolve_actor(
+            ctx.accounts.signer.key(),
+            &ctx.accounts.player_profile,
+            ctx.accounts.authority.key(),
+            Clock::get()?.unix_timestamp,
+        )?;
         // RISK-B: the preimage binds the revealing player and this match_id,
         // so a commit/secret copied from the other seat or another lobby
         // never verifies.
@@ -908,6 +933,12 @@ pub mod rolet {
     // * Match launched            -> rent reclaim only, no refund.
     // --------------------------------------------------------
     pub fn close_lobby(ctx: Context<CloseLobby>) -> Result<()> {
+        resolve_actor(
+            ctx.accounts.signer.key(),
+            &ctx.accounts.host_profile,
+            ctx.accounts.authority.key(),
+            Clock::get()?.unix_timestamp,
+        )?;
         let lobby = &ctx.accounts.lobby;
         if lobby.launched {
             emit!(LobbyClosed {
@@ -1026,14 +1057,20 @@ pub mod rolet {
     /// Commit the rollup copy and return MatchState to this program.
     /// settle_match stays on devnet and runs only after this lands.
     pub fn commit_and_undelegate_match(ctx: Context<CommitMatch>) -> Result<()> {
+        resolve_actor(
+            ctx.accounts.payer.key(),
+            &ctx.accounts.launcher_profile,
+            ctx.accounts.authority.key(),
+            Clock::get()?.unix_timestamp,
+        )?;
         let state = read_match_state(&ctx.accounts.match_state.to_account_info())?;
         require!(
             state.status == MatchStatus::Active || state.status == MatchStatus::Completed,
             RoletError::MatchNotActive
         );
         require!(
-            ctx.accounts.payer.key() == state.player_one
-                || ctx.accounts.payer.key() == state.player_two,
+            ctx.accounts.authority.key() == state.player_one
+                || ctx.accounts.authority.key() == state.player_two,
             RoletError::NotAParticipant
         );
         MagicIntentBundleBuilder::new(
@@ -1368,7 +1405,7 @@ pub enum Card {
 pub struct InitMatch<'info> {
     #[account(
         init,
-        payer = payer,
+        payer = signer,
         space = 8 + MatchState::INIT_SPACE,
         seeds = [b"match", match_id.to_le_bytes().as_ref()],
         bump,
@@ -1390,11 +1427,19 @@ pub struct InitMatch<'info> {
     )]
     pub player_two: UncheckedAccount<'info>,
     #[account(
+        seeds = [b"profile", authority.key().as_ref()],
+        bump = launcher_profile.bump,
+        constraint = launcher_profile.authority == authority.key() @ RoletError::ProfileMismatch,
+    )]
+    pub launcher_profile: Box<Account<'info, PlayerProfile>>,
+    #[account(
         mut,
-        constraint = payer.key() == lobby.host || lobby.guest == Some(payer.key())
+        constraint = authority.key() == lobby.host || lobby.guest == Some(authority.key())
             @ RoletError::NotAParticipant,
     )]
-    pub payer: Signer<'info>,
+    pub authority: SystemAccount<'info>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
     /// CHECK: SlotHashes sysvar — read-only, address-validated
     #[account(address = solana_sysvar::slot_hashes::ID)]
     pub slot_hashes: UncheckedAccount<'info>,
@@ -1405,6 +1450,8 @@ pub struct InitMatch<'info> {
 #[derive(Accounts)]
 #[instruction(match_id: u64)]
 pub struct DelegateMatch<'info> {
+    /// Wallet of the participant. The delegation CPI needs a real signer, so
+    /// this one step cannot use a session key.
     #[account(mut)]
     pub payer: Signer<'info>,
     /// CHECK: match PDA. Untyped because delegation changes its owner.
@@ -1420,11 +1467,20 @@ pub struct DelegateMatch<'info> {
 #[commit]
 #[derive(Accounts)]
 pub struct CommitMatch<'info> {
+    /// Pays the commit fee. The session key when one is armed, else the wallet.
     #[account(mut)]
     pub payer: Signer<'info>,
     /// CHECK: delegated match account. Data is the rollup copy during this ix.
     #[account(mut)]
     pub match_state: UncheckedAccount<'info>,
+    #[account(
+        seeds = [b"profile", authority.key().as_ref()],
+        bump = launcher_profile.bump,
+        constraint = launcher_profile.authority == authority.key() @ RoletError::ProfileMismatch,
+    )]
+    pub launcher_profile: Box<Account<'info, PlayerProfile>>,
+    /// Wallet of the participant. Seeds and the participant check only.
+    pub authority: SystemAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -1612,7 +1668,7 @@ pub struct RegisterSessionKey<'info> {
 pub struct OpenLobby<'info> {
     #[account(
         init,
-        payer = host,
+        payer = signer,
         space = 8 + LobbyState::INIT_SPACE,
         seeds = [b"lobby", match_id.to_le_bytes().as_ref()],
         bump,
@@ -1621,14 +1677,16 @@ pub struct OpenLobby<'info> {
 
     #[account(
         mut,
-        seeds = [b"profile", host.key().as_ref()],
+        seeds = [b"profile", authority.key().as_ref()],
         bump = host_profile.bump,
-        constraint = host_profile.authority == host.key() @ RoletError::ProfileMismatch,
+        constraint = host_profile.authority == authority.key() @ RoletError::ProfileMismatch,
     )]
     pub host_profile: Box<Account<'info, PlayerProfile>>,
 
+    /// Wallet. Seeds only; never signs. The session key pays the rent.
+    pub authority: SystemAccount<'info>,
     #[account(mut)]
-    pub host: Signer<'info>,
+    pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -1643,13 +1701,17 @@ pub struct JoinLobby<'info> {
 
     #[account(
         mut,
-        seeds = [b"profile", guest.key().as_ref()],
+        seeds = [b"profile", authority.key().as_ref()],
         bump = guest_profile.bump,
-        constraint = guest_profile.authority == guest.key() @ RoletError::ProfileMismatch,
+        constraint = guest_profile.authority == authority.key() @ RoletError::ProfileMismatch,
     )]
     pub guest_profile: Box<Account<'info, PlayerProfile>>,
 
-    pub guest: Signer<'info>,
+    /// Wallet. Seeds and rent only; the signer may be its session key.
+    #[account(mut)]
+    pub authority: SystemAccount<'info>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -1658,15 +1720,15 @@ pub struct CloseLobby<'info> {
         mut,
         seeds = [b"lobby", lobby.match_id.to_le_bytes().as_ref()],
         bump = lobby.bump,
-        has_one = host,
-        close = host,
+        constraint = lobby.host == authority.key() @ RoletError::NotAParticipant,
+        close = authority,
     )]
     pub lobby: Account<'info, LobbyState>,
     #[account(
         mut,
-        seeds = [b"profile", host.key().as_ref()],
+        seeds = [b"profile", authority.key().as_ref()],
         bump = host_profile.bump,
-        constraint = host_profile.authority == host.key() @ RoletError::ProfileMismatch,
+        constraint = host_profile.authority == authority.key() @ RoletError::ProfileMismatch,
     )]
     pub host_profile: Box<Account<'info, PlayerProfile>>,
     /// Required only when a guest joined but the match was never launched
@@ -1678,7 +1740,8 @@ pub struct CloseLobby<'info> {
     )]
     pub guest_profile: Option<Box<Account<'info, PlayerProfile>>>,
     #[account(mut)]
-    pub host: Signer<'info>,
+    pub authority: SystemAccount<'info>,
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -1689,7 +1752,14 @@ pub struct RevealSecret<'info> {
         bump = lobby.bump,
     )]
     pub lobby: Box<Account<'info, LobbyState>>,
-    pub player: Signer<'info>,
+    #[account(
+        seeds = [b"profile", authority.key().as_ref()],
+        bump = player_profile.bump,
+        constraint = player_profile.authority == authority.key() @ RoletError::ProfileMismatch,
+    )]
+    pub player_profile: Box<Account<'info, PlayerProfile>>,
+    pub authority: SystemAccount<'info>,
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
