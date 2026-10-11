@@ -1,8 +1,24 @@
 # Session Scope Implementation Plan
 
-> **For the agent:** bu planı görev görev uygula. Her görev kendi testini taşır. Adımları `- [ ]` ile işaretle.
+## Result (2026-10-11)
 
-**Goal:** Oyuncunun maç boyunca tek bir cüzdan onayı vermesi. Oturum anahtarı lobi, maç kurulumu, turlar ve maç sonu dahil tüm oyun işlemlerini imzalar.
+Shipped on `feat/session-scope`, commits `cbe3d98` and `24df042`. Program upgraded in place on devnet (`mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH`).
+
+What changed in the program: every game instruction takes the wallet as an unsigned `authority` (PDA seeds and participant checks) plus a `signer` that may be the wallet's registered session key. `init` pays rent from `signer`, so the funded session key covers it. `open_lobby`, `join_lobby`, `reveal_secret`, `init_match`, `delegate_match`, `close_lobby`, `commit_and_undelegate_match` and `settle_match` all run on the session key.
+
+What did not need building: the server relayer. `settle_match` already accepted any signer, so the session key settles the match; its rent refund goes to the key. Session funding also stayed on the wallet: the transfer and `register_session_key` share one transaction, so opening a session costs exactly the one prompt the old flow already paid for `register_session_key`.
+
+Verified with a scripted two-wallet match on devnet: lobby, reveals, init, delegate, 11 turns on the EU rollup, commit and settle. Only the queue message and the session open touched a wallet. `tsc --noEmit` and 33 unit tests pass.
+
+Remaining: the queue message signature is still one prompt per player. Batching (`open+reveal`, `init+delegate+close`) was not needed for the onay count and is left out.
+
+---
+
+> **For the agent:** the task list below is the original plan, kept for reference. Steps already delivered are noted above.
+
+## Goal
+
+One wallet prompt per player for the whole match. A session key signs the lobby, the match setup, every turn and the end of the match.
 
 **Architecture:** Programda PDA tohumu için `authority` (cüzdan, imzasız) ile `signer` (session key veya cüzdan) ayrılır; `resolve_actor` ikisini eşler. Web tek oturum açma işleminde session key'i fonlar ve kaydeder, sonra bütün akış o anahtarla gider. Maç sonu `settle_match` sunucu relayer'ına verilir.
 
