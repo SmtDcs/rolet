@@ -661,106 +661,6 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
    * 8 (disc) + 8 (match_id) + 32 (host) + 32 (host_commit) = 80 bytes.
    * If byte 80 is 0, the option is None.
    */
-  const findOpenLobby = useCallback(async (excludeHost?: PublicKey): Promise<{ matchId: BN; host: PublicKey } | null> => {
-    if (!programL1) return null;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const lobbies = await (programL1.account as any).lobbyState.all([
-        { memcmp: { offset: 80, bytes: bs58.encode(Uint8Array.from([0])) } },
-      ]);
-      // Only consider lobbies opened in the last 5 minutes.
-      // matchId = Date.now() so stale lobbies from previous sessions have
-      // much smaller values and are automatically excluded.
-      const fiveMinutesAgo = new BN(Date.now() - 5 * 60 * 1000);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const filtered = lobbies.filter((l: any) => {
-        if (excludeHost && l.account.host.equals(excludeHost)) return false;
-        return (l.account.matchId as BN).gt(fiveMinutesAgo);
-      });
-      if (filtered.length > 0) {
-        return {
-          matchId: filtered[0].account.matchId as BN,
-          host: filtered[0].account.host as PublicKey,
-        };
-      }
-      return null;
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("[findOpenLobby] error:", err);
-      return null;
-    }
-  }, [programL1]);
-
-  const initMatch = useCallback(
-    async ({
-      matchId,
-      playerOne,
-      playerTwo,
-      opponent,
-    }: {
-      matchId: BN;
-      playerOne?: PublicKey;
-      playerTwo?: PublicKey;
-      opponent?: PublicKey;
-      opponentCommit?: Uint8Array;
-      opponentSecret?: Uint8Array;
-    }) => {
-      if (!program || !wallet.publicKey) {
-        emitToast("error", "Wallet not connected");
-        return null;
-      }
-      setBusy(true);
-      try {
-        let p1 = playerOne;
-        let p2 = playerTwo ?? opponent;
-        if (!p1 || !p2) {
-          const l: any = await ((programL1 ?? program)!.account as any).lobbyState.fetch(lobbyPda(matchId));
-          p1 = p1 ?? l.host;
-          p2 = p2 ?? l.guest;
-        }
-        if (!p1 || !p2) {
-          throw new Error("Lobby missing host or guest");
-        }
-
-        const ix = await program.methods
-          .initMatch(matchId)
-          .accounts({
-            matchState: matchPda(matchId),
-            lobby: lobbyPda(matchId),
-            playerOne: p1,
-            playerTwo: p2,
-            launcherProfile: profilePda(wallet.publicKey),
-            authority: wallet.publicKey,
-            signer: activeSigner,
-            slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
-            systemProgram: SystemProgram.programId,
-          } as never)
-          .instruction();
-        const sig = await sendAsPlayer(new Transaction().add(ix));
-
-        emitToast("success", `Match seeded · ${sig.slice(0, 8)}…`);
-        return sig;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        const isBenign =
-          msg.includes("SeedSlotNotReached") ||
-          msg.includes("6037") ||
-          msg.includes("0x1795") ||
-          msg.includes("Seed slot has not been produced yet") ||
-          msg.includes("LobbyAlreadyLaunched") ||
-          msg.includes("already in use") ||
-          msg.includes("6033") ||
-          msg.includes("0x0");
-        if (!isBenign) {
-          emitToast("error", `init_match failed · ${msg}`);
-        }
-        throw err;
-      } finally {
-        setBusy(false);
-      }
-    },
-    [program, programL1, wallet.publicKey, activeSigner, sendAsPlayer]
-  );
 
 
   const playCard = useCallback(
@@ -1227,6 +1127,77 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
     [programL1, wallet.publicKey, activeSigner, sendAsPlayer]
   );
 
+  const initMatch = useCallback(
+    async ({
+      matchId,
+      playerOne,
+      playerTwo,
+      opponent,
+    }: {
+      matchId: BN;
+      playerOne?: PublicKey;
+      playerTwo?: PublicKey;
+      opponent?: PublicKey;
+      opponentCommit?: Uint8Array;
+      opponentSecret?: Uint8Array;
+    }) => {
+      if (!program || !wallet.publicKey) {
+        emitToast("error", "Wallet not connected");
+        return null;
+      }
+      setBusy(true);
+      try {
+        let p1 = playerOne;
+        let p2 = playerTwo ?? opponent;
+        if (!p1 || !p2) {
+          const l: any = await ((programL1 ?? program)!.account as any).lobbyState.fetch(lobbyPda(matchId));
+          p1 = p1 ?? l.host;
+          p2 = p2 ?? l.guest;
+        }
+        if (!p1 || !p2) {
+          throw new Error("Lobby missing host or guest");
+        }
+
+        const ix = await program.methods
+          .initMatch(matchId)
+          .accounts({
+            matchState: matchPda(matchId),
+            lobby: lobbyPda(matchId),
+            playerOne: p1,
+            playerTwo: p2,
+            launcherProfile: profilePda(wallet.publicKey),
+            authority: wallet.publicKey,
+            signer: activeSigner,
+            slotHashes: SYSVAR_SLOT_HASHES_PUBKEY,
+            systemProgram: SystemProgram.programId,
+          } as never)
+          .instruction();
+        const sig = await sendAsPlayer(new Transaction().add(ix));
+
+        emitToast("success", `Match seeded · ${sig.slice(0, 8)}…`);
+        return sig;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isBenign =
+          msg.includes("SeedSlotNotReached") ||
+          msg.includes("6037") ||
+          msg.includes("0x1795") ||
+          msg.includes("Seed slot has not been produced yet") ||
+          msg.includes("LobbyAlreadyLaunched") ||
+          msg.includes("already in use") ||
+          msg.includes("6033") ||
+          msg.includes("0x0");
+        if (!isBenign) {
+          emitToast("error", `init_match failed · ${msg}`);
+        }
+        throw err;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [program, programL1, wallet.publicKey, activeSigner, sendAsPlayer]
+  );
+
   const claimTimeout = useCallback(
     async (matchId: BN) => {
       if (!programL1 || !wallet.publicKey) {
@@ -1346,7 +1317,6 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       joinLobby,
       revealSecret,
       claimTimeout,
-      findOpenLobby,
       fetchLobby,
       closeLobby,
       sweepSession,
@@ -1378,7 +1348,6 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       joinLobby,
       revealSecret,
       claimTimeout,
-      findOpenLobby,
       fetchLobby,
       closeLobby,
       sweepSession,
