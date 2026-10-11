@@ -1,15 +1,19 @@
-// ROLET landing tokens — style guide v1.2 / landing brief v1.
+// ROLET landing tokens.
+//
+// The values now resolve to the CSS custom properties in app/globals.css, so
+// every section that imports this file draws from the one substrate: the
+// deactivated CRT, the phosphor text scale and the single brass accent.
 export const C = {
-  soot: "#141414",
-  gunmetal: "#1E2227",
-  graphite: "#2E333A",
-  bone: "#E6E1D6",
-  worn: "#C8BFA8",
-  brass: "#B88A2E",
+  soot: "var(--color-void)",
+  gunmetal: "var(--color-surface-2)",
+  graphite: "var(--color-surface-3)",
+  bone: "var(--color-phosphor)",
+  worn: "var(--color-phosphor-dim)",
+  brass: "var(--color-brass)",
   wood: "#3A2A1F",
-  sodium: "#D9963A",
-  signal: "#D2462B",
-  patina: "#3F7F74",
+  sodium: "var(--color-brass-bright)",
+  signal: "var(--color-alert)",
+  patina: "var(--color-patina)",
 } as const;
 
 export const F = {
