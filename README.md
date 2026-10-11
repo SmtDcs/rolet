@@ -1,5 +1,3 @@
-> **AI / CLI sessions: read [`docs/CLI_HANDOFF.md`](docs/CLI_HANDOFF.md) first** — project state, economy, architecture, next work and hard rules live there.
-
 # ROLET
 
 <p align="center">
@@ -213,20 +211,20 @@ rolet/
 │   ├── server/
 │   │   ├── programs/rolet/src/lib.rs     # Anchor program
 │   │   ├── Anchor.toml                   # toolchain: anchor 1.0.2, solana 3.1.9
+│   │   ├── scripts/bootstrap-vault.ts    # one-time vault setup
 │   │   └── target/idl/rolet.json         # generated IDL (copied into the web app)
 │   └── web/
 │       ├── app/                          # routes: /, /duel, /profile, /leaderboard
-│       ├── app/api/rpc/route.ts          # RPC proxy with one retry on a thrown fetch
+│       ├── app/api/rpc/route.ts          # RPC proxy, rate limited per IP
 │       ├── app/api/matchmaking/route.ts  # the in-memory queue
 │       ├── components/                   # duel bench, landing scroll, nav
 │       ├── hooks/useRolet.ts             # Anchor client, session keys, all game calls
-│       ├── lib/chainPace.ts              # pure rules (seat, launch gate, turns)
+│       ├── lib/chainPace.ts              # pure rules (seat, launch gate, turns, limits)
 │       ├── lib/chainPace.test.ts         # node:test unit suite
 │       └── idl/rolet.json                # IDL the client loads
-└── docs/
-    ├── CLI_HANDOFF.md                    # start here as an agent
-    ├── MAGICBLOCK-ANCHOR1-PLAN.md        # how the rollup integration was built
-    └── SESSION-SCOPE-PLAN.md             # how the one-prompt flow was built
+├── docs/design/                          # landing and art direction
+├── Dockerfile                            # single-replica image for Railway
+└── railway.json                          # deploy config
 ```
 
 ---
