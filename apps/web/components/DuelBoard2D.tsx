@@ -173,7 +173,7 @@ export default function DuelBoard2D({
 
       {/* Floor shadow under the table */}
       <div
-        className="absolute left-1/2 top-[56%] h-[8%] w-[min(860px,94vw)] rounded-[50%]"
+        className="absolute left-1/2 top-[56%] h-[6%] w-[min(820px,90vw)] rounded-[50%]"
         style={{
           transform: "translateX(-50%) translateZ(-40px)",
           background: "radial-gradient(ellipse, rgba(0,0,0,0.6), transparent 70%)",
@@ -269,10 +269,10 @@ export default function DuelBoard2D({
           <div
             className="relative h-[340px] w-[min(760px,86vw)] rounded-[50%]"
             style={{
-              background:
-                "linear-gradient(180deg, #55321b 0%, #2e1a0d 58%, #1a0d05 100%)",
+              background: "#4a2c17",
+              border: "3px solid #1a0d05",
               boxShadow:
-                "0 44px 70px rgba(0,0,0,0.72), inset 0 2px 4px rgba(201,162,39,0.28), inset 0 -3px 6px rgba(0,0,0,0.6)",
+                "0 14px 0 rgba(0,0,0,0.55), 0 18px 0 rgba(0,0,0,0.28), inset 0 0 0 3px #8a703f",
             }}
           >
             {/* Brass rail line */}
@@ -282,23 +282,31 @@ export default function DuelBoard2D({
             <div
               className="absolute inset-[18px] overflow-hidden rounded-[50%]"
               style={{
-                background:
-                  "radial-gradient(ellipse at 50% 24%, #3a2a1d 0%, #241a12 46%, #140d08 100%)",
-                boxShadow:
-                  "inset 0 10px 30px rgba(0,0,0,0.55), inset 0 -4px 14px rgba(0,0,0,0.5)",
+                background: "#2a1c12",
+                backgroundImage: "url(/art/duel/bench-grain.png)",
+                backgroundSize: "190px 190px",
+                backgroundPosition: "center",
+                boxShadow: "inset 0 0 0 2px #140d08",
               }}
             >
               {/* Grain */}
               <div
-                className="absolute inset-0 opacity-[0.16] mix-blend-overlay"
+                className="absolute inset-0 opacity-[0.22] mix-blend-overlay"
                 style={{ filter: "url(#rolet-noise)" }}
+              />
+              <div
+                className="absolute inset-0 opacity-[0.10]"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(92deg, #0f0904 0 1px, transparent 1px 7px)",
+                }}
               />
               {/* Bulb pool on the felt */}
               <div
                 className="absolute left-1/2 top-[8%] h-[74%] w-[62%] -translate-x-1/2 rounded-[50%] animate-[rolet-cone-flicker_4.2s_ease-in-out_infinite]"
                 style={{
                   background:
-                    "radial-gradient(ellipse, rgba(255,205,130,0.24) 0%, rgba(255,190,110,0.08) 55%, transparent 75%)",
+                    "radial-gradient(ellipse, rgba(255,205,130,0.26) 0%, rgba(255,190,110,0.16) 60%, rgba(255,190,110,0.06) 78%, transparent 82%)",
                 }}
               />
               {/* Felt stamp — printer's mark on the baize */}
@@ -309,22 +317,22 @@ export default function DuelBoard2D({
                 {Array.from({ length: liveCount }).map((_, i) => (
                   <span
                     key={`live-${i}`}
-                    className="h-[18px] w-[7px] rounded-[2px]"
+                    className="h-[18px] w-[7px] rounded-[1px]"
                     style={{
-                      background: "linear-gradient(180deg, #8a1a0c, #4a0a04)",
-                      boxShadow:
-                        "0 2px 4px rgba(0,0,0,0.6), 0 0 10px rgba(255,68,34,0.75), inset 0 1px 1px rgba(255,150,110,0.5)",
+                      background: "#8a1a0c",
+                      border: "1.5px solid #1a0d05",
+                      boxShadow: "2px 2px 0 rgba(0,0,0,0.5)",
                     }}
                   />
                 ))}
                 {Array.from({ length: blankCount }).map((_, i) => (
                   <span
                     key={`blank-${i}`}
-                    className="h-[18px] w-[7px] rounded-[2px]"
+                    className="h-[18px] w-[7px] rounded-[1px]"
                     style={{
-                      background: "linear-gradient(180deg, #d8d8d8, #6f6f6f)",
-                      boxShadow:
-                        "0 2px 4px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.55)",
+                      background: "#c9bfae",
+                      border: "1.5px solid #1a0d05",
+                      boxShadow: "2px 2px 0 rgba(0,0,0,0.5)",
                     }}
                   />
                 ))}
