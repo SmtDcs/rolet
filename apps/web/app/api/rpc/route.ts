@@ -1,7 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimitPlan } from "@/lib/chainPace";
 
 const UPSTREAM_RPC = process.env.RPCFAST_BACKEND_URL ?? "https://api.devnet.solana.com";
 const RPCFAST_API_KEY = process.env.RPCFAST_API_KEY ?? "";
+
+/**
+ * A match makes a few dozen calls a minute, so this stays clear of real play
+ * while capping anyone using the proxy to burn the provider's quota.
+ */
+const RPC_LIMIT = 240;
+const RPC_WINDOW_MS = 60_000;
+
+type Bucket = { hits: number; windowStart: number };
+const globalForRpc = globalThis as typeof globalThis & {
+  __roletRpcRate?: Map<string, Bucket>;
+};
+const buckets = (globalForRpc.__roletRpcRate ??= new Map<string, Bucket>());
+
+function clientKey(req: NextRequest): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  return (forwarded?.split(",")[0] ?? "local").trim();
+}
+
+function prune(now: number) {
+  if (buckets.size < 512) return;
+  for (const [key, bucket] of buckets) {
+    if (now - bucket.windowStart >= RPC_WINDOW_MS) buckets.delete(key);
+  }
+}
 
 /**
  * Thin JSON-RPC proxy so the browser never talks to RPC Fast directly
@@ -11,6 +37,25 @@ const RPCFAST_API_KEY = process.env.RPCFAST_API_KEY ?? "";
  */
 export async function POST(req: NextRequest) {
   try {
+    const now = Date.now();
+    const key = clientKey(req);
+    const previous = buckets.get(key) ?? { hits: 0, windowStart: now };
+    const plan = rateLimitPlan({
+      hits: previous.hits,
+      windowStart: previous.windowStart,
+      now,
+      limit: RPC_LIMIT,
+      windowMs: RPC_WINDOW_MS,
+    });
+    buckets.set(key, { hits: plan.hits, windowStart: plan.windowStart });
+    prune(now);
+    if (!plan.allow) {
+      return NextResponse.json(
+        { jsonrpc: "2.0", error: { code: -32005, message: "Too many requests" }, id: null },
+        { status: 429 }
+      );
+    }
+
     const body = await req.text();
 
     const upstreamHeaders: Record<string, string> = { "Content-Type": "application/json" };

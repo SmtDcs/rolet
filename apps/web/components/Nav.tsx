@@ -42,7 +42,7 @@ export function Footer() {
   return (
     <footer className="border-t border-rust/30 px-6 py-3 text-[9px] tracking-[0.4em] text-zinc-600 flex justify-between crt-text">
       <span>// COLOSSEUM FRONTIER · 2026</span>
-      <span>github.com/SmtDcs/rolet-web</span>
+      <span>github.com/SmtDcs/rolet</span>
     </footer>
   );
 }

@@ -600,8 +600,12 @@
         },
         {
           "name": "authority",
+          "docs": [
+            "The deployer. Guards a one-time setup."
+          ],
           "writable": true,
-          "signer": true
+          "signer": true,
+          "address": "CeoeQQj6233aJ1SMKzrdVrVeLZVJ8C5zwXT7JNdfj8f4"
         },
         {
           "name": "system_program",
@@ -1502,6 +1506,17 @@
         },
         {
           "name": "rent_refund",
+          "docs": [
+            "A seat holder. The match rent goes back to a player rather than to",
+            "whoever settles first."
+          ],
+          "writable": true
+        },
+        {
+          "name": "signer",
+          "docs": [
+            "Pays the transaction fee. The session key when one is armed."
+          ],
           "writable": true,
           "signer": true
         },

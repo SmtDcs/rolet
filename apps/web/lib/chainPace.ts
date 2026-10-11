@@ -93,6 +93,25 @@ export function rateLimitedError(message: string): boolean {
   return /too many requests/i.test(message) || message.includes("429");
 }
 
+/**
+ * Fixed-window limiter for the RPC proxy. A match makes a few dozen calls a
+ * minute, so the limit stays well clear of real play and still caps a caller
+ * that tries to burn the upstream provider's quota.
+ */
+export function rateLimitPlan(input: {
+  hits: number;
+  windowStart: number;
+  now: number;
+  limit: number;
+  windowMs: number;
+}): { allow: boolean; hits: number; windowStart: number } {
+  const expired = input.now - input.windowStart >= input.windowMs;
+  const hits = expired ? 0 : input.hits;
+  const windowStart = expired ? input.now : input.windowStart;
+  if (hits >= input.limit) return { allow: false, hits, windowStart };
+  return { allow: true, hits: hits + 1, windowStart };
+}
+
 /** Quiet reads every 4s. Each failed read doubles the wait, up to 16s. */
 export function pollWaitMs(failures: number): number {
   const n = Math.max(0, Math.floor(failures));

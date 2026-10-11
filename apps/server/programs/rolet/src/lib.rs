@@ -12,6 +12,10 @@ const CORE_ASSET_V1: u8 = 1;
 /// MagicBlock devnet EU validator. A delegated match runs there.
 pub const ER_VALIDATOR: Pubkey = pubkey!("MEUGGrYPxKk17hCr7wpT6s8dtNokZj5U2L57vjYMS8e");
 
+/// The only wallet that may create the vault. Without this the first caller
+/// could seed the vault with its own ops wallet and prices.
+pub const VAULT_AUTHORITY: Pubkey = pubkey!("CeoeQQj6233aJ1SMKzrdVrVeLZVJ8C5zwXT7JNdfj8f4");
+
 declare_id!("mspQcUFhmAGYUsnBbcUndhaZiris53KtwYCjDHU91oH");
 
 // ============================================================
@@ -1592,8 +1596,19 @@ pub struct SettleMatch<'info> {
     )]
     pub winner: UncheckedAccount<'info>,
 
+    /// A seat holder. The match rent goes back to a player rather than to
+    /// whoever settles first.
+    #[account(
+        mut,
+        constraint = rent_refund.key() == match_state.player_one
+            || rent_refund.key() == match_state.player_two
+            @ RoletError::NotAParticipant,
+    )]
+    pub rent_refund: SystemAccount<'info>,
+
+    /// Pays the transaction fee. The session key when one is armed.
     #[account(mut)]
-    pub rent_refund: Signer<'info>,
+    pub signer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -1801,10 +1816,11 @@ pub struct InitVault<'info> {
     #[account(mut)]
     pub treasury_sol: UncheckedAccount<'info>,
 
-    /// CHECK: team wallet receiving 30% of NFT revenue
+    /// CHECK: team wallet receiving the ops share of character revenue
     pub ops_wallet: UncheckedAccount<'info>,
 
-    #[account(mut)]
+    /// The deployer. Guards a one-time setup.
+    #[account(mut, address = VAULT_AUTHORITY @ RoletError::UnauthorizedActor)]
     pub authority: Signer<'info>,
 
     pub system_program: Program<'info, System>,

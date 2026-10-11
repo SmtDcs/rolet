@@ -15,6 +15,7 @@ import {
   sessionAttemptFresh,
   sessionSweepPlan,
   rateLimitedError,
+  rateLimitPlan,
   turnRoute,
 } from "./chainPace";
 
@@ -116,4 +117,25 @@ test("a throttled RPC call is recognised so it can be retried", () => {
   assert.equal(rateLimitedError("Server responded with 429 Too Many Requests"), true);
   assert.equal(rateLimitedError("Too many requests for a specific RPC call"), true);
   assert.equal(rateLimitedError("Blockhash not found"), false);
+});
+
+test("the RPC proxy limiter counts calls inside a window and resets after it", () => {
+  const window = { limit: 3, windowMs: 1000 };
+  let state = { hits: 0, windowStart: 0 };
+
+  let step = rateLimitPlan({ ...state, now: 0, ...window });
+  assert.deepEqual(step, { allow: true, hits: 1, windowStart: 0 });
+
+  step = rateLimitPlan({ ...step, now: 10, ...window });
+  assert.deepEqual(step, { allow: true, hits: 2, windowStart: 0 });
+
+  step = rateLimitPlan({ ...step, now: 20, ...window });
+  assert.deepEqual(step, { allow: true, hits: 3, windowStart: 0 });
+
+  const blocked = rateLimitPlan({ ...step, now: 30, ...window });
+  assert.equal(blocked.allow, false);
+  assert.equal(blocked.hits, 3);
+
+  const afterWindow = rateLimitPlan({ ...blocked, now: 1200, ...window });
+  assert.deepEqual(afterWindow, { allow: true, hits: 1, windowStart: 1200 });
 });

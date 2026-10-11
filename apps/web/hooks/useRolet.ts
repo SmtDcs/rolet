@@ -1045,7 +1045,8 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
             vault: vaultPda(),
             treasurySol,
             winner: winnerPk,
-            rentRefund: activeSigner,
+            rentRefund: wallet.publicKey,
+            signer: activeSigner,
             systemProgram: SystemProgram.programId,
           } as never)
           .instruction();
