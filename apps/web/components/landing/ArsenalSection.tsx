@@ -30,7 +30,7 @@ const NAMED = ["BulletExtractor", "LastChance", "RestoreBullet", "Shuffler", "Ha
 
 export function ArsenalSection() {
   return (
-    <section id="cards" className="scroll-mt-14 border-t border-[var(--color-line)] bg-[var(--color-void)]">
+    <section id="cards" className="grid-field grain-field scroll-mt-14 border-t border-[var(--color-line)] bg-[var(--color-surface)]">
       <div className="mx-auto w-full max-w-6xl px-6 py-20">
         <div className="frame" data-frame="THE ARSENAL">
           <p className="label">Twelve in the deck</p>

@@ -18,7 +18,7 @@ const ROWS = [
 
 export function PlayOwnEarnSection() {
   return (
-    <section className="border-t border-[var(--color-line)] bg-[var(--color-void)]">
+    <section className="grid-field border-t border-[var(--color-line)] bg-[var(--color-void)]">
       <div className="mx-auto w-full max-w-6xl px-6 py-20">
         <h2 className="label">Why it is built this way</h2>
         <h3 className="macro-sm mt-3">A duel, not a lottery</h3>

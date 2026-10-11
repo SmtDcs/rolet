@@ -12,7 +12,7 @@ const LINKS = [
  */
 export function CommunitySection() {
   return (
-    <section className="border-t border-[var(--color-line)] bg-[var(--color-surface)]">
+    <section className="grid-field-lg grain-field border-t border-[var(--color-line)] bg-[var(--color-surface-2)]">
       <div className="mx-auto w-full max-w-6xl px-6 py-24">
         <div className="grid grid-cols-1 items-end gap-10 lg:grid-cols-[1.4fr_1fr]">
           <div>

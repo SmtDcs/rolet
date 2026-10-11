@@ -8,7 +8,7 @@ const LINES = [
 
 export function EconomyCtaSection() {
   return (
-    <section id="economy" className="scroll-mt-14 border-t border-[var(--color-line)] bg-[var(--color-void)]">
+    <section id="economy" className="grid-field grain-field scroll-mt-14 border-t border-[var(--color-line)] bg-[var(--color-surface)]">
       <div className="mx-auto w-full max-w-6xl px-6 py-20">
         <div className="frame" data-frame="THE VAULT">
           <p className="label">A closed loop, in SOL</p>

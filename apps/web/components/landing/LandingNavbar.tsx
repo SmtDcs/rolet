@@ -16,11 +16,20 @@ export function LandingNavbar() {
           ROLET
         </Link>
         <div className="flex items-center gap-5 text-sm" style={{ fontFamily: F.sans }}>
-          <a href="#how" className="hidden sm:inline hover:underline" style={{ color: C.worn }}>
-            How it works
+          <a href="#ledger" className="hidden hover:underline sm:inline" style={{ color: C.worn }}>
+            Ledger
           </a>
-          <a href="#cards" className="hidden sm:inline hover:underline" style={{ color: C.worn }}>
+          <a href="#cards" className="hidden hover:underline sm:inline" style={{ color: C.worn }}>
             Cards
+          </a>
+          <a
+            href="https://rolet.gitbook.io/rolet"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden hover:underline md:inline"
+            style={{ color: C.worn }}
+          >
+            Whitepaper
           </a>
           <Link
             href="/duel"

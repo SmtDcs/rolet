@@ -133,6 +133,52 @@
   border-top: 1px solid var(--color-line);
 }
 
+/* ── Ground texture ──────────────────────────────────────────── */
+
+/* Blueprint field. A flat void reads as an empty page; a 48px rule grid
+   reads as a technical drawing surface without raising the brightness. */
+@utility grid-field {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in oklab, var(--color-line-strong) 38%, transparent) 0 1px,
+      transparent 1px 48px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-line-strong) 38%, transparent) 0 1px,
+      transparent 1px 48px
+    );
+}
+
+/* Same field, coarser, for full-bleed atmospheric bands. */
+@utility grid-field-lg {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in oklab, var(--color-line-strong) 26%, transparent) 0 1px,
+      transparent 1px 120px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-line-strong) 26%, transparent) 0 1px,
+      transparent 1px 120px
+    );
+}
+
+/* Static analog grain. No animation: it is a print artifact, not motion. */
+@utility grain-field {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
 /* ASCII corner framing used around section headers. */
 @utility frame {
   position: relative;
