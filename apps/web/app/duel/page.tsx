@@ -668,7 +668,6 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
 
         {/* CCTV VIEWPORT — 3D scene shows through this framed window */}
         <section className="relative flex items-stretch justify-center">
-          <SceneFrame />
         </section>
 
         {/* PLAYER HUD */}
@@ -824,28 +823,6 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
 // PRESENTATIONAL COMPONENTS — visuals from Task 5, unchanged
 // ============================================================
 // ── CCTV-style viewport — 3D scene shows through this frame ──────────────────
-/**
- * A thin frame around the scene. The previous version wrapped it in CCTV
- * chrome — REC, camera ids, a wall clock, a chamber row, a bitrate readout and
- * a tracking smear — which read as a surveillance feed and buried the three
- * things a player needs: whose turn it is, the two life totals, and the action.
- */
-function SceneFrame() {
-  return (
-    <div className="pointer-events-none relative w-full max-w-5xl">
-      <div className="relative aspect-[16/6] max-h-[38vh] border border-[var(--color-line-strong)]">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-screen"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(0deg, rgba(255,200,180,0.4) 0 1px, transparent 1px 3px)",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
 function OpponentHud({ hp, maxHp }: { hp: number; maxHp: number }) {
   return (
     <div className="mt-3 flex items-center gap-4 border border-rust/60 bg-black/70 px-4 py-2">
