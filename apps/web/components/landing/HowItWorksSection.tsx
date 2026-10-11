@@ -79,7 +79,7 @@ export function HowItWorksSection() {
               className="absolute bottom-4 left-4 flex items-center gap-1.5 px-3 py-2"
               style={{ background: "rgba(20,20,20,0.85)" }}
             >
-              {[1, 0, 0, 1, 0, 1, 0, 0].map((loaded, i) => (
+              {[1, 1, 0, 1, 1, 0, 1, 0].map((loaded, i) => (
                 <span
                   key={i}
                   className="inline-block h-3 w-3 rounded-full"
@@ -87,7 +87,7 @@ export function HowItWorksSection() {
                 />
               ))}
               <span className="ml-3 text-xs" style={{ fontFamily: F.mono, color: C.bone }}>
-                3 live / 5 blank
+                5 live / 3 blank
               </span>
             </div>
           </Step>

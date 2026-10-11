@@ -1,8 +1,8 @@
 # ROLET — Demo Recording Script
 
-**Target length:** 3–4 minutes  
+**Target length:** 3 minutes (Colosseum technical demo cap). Trim the middle turns first.  
 **Setup:** Two browser windows side by side (Host = left, Guest = right).  
-Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
+Both wallets on Devnet. Both wallets have devnet SOL for fees and a character with durability.
 
 ---
 
@@ -10,7 +10,7 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 
 - [ ] Both wallets airdropped devnet SOL (`solana airdrop 1 <pubkey> --url devnet`)
 - [ ] Both wallets enrolled (visited /profile, created PlayerProfile)
-- [ ] Vault has $ROLET balance (bootstrap-vault.ts run)
+- [ ] Treasury PDA holds SOL for `reward_sol` (`apps/server/scripts/bootstrap-vault.ts` has been run)
 - [ ] Browser at 1280×800 or wider — both windows visible
 - [ ] Screen recording started, mic ready
 
@@ -24,80 +24,79 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 
 **Say:**
 > "This is ROLET — a fully on-chain tactical chamber duel built on Solana.
-> No server. No database. Every chamber, every card effect, every payout
-> lives on-chain. Let me show you a live match on devnet."
+> The server only introduces the two wallets. Every chamber, every card
+> effect, every payout lives on Solana. Let me show you a live match on devnet."
 
 ---
 
-### [0:20 – 0:45] Host creates lobby
+### [0:20 – 0:45] Both sit in the queue
 
-**Show:** Left window → `/duel` → click **CREATE LOBBY**
+**Show:** Left window → `/duel` → click **Find a match**. Right window does the same.
 
-- Wallet popup appears → approve (open_lobby transaction)
-- Page redirects to `?lobby=<id>` → shows "Waiting for opponent…"
-- Copy the invite link
+- Each wallet signs one queue message. That signature does not open a room.
+- The server names one wallet the host. That wallet then approves `open_lobby` (1 durability).
+- The other wallet stays on Find a match until the room is open, then the page joins that room.
+- A second popup may appear: `register_session_key`. Approve it. Turns after that are signed locally.
 
 **Say:**
-> "Player one opens a lobby. A Lobby PDA is created on Solana — it holds
-> a cryptographic commitment to their secret. They share the invite link."
+> "Neither player picks the room. The server only pairs the two wallets.
+> One of them opens the lobby on Solana. The commitment goes on-chain.
+> The secret does not."
 
 ---
 
 ### [0:45 – 1:10] Guest joins
 
-**Show:** Right window → paste invite URL → page loads
+**Show:** The second window moves to the open room on its own.
 
-- Guest sees "Join match" → click **JOIN**
-- Wallet popup → approve (join_lobby transaction)
-- Guest screen shows "Waiting for secret reveal…"
+- Wallet popup → approve (`join_lobby` with the guest commit only)
+- Guest screen moves through sitting down and revealing
 
 **Say:**
-> "Player two joins. They submit their own secret commitment on-chain.
-> Neither player can see the other's secret yet."
+> "Player two joins the room the server named. They submit their own
+> commitment on-chain. The secret stays off the join transaction."
 
 ---
 
 ### [1:10 – 1:30] Reveal secrets (`revealSecret`)
 
-**Show:** Both windows — commitments locked on-chain
+**Show:** Both windows — the client submits `reveal_secret` on its own once the guest has joined
 
-- Host and guest execute `revealSecret` transactions on-chain
-- Program verifies each secret preimage against its stored commitment in the Lobby PDA
-- Both screens update to confirmed revealed status
+- Each transaction carries that player's secret
+- The program checks `keccak(secret ‖ player pubkey ‖ match id)` against the stored commit
+- When the second reveal lands, the program pins the seed to a slot two slots ahead
 
 **Say:**
-> "Before the duel seeds, both players execute `revealSecret` on-chain.
-> The program checks each preimage against the registered commitment,
-> ensuring neither player could change entropy after seeing their opponent."
+> "Both players reveal on-chain. The program checks each secret against a
+> commit bound to that player and this match, then pins the seed to a
+> future slot. That slot hash does not exist yet, so neither side can grind it."
 
 ---
 
 ### [1:30 – 1:55] Host launches duel (`initMatch`)
 
-**Show:** Left window — both secrets verified on-chain
-- Click **LAUNCH MATCH** → wallet popup → approve (`initMatch`)
-- Program combines both verified secrets with Solana slot hashes to seed chamber RNG
-- Lobby PDA is closed (rent returned) and both windows redirect to active duel
+**Show:** Both windows — after "SECRETS VERIFIED" the page calls `init_match` by itself
+
+- If it stalls, either player can press **LAUNCH MATCH**
+- The program waits until the pinned slot exists, then seeds the chambers
+- Both windows land on the active duel
 
 **Say:**
-> "Now the host launches via `initMatch`. Both verified secrets are combined
-> with Solana slot hashes on-chain to seed the chamber sequence — provably
-> fair and tamper-proof. The Lobby PDA is closed, rent returned, and the duel begins."
+> "Either player can launch. The program mixes both secrets with that
+> future slot hash and the match id. The chamber order is fixed on-chain
+> before the first shot."
 
 ---
 
-### [1:55 – 2:25] ARM WEAPON — session keys
+### [1:55 – 2:25] Session keys
 
-**Show:** Left window → click **ARM WEAPON**
-- One wallet popup (register_session_key) → approve
-- "Armed" status appears
+**Show:** The `register_session_key` popup that appeared while each player was waiting. If a window still shows **ARMING SESSION KEY…**, approve that one popup.
 
 **Say:**
-> "Session keys eliminate wallet popups for every turn. One approval
-> at the start — then the session keypair signs locally. No friction,
-> Web2 speed on top of L1."
+> "Session keys remove a wallet popup from every turn. One approval
+> while the lobby is waiting — then the session keypair signs locally."
 
-*Do the same on the right window quickly.*
+*Approve the same popup on the right window if it is still pending.*
 
 ---
 
@@ -124,12 +123,12 @@ Both wallets on Devnet. Both wallets have ≥0.1 SOL for fees.
 **Show:** Final trigger pull → HP hits 0 → winner screen
 - "CLAIM REWARD" button appears
 - Click → wallet popup (settle_match) → approve
-- `$ROLET` balance increases in wallet
+- Winner's SOL balance increases by the treasury's fixed `reward_sol`
 
 **Say:**
-> "Winner claims $ROLET from the GameVault treasury PDA. Loser gets
-> nothing. All of this — from match creation to payout — happened
-> on Solana. No backend ever touched game state."
+> "Winner claims SOL from the treasury PDA. The prize is a fixed
+> amount, not a token. All of this — from match creation to payout —
+> happened on Solana. No backend ever touched game state."
 
 ---
 

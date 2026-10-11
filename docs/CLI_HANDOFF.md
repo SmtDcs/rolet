@@ -160,15 +160,13 @@ dağınık, sıra yok. Arkada Gunmetal dolap; bir kapak çapraz aralık; kapakta
 **KULLANMA:** Meshy image-to-3D task `01a12579` — sonucu bozuk (sadece iki metal çubuk/kanca; masa/dolap/revolver/kovan yok).
 Bu GLB repoda değil ve repoya eklenmeyecek.
 
-**Yapılacaklar:**
-1. Kilitli 2D'den **yeni image-to-3D** (Meshy, textured/PBR GLB). Meshy kredisi harcar → Samet onayı.
-   Tek görselden tüm oda çıkmayabilir; sonuç sahne değilse alternatif: 2D kilitli görseli düzlem arka plan olarak kullanıp
-   üstüne three.js ışık flicker + hafif parallax (önce Samet'e sor).
-2. GLB'yi viewer'da doğrula: masa boş hissi + ön kenar kovanlar, kapaktan yarım revolver, sodium ışık, clutter yok.
-3. Optimize et (draco/meshopt, texture boyutu) → `apps/web/public/art/landing/` → `WorkshopScene3D.tsx` içinde `MODEL_URL`'yi değiştir
-   (eski `workshop-hq.glb` yerine), kamera 16:9, flicker ışığını kapak açıklığına konumla.
-4. `pnpm dev` ile yerelde kontrol, `pnpm build` geçsin, FPS'i kontrol et (Samet önceki scrollytelling'i FPS yüzünden reddetti).
-5. Samet onayı → `vercel --prod`.
+**Durum (10 Eki 2026, CLI):** Meshy image-to-3D çalıştırılmadı (kredi + önceki `01a12579` bozuk).
+Yol B uygulandı: `apps/web/public/art/landing/workshop-locked.webp` (kilitli 2D, kenarlar Soot'a feather, ~56 KB).
+`WorkshopScene3D` artık GLB yüklemez; kare sol/orta düzlem, sağ taraf hero yazısı için boş, kapak ağzında additive sodium flicker, hafif parallax.
+`workshop-hq.glb` dosyası duruyor ama sahneden çıkarıldı (silindirli eski kahraman).
+Prod deploy yok. Samet görüp beğenirse `vercel --prod`. Beğenmezse Meshy kredisi ayrıca onaylanır.
+
+Landing anlatısı (10 Eki, aynı gün): `StoryScroll` kahramanın altında. Kaydırınca beş vuruş değişir (bench, load, hand, pull, prize). Görseller kural şeması: iki koltuk + zincir, 8 delikli gizli sıra, 12’den 4 kart ve üç etki, dört tetik sonucu, dayanıklılık / sabit SOL / 4 can. Oyun içi ekran görüntüsü şimdilik yok. Eski silindir ürün fotoğrafı ve maskeli figür sayfadan çıktı. WebGL scroll-scrub yok; hikaye boyunca canvas `frameloop="demand"`. `#cards` işareti bölümün %42’sinde; %32 ikinci vuruşa (load) düşüyordu.
 
 ---
 
@@ -180,11 +178,11 @@ Bu GLB repoda değil ve repoya eklenmeyecek.
 - **MagicBlock Ephemeral Rollups: planned/blocked** (SDK–Anchor tip çakışması); oyun L1 + session keys ile çalışıyor. Aktifmiş gibi iddia etme.
 - **Blinks: planned.**
 
-**Bilinen eski/çelişkili metinler (düzelt veya dikkat et):**
-- `README.md` "Known Limitations" hâlâ "join_lobby guest_secret'ı düz metin gönderiyor" diyor — **kod artık sadece commit alıyor** (RİSK-B düzeltildi); README tablosundaki `join_lobby` satırı da eski.
-- `DEMO-SCRIPT.md` "$ROLET" ödülünden bahsediyor — ödül artık **SOL** (`reward_sol`).
+**Bilinen eski/çelişkili metinler:**
+- `README.md`, `PITCH.md`, `DEMO-SCRIPT.md`, `CHECKPOINT-v0.1.md` teslim cümleleri 10 Eki 2026'da koda çekildi: `join_lobby` yalnız commit, bölüşüm %5 ops / %95 treasury, ödül `reward_sol`. MagicBlock ve Blink hâlâ planned.
 - `docs/ROLET_MASTER_HANDOFF_PROMPT.md` §4 Axie-tarzı landing'i anlatıyor — **geçersiz**; landing artık Buckshot/Inscryption workshop. Oyun mekaniği/ekonomi kısımları referans olarak geçerli.
-- `ROADMAP.md` eski (v0.1 dönemi); branch kuralları hâlâ faydalı.
+- `ROADMAP.md` eski (v0.1 dönemi); `$ROLET` liderboard satırı SOL olarak düzeltildi. Branch kuralları hâlâ faydalı.
+- `docs/design/landing-bg/ROLET-landing-bg-cabinet-brief.md` hâlâ kapakta yarım silindir diyor. Geçerli kompozisyon: yarım revolver + masa kenarı kovanlar.
 
 ---
 

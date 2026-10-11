@@ -28,7 +28,7 @@ export function HeroSection() {
           8 chambers. Paper cards. Dark workshop.
         </p>
         <p className="mt-3 max-w-sm text-base leading-relaxed" style={{ fontFamily: F.sans, color: C.worn }}>
-          Two players. One cylinder. You take turns pulling. Cards bend the odds.
+          Two players take turns. The chambers stay hidden. Cards change the next pull.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-6">
           <Link

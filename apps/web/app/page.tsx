@@ -1,8 +1,6 @@
 import { LandingNavbar } from "@/components/landing/LandingNavbar";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { CardsSection } from "@/components/landing/CardsSection";
-import { WorkshopNote } from "@/components/landing/WorkshopNote";
+import { StoryScroll } from "@/components/landing/StoryScroll";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { WorkshopBackground } from "@/components/landing/WorkshopBackground";
 
@@ -17,9 +15,7 @@ export default function LandingPage() {
         <LandingNavbar />
         <main>
           <HeroSection />
-          <HowItWorksSection />
-          <CardsSection />
-          <WorkshopNote />
+          <StoryScroll />
         </main>
         <LandingFooter />
       </div>

@@ -10,12 +10,21 @@ import {
   Keypair,
   Transaction,
   LAMPORTS_PER_SOL,
+  type Commitment,
 } from "@solana/web3.js";
 import {
   createDelegateInstruction,
   createCommitAndUndelegateInstruction,
 } from "@magicblock-labs/ephemeral-rollups-sdk";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import {
+  blockhashExpired,
+  expiredChainError,
+  readSignature,
+  sessionArmMessage,
+  sessionFundPlan,
+  shouldArmSession,
+} from "@/lib/chainPace";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import bs58 from "bs58";
 
@@ -217,8 +226,46 @@ function recallSecret(matchId: string): Uint8Array | null {
 // ============================================================
 // useRolet — main integration hook
 // ============================================================
+function installHttpConfirmation(conn: Connection) {
+  const marked = conn as Connection & { __roletHttpConfirm?: true };
+  if (marked.__roletHttpConfirm) return;
+  marked.__roletHttpConfirm = true;
+  // web3.js confirms through a devnet websocket and logs "ws error" when it drops.
+  // Poll the signature over HTTP instead. Nothing here opens that socket.
+  marked.confirmTransaction = (async (strategy: unknown, commitment?: string) => {
+    const signature =
+      typeof strategy === "string" ? strategy : (strategy as { signature: string }).signature;
+    const lastValid =
+      strategy && typeof strategy === "object" && "lastValidBlockHeight" in strategy
+        ? Number((strategy as { lastValidBlockHeight: number }).lastValidBlockHeight)
+        : null;
+    const want = (commitment || conn.commitment || "confirmed") as Commitment;
+    for (let i = 0; i < 40; i++) {
+      const res = await conn.getSignatureStatuses([signature]);
+      const value = res.value[0];
+      const read = readSignature(value);
+      if (read === "failed") {
+        const err = value?.err;
+        throw new Error(typeof err === "string" ? err : "Transaction failed");
+      }
+      if (read === "landed" && value) {
+        return { context: res.context, value };
+      }
+      if (lastValid != null && i % 2 === 1) {
+        const height = await conn.getBlockHeight(want).catch(() => -1);
+        if (height > 0 && blockhashExpired(height, lastValid)) {
+          throw new Error(`Signature ${signature} has expired: block height exceeded.`);
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    throw new Error(`Signature ${signature} has expired: block height exceeded.`);
+  }) as Connection["confirmTransaction"];
+}
+
 export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
   const { connection: l1Connection } = useConnection();
+  installHttpConfirmation(l1Connection);
   const wallet = useWallet();
 
   const [busy, setBusy] = useState(false);
@@ -298,19 +345,34 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
     async (tx: Transaction): Promise<string> => {
       if (!sessionKey) throw new Error("No active session key");
       const conn = l1Connection;
-      tx.feePayer = sessionKey.keypair.publicKey;
-      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
-      tx.recentBlockhash = blockhash;
-      tx.sign(sessionKey.keypair);
-      const sig = await conn.sendRawTransaction(tx.serialize(), {
-        skipPreflight: true,
-        maxRetries: 5,
-      });
-      await conn.confirmTransaction(
-        { signature: sig, blockhash, lastValidBlockHeight },
-        "confirmed"
-      );
-      return sig;
+      const keypair = sessionKey.keypair;
+      let lastErr: unknown;
+      // A 429 can hold the first signature past its block height. The session
+      // key signs the replacement. The wallet is not asked again.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        tx.signatures = [];
+        tx.feePayer = keypair.publicKey;
+        const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
+        tx.recentBlockhash = blockhash;
+        tx.sign(keypair);
+        try {
+          const sig = await conn.sendRawTransaction(tx.serialize(), {
+            skipPreflight: true,
+            maxRetries: 2,
+          });
+          await conn.confirmTransaction(
+            { signature: sig, blockhash, lastValidBlockHeight },
+            "confirmed"
+          );
+          return sig;
+        } catch (err) {
+          lastErr = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (attempt === 0 && expiredChainError(msg)) continue;
+          throw err;
+        }
+      }
+      throw lastErr;
     },
     [l1Connection, sessionKey]
   );
@@ -329,7 +391,20 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
       try {
         const kp = Keypair.generate();
 
-        // 1. On-chain registration — single popup
+        // Fund from the devnet faucet only. Never pull SOL out of the player's wallet.
+        let funded = false;
+        try {
+          const airdropSig = await l1Connection.requestAirdrop(kp.publicKey, 0.005 * LAMPORTS_PER_SOL);
+          await l1Connection.confirmTransaction(airdropSig, "confirmed");
+          funded = true;
+        } catch {
+          funded = false;
+        }
+        if (sessionFundPlan(funded) === "skip") {
+          emitToast("info", sessionArmMessage(false));
+          return null;
+        }
+
         const regSig = await program.methods
           .registerSessionKey(kp.publicKey, new BN(durationSeconds))
           .accounts({
@@ -339,44 +414,16 @@ export function useRolet({ ephemeral = false }: { ephemeral?: boolean } = {}) {
           .rpc({ commitment: "confirmed" });
         emitToast("success", `Session registered · ${regSig.slice(0, 6)}…`);
 
-        // 2. Fund the session keypair so it can pay tx fees.
-        //    Try devnet airdrop first (no popup). If rate-limited, fall back
-        //    to a small wallet transfer (one popup, then turns stay popup-free).
-        let funded = false;
-        try {
-          const airdropSig = await l1Connection.requestAirdrop(kp.publicKey, 0.005 * LAMPORTS_PER_SOL);
-          await l1Connection.confirmTransaction(airdropSig, "confirmed");
-          funded = true;
-        } catch {
-          // Airdrop rate-limited — fall back to wallet transfer.
+        if (shouldArmSession(funded)) {
+          const state: SessionKeyState = {
+            keypair: kp,
+            expiresAt: Math.floor(Date.now() / 1000) + durationSeconds,
+          };
+          setSessionKey(state);
+          persistSessionKey(wallet.publicKey.toBase58(), state);
         }
-        if (!funded && wallet.signTransaction) {
-          try {
-            emitToast("info", "Airdrop rate-limited — funding session key from wallet (1 popup)…");
-            const fundIx = SystemProgram.transfer({
-              fromPubkey: wallet.publicKey!,
-              toPubkey: kp.publicKey,
-              lamports: 0.005 * LAMPORTS_PER_SOL,
-            });
-            const fundTx = new Transaction().add(fundIx);
-            fundTx.feePayer = wallet.publicKey!;
-            fundTx.recentBlockhash = (await l1Connection.getLatestBlockhash()).blockhash;
-            const signed = await wallet.signTransaction(fundTx);
-            const fundSig = await l1Connection.sendRawTransaction(signed.serialize());
-            await l1Connection.confirmTransaction(fundSig, "confirmed");
-          } catch {
-            emitToast("info", "Session key unfunded — turns will require wallet approval");
-          }
-        }
-
-        const state: SessionKeyState = {
-          keypair: kp,
-          expiresAt: Math.floor(Date.now() / 1000) + durationSeconds,
-        };
-        setSessionKey(state);
-        persistSessionKey(wallet.publicKey.toBase58(), state);
-        emitToast("info", "Session key armed · turns are now popup-free");
-        return state.keypair.publicKey;
+        emitToast("info", sessionArmMessage(funded));
+        return funded ? kp.publicKey : null;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         emitToast("error", `start_session failed · ${msg}`);

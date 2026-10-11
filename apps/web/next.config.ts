@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The public door is a Cloudflare quick tunnel onto this dev server.
+  // Without this, Next blocks /_next/webpack-hmr and the page never hydrates.
+  allowedDevOrigins: ["*.trycloudflare.com"],
   devIndicators: false,
   images: {
     // Landing art uses quality={90} (HD pass); Next 16 only allows listed qualities.

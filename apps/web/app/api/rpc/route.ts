@@ -16,11 +16,18 @@ export async function POST(req: NextRequest) {
     const upstreamHeaders: Record<string, string> = { "Content-Type": "application/json" };
     if (RPCFAST_API_KEY) upstreamHeaders["X-Token"] = RPCFAST_API_KEY;
 
-    const upstream = await fetch(UPSTREAM_RPC, {
-      method: "POST",
-      headers: upstreamHeaders,
-      body,
-    });
+    const send = () =>
+      fetch(UPSTREAM_RPC, {
+        method: "POST",
+        headers: upstreamHeaders,
+        body,
+      });
+    let upstream: Response;
+    try {
+      upstream = await send();
+    } catch {
+      upstream = await send();
+    }
 
     const data = await upstream.text();
 

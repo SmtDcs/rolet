@@ -7,7 +7,7 @@
 
 ## What works (verified on chain)
 
-1. **Character purchase** — Metaplex Core V1 mint + `purchase_character` in one tx; program validates the asset (owner + update_authority == program), charges the configured price, and splits it **70% treasury / 30% ops** via system-program CPI
+1. **Character purchase** — Metaplex Core V1 mint + `purchase_character` in one tx; program validates the asset (owner + update_authority == program), charges the configured price, and splits it **5% ops / 95% treasury** via system-program CPI (95% stays in the treasury PDA: 90% winner pool + 5% insurance). The balance table below is the 2026-08-20 reading and was not re-measured when the split moved off 70/30.
 2. **Durability burn on lobby entry** — `open_lobby` / `join_lobby` decrement exactly 1; `settle_match` does NOT (double-charge fixed)
 3. **NoDurability gate** — at 0 durability lobby open fails with `NoDurability` (code 6031); verified by exhausting all 9 remaining durability and hitting the wall on attempt #10
 4. **SOL payouts** — `settle_match` pays the winner from the treasury PDA (seeds-signed transfer); winner balance increased by exactly +0.02 SOL
@@ -45,10 +45,10 @@ env RPC_URL=https://api.devnet.solana.com \
 
 Both wallets need ~1 SOL (fees + 0.1 purchase each).
 
-## Known MVP limitations (unchanged from the code review)
+## Known MVP limitations
 
 - **Self-attested NFT authority** — the program trusts the Core asset's `update_authority` field written by the minter; a program-signed mint (CPI) or program-owned collection check is the production fix (documented in README Known Limitations)
-- **Commit-reveal griefing** — `join_lobby` submits `guest_secret` in plain text; a 3-step commit → init → reveal flow is the post-hackathon fix
+- **Commit-reveal** — `join_lobby` stores only `guest_commit`. `reveal_secret` checks `keccak(secret ‖ player ‖ match_id)`. After both reveals, `close_lobby` cannot refund inside the launch window. The older note that called a plaintext `guest_secret` a post-hackathon fix is obsolete. If `init_match` is not called before the seed slot expires, durability is not refunded.
 - **Ops-share observation artifact** — in the E2E script the ops wallet IS player A's wallet, so the "ops delta" prints as negative (the purchase price includes what player A receives back). In production the ops wallet is separate.
 
 ---

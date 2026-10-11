@@ -3,12 +3,9 @@
 import { ReactNode, useMemo } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import {
-  SolflareWalletAdapter,
-  PhantomWalletAdapter,
-} from "@solana/wallet-adapter-wallets";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import { WalletAdapterNetwork, type Adapter } from "@solana/wallet-adapter-base";
 import { clusterApiUrl } from "@solana/web3.js";
+import { explicitWalletAdapters } from "@/lib/chainPace";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
 
@@ -30,22 +27,19 @@ export function SolanaProvider({ children }: { children: ReactNode }) {
         typeof window !== "undefined"
           ? `${window.location.origin}${rpcEndpoint}`
           : clusterApiUrl(network);
-      return { endpoint: base, config: { wsEndpoint } };
+      return { endpoint: base, config: { wsEndpoint, disableRetryOnRateLimit: true } };
     }
 
     // Direct RPC Fast endpoint: attach X-Token header so the browser talks
     // directly to RPC Fast without a proxy hop, cutting confirmation latency.
     const httpHeaders = apiKey ? { "X-Token": apiKey } : undefined;
-    return { endpoint: rpcEndpoint, config: { wsEndpoint, ...(httpHeaders && { httpHeaders }) } };
+    return {
+      endpoint: rpcEndpoint,
+      config: { wsEndpoint, disableRetryOnRateLimit: true, ...(httpHeaders && { httpHeaders }) },
+    };
   }, [network]);
 
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter({ network }),
-    ],
-    [network]
-  );
+  const wallets = useMemo<Adapter[]>(() => [...explicitWalletAdapters()], []);
 
   return (
     <ConnectionProvider endpoint={endpoint} config={config}>

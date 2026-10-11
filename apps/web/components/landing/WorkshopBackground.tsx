@@ -21,9 +21,9 @@ export function WorkshopBackground() {
     <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#141414]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/art/landing/workshop-table-v3-hd.webp"
+        src="/art/landing/workshop-locked.webp"
         alt=""
-        className="absolute inset-0 h-full w-full object-cover object-[18%_62%] transition-opacity duration-700 sm:object-[35%_60%]"
+        className="absolute top-0 left-1/2 h-full w-auto max-w-none -translate-x-1/2 transition-opacity duration-700 sm:left-[6%] sm:translate-x-0"
         style={{ opacity: ready ? 0 : 1 }}
       />
       <div className="absolute inset-0 transition-opacity duration-1000" style={{ opacity: ready ? 1 : 0 }}>

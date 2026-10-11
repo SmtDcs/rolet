@@ -41,7 +41,7 @@ ilerleme. Her feature kendi branch'inde, merge edilince main güncel kalır.
 | # | Branch                       | İş                                                  | Süre | Risk |
 |---|------------------------------|-----------------------------------------------------|------|------|
 | 6 | `feature/er-delegation-v2`   | Tekrar dene (SDK uyumsuzluğu çözülünce, Discord)   | 3-5s | yüksek|
-| 7 | `feature/leaderboard`        | ELO sıralaması + en çok $ROLET kazananlar          | 2s   | düşük|
+| 7 | `feature/leaderboard`        | ELO sıralaması + en çok SOL kazananlar             | 2s   | düşük|
 | 8 | `feature/spectator`          | Aktif maçları izleme (subscribe to all matches)    | 2s   | orta |
 | 9 | `feature/match-replay`       | RNG seed deterministik olduğu için adım-adım rerun | 3s   | orta |
 
