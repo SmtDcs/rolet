@@ -1,39 +1,40 @@
 import type { Metadata } from "next";
-import {
-  Cormorant_Garamond,
-  Space_Mono,
-  Inter,
-  Big_Shoulders,
-  IBM_Plex_Mono,
-} from "next/font/google";
 import localFont from "next/font/local";
 import { SolanaProvider } from "@/components/SolanaProvider";
 import "./globals.css";
 
-const cormorant = Cormorant_Garamond({
-  weight: ["400", "600", "700"],
-  subsets: ["latin"],
+// Every family is served from ./fonts. next/font/google resolves its files over
+// the network at build time, which failed inside the container build, so the
+// woff2 files are committed instead.
+
+const cormorant = localFont({
+  src: [
+    { path: "./fonts/CormorantGaramond.woff2", weight: "300 700", style: "normal" },
+    { path: "./fonts/CormorantGaramond-italic.woff2", weight: "300 700", style: "italic" },
+  ],
   variable: "--font-cormorant",
-  style: ["normal", "italic"],
+  display: "swap",
 });
 
-const spaceMono = Space_Mono({
-  weight: ["400", "700"],
-  subsets: ["latin"],
+const spaceMono = localFont({
+  src: [
+    { path: "./fonts/SpaceMono-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/SpaceMono-700.woff2", weight: "700", style: "normal" },
+  ],
   variable: "--font-mono",
+  display: "swap",
 });
 
-const inter = Inter({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
+const inter = localFont({
+  src: [{ path: "./fonts/Inter.woff2", weight: "100 900", style: "normal" }],
   variable: "--font-inter",
+  display: "swap",
 });
 
-// Landing brief v1 type system (Big Shoulders Display is now "Big Shoulders" on Google Fonts)
-const bigShoulders = Big_Shoulders({
-  weight: ["600", "700", "800"],
-  subsets: ["latin"],
+const bigShoulders = localFont({
+  src: [{ path: "./fonts/BigShoulders.woff2", weight: "100 900", style: "normal" }],
   variable: "--font-big-shoulders",
+  display: "swap",
 });
 
 // IBM Plex Sans served locally: next/font/google + Turbopack (Next 16.2.4) fails to resolve its font files
@@ -47,10 +48,13 @@ const plexSans = localFont({
   display: "swap",
 });
 
-const plexMono = IBM_Plex_Mono({
-  weight: ["400", "500"],
-  subsets: ["latin"],
+const plexMono = localFont({
+  src: [
+    { path: "./fonts/IBMPlexMono-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/IBMPlexMono-500.woff2", weight: "500", style: "normal" },
+  ],
   variable: "--font-plex-mono",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
