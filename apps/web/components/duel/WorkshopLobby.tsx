@@ -3,6 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { ChamberDial } from "./ChamberDial";
 
 const WalletMultiButton = dynamic(
   async () => (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
@@ -207,88 +208,6 @@ function CardBack({ tilt }: { tilt: number }) {
       <circle cx="22" cy="28" r="1.3" fill="#3A2A1F" opacity="0.4" />
       <circle cx="68" cy="98" r="1.5" fill="#3A2A1F" opacity="0.35" />
     </svg>
-  );
-}
-
-function ChamberDial({ ticking = false }: { ticking?: boolean }) {
-  const [mark, setMark] = useState(0);
-  const [reduce, setReduce] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReduce(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-
-  useEffect(() => {
-    if (reduce || !ticking) return;
-    const timer = window.setInterval(() => setMark((n) => n + 1), 900);
-    return () => window.clearInterval(timer);
-  }, [reduce, ticking]);
-
-  const held = reduce || !ticking;
-  const active = held ? 0 : mark % 8;
-  const angle = held ? 0 : mark * 45;
-
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative" aria-hidden>
-        <div
-          className="absolute left-1/2 top-[78%] h-5 w-36 -translate-x-1/2 rounded-[100%] sm:w-44"
-          style={{ background: C.wood }}
-        />
-        <div className="relative aspect-square w-36 sm:w-44">
-          <div className="absolute inset-0 rounded-full border" style={{ borderColor: C.graphite, background: C.soot }} />
-          <div className="absolute inset-[10%] rounded-full" style={{ background: C.gunmetal }} />
-          <div className="absolute inset-[18%] rounded-full" style={{ boxShadow: `inset 0 0 0 1px ${C.brass}` }} />
-          <span
-            className="absolute w-0.5"
-            style={{
-              left: "50%",
-              bottom: "50%",
-              height: "30%",
-              marginLeft: -1,
-              background: C.brass,
-              transformOrigin: "50% 100%",
-              transform: `rotate(${angle}deg)`,
-              transition: held ? "none" : "transform 110ms linear",
-            }}
-          />
-          <span
-            className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ background: C.brass }}
-          />
-          {Array.from({ length: 8 }, (_, i) => {
-            const hole = (i * Math.PI) / 4 - Math.PI / 2;
-            const on = i === active;
-            return (
-              <span
-                key={i}
-                className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-xs sm:h-6 sm:w-6"
-                style={{
-                  left: `${50 + Math.cos(hole) * 36}%`,
-                  top: `${50 + Math.sin(hole) * 36}%`,
-                  borderColor: on ? C.brass : C.graphite,
-                  color: on ? C.brass : C.worn,
-                  fontFamily: F.mono,
-                  background: C.soot,
-                }}
-              >
-                ?
-              </span>
-            );
-          })}
-        </div>
-      </div>
-      <p
-        className="mt-2 px-2 py-1 text-center text-xs uppercase tracking-[0.16em]"
-        style={{ fontFamily: F.mono, color: C.bone, background: "rgba(20,20,20,0.9)" }}
-      >
-        Eight chambers. The order stays hidden.
-      </p>
-    </div>
   );
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { C, F } from "./theme";
+import { ChamberDial } from "@/components/duel/ChamberDial";
 
 /**
  * Scroll brief. One sticky stage, five beats. Scroll only changes which beat
@@ -149,105 +150,12 @@ function BenchFigure() {
   );
 }
 
-function Cylinder() {
-  const size = 196;
-  const c = size / 2;
-  const chambers = Array.from({ length: 8 }, (_, i) => {
-    const a = (i * Math.PI) / 4 - Math.PI / 2;
-    return {
-      i,
-      x: c + Math.cos(a) * 58,
-      y: c + Math.sin(a) * 58,
-      lx: c + Math.cos(a) * 76,
-      ly: c + Math.sin(a) * 76,
-      next: i === 0,
-    };
-  });
-  // SVG presentation attributes do not resolve var() custom properties, so
-  // every colour is applied through style instead.
-  const tick = { stroke: C.graphite };
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      className="mx-auto shrink-0"
-      role="img"
-      aria-label="Technical drawing of an eight chamber cylinder. The chamber at twelve o'clock is next. Chamber order is not shown."
-    >
-      {Array.from({ length: 32 }, (_, i) => {
-        const a = (i * Math.PI) / 16 - Math.PI / 2;
-        const long = i % 4 === 0;
-        const r1 = 92;
-        const r2 = long ? 82 : 87;
-        return (
-          <line
-            key={i}
-            x1={c + Math.cos(a) * r1}
-            y1={c + Math.sin(a) * r1}
-            x2={c + Math.cos(a) * r2}
-            y2={c + Math.sin(a) * r2}
-            style={{ ...tick, strokeWidth: long ? 1 : 0.5 }}
-          />
-        );
-      })}
-
-      <circle cx={c} cy={c} r={80} style={{ fill: C.gunmetal, stroke: C.graphite, strokeWidth: 1 }} />
-      <circle cx={c} cy={c} r={72} style={{ fill: "none", stroke: C.graphite, strokeWidth: 1 }} />
-
-      {chambers.map((h) => (
-        <g key={h.i}>
-          <circle
-            cx={h.x}
-            cy={h.y}
-            r={15}
-            style={{
-              fill: C.soot,
-              stroke: h.next ? C.brass : C.graphite,
-              strokeWidth: 1,
-            }}
-          />
-          <circle
-            cx={h.x}
-            cy={h.y}
-            r={9.5}
-            style={{ fill: "none", stroke: C.graphite, strokeWidth: 0.75 }}
-          />
-          <circle
-            cx={h.x}
-            cy={h.y}
-            r={2}
-            style={{ fill: h.next ? C.brass : C.worn, opacity: h.next ? 1 : 0.45 }}
-          />
-          <text
-            x={h.lx}
-            y={h.ly}
-            fontSize="8"
-            fontFamily={F.mono}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            style={{ fill: C.brass, opacity: 0.75 }}
-          >
-            {String(h.i + 1).padStart(2, "0")}
-          </text>
-        </g>
-      ))}
-
-      <circle cx={c} cy={c} r={15} style={{ fill: C.soot, stroke: C.brass, strokeWidth: 1 }} />
-      <circle cx={c} cy={c} r={3.5} style={{ fill: C.brass }} />
-
-      <line x1={c} y1={c - 17} x2={c} y2={c - 38} style={{ stroke: C.brass, strokeWidth: 1 }} />
-      <path d={`M${c} ${c - 45} l4.5 6.5 h-9 z`} style={{ fill: C.brass }} />
-    </svg>
-  );
-}
-
 function LoadFigure() {
   return (
     <Sheet>
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-8">
         <div>
-          <Cylinder />
+          <ChamberDial className="mx-auto shrink-0" />
           <p className="mt-2 text-center text-xs uppercase tracking-[0.16em]" style={{ fontFamily: F.mono, color: C.worn }}>
             Order hidden
           </p>
