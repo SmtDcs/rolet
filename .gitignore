@@ -25,3 +25,4 @@ apps/server/migrations/.reward-mint.json
 .worktrees/
 .player2.json
 .player-b.json
+.next-dev

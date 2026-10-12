@@ -36,7 +36,6 @@ export type DuelRoom3DProps = {
 // saturated, and there is no blue anywhere in the scene.
 const C = {
   room: "#0b0708",
-  floor: "#0d0a09",
   beam: "#191412",
   pipe: "#211a16",
   lampBody: "#3a2f28",
@@ -46,15 +45,11 @@ const C = {
   rail: "#2b170f",
   railTop: "#3c2419",
   wood: "#291609",
-  steel: "#4d4a43",
-  steelLit: "#847e70",
+  steel: "#6c6558",
+  steelLit: "#948a76",
   brass: "#6f5a30",
   brassLit: "#8f7440",
-  maroon: "#4a1a14",
   cartridge: "#8a2b22",
-  bone: "#9d8f70",
-  skull: "#33211b",
-  skullDark: "#1c100e",
   tin: "#3a3029",
   led: "#4fbf5e",
 };
@@ -93,6 +88,7 @@ precision highp float;
 
 uniform sampler2D tDiffuse;
 uniform vec3 uWarm;
+uniform vec3 uShadow;
 uniform float uExposure;
 uniform float uContrast;
 uniform float uBlack;
@@ -126,6 +122,11 @@ void main() {
 
   c *= uExposure;
   c *= uWarm;
+
+  // Two-tone: the shadows take a cold lift off the instruments, the
+  // highlights stay brass.
+  float lift = 1.0 - smoothstep(0.0, 0.28, dot(c, vec3(0.2126, 0.7152, 0.0722)));
+  c += uShadow * lift;
   c = (c - 0.5) * uContrast + 0.5;
 
   // Crush the floor. In the reference 40% of the frame is pure black.
@@ -190,6 +191,7 @@ function DisplayGrade() {
       uniforms: {
         tDiffuse: { value: rt.texture },
         uWarm: { value: new THREE.Vector3(1.03, 0.99, 0.93) },
+        uShadow: { value: new THREE.Vector3(0.004, 0.015, 0.018) },
         uExposure: { value: 1.34 },
         uContrast: { value: 1.12 },
         uBlack: { value: 0.045 },
@@ -578,7 +580,36 @@ function useBaizeTexture() {
       g.restore();
     };
 
-    // Outer border
+    // Circle and pixel helpers. Everything below is drawn in canvas pixels so
+    // circles stay round: the table is 2.5 x 1.5 units over 1024 x 616 px.
+    const circleP = (cx: number, cy: number, r: number, w = 4, alpha = 0.9) => {
+      const steps = 44;
+      g.save();
+      g.globalAlpha = alpha;
+      g.lineWidth = w;
+      g.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const a = (i / steps) * Math.PI * 2;
+        const wob = (rnd() - 0.5) * 3.5;
+        const px = cx + Math.cos(a) * (r + wob);
+        const py = cy + Math.sin(a) * (r + wob);
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
+      }
+      g.closePath();
+      g.stroke();
+      g.restore();
+    };
+    const pline = (
+      x1: number,
+      y1: number,
+      x2: number,
+      y2: number,
+      w = 5,
+      alpha = 0.95,
+    ) => line(x1 / W, y1 / H, x2 / W, y2 / H, w, alpha);
+
+    // Outer border of the play area
     line(0.042, 0.05, 0.958, 0.05);
     line(0.958, 0.05, 0.958, 0.95);
     line(0.958, 0.95, 0.042, 0.95);
@@ -586,18 +617,91 @@ function useBaizeTexture() {
     // Field dividers
     line(0.295, 0.05, 0.295, 0.95);
     line(0.715, 0.05, 0.715, 0.95);
-    // Centre diagonals
-    line(0.295, 0.05, 0.715, 0.53);
-    line(0.295, 0.95, 0.715, 0.53);
-    line(0.715, 0.05, 0.958, 0.28);
-    line(0.715, 0.95, 0.958, 0.72);
-    // Diamond in the left field
-    line(0.075, 0.5, 0.185, 0.31);
-    line(0.185, 0.31, 0.295, 0.5);
-    line(0.295, 0.5, 0.185, 0.69);
-    line(0.185, 0.69, 0.075, 0.5);
-    line(0.042, 0.5, 0.075, 0.5, 4, 0.85);
-    // Ledger block, right field
+
+    // Scale ticks along the far rail, every sixteenth of the width
+    for (let i = 1; i < 16; i++) {
+      if (i % 4 === 0) continue;
+      const x = 0.042 + (0.916 / 16) * i;
+      pline(x * W, 0.05 * H, x * W, 0.078 * H, 3, 0.7);
+    }
+
+    // Left field — the chamber schematic. A six-bore drum, one bore closed
+    // and indexed, ringed by graduations the way a technical plate is.
+    const drumX = 176;
+    const drumY = 268;
+    circleP(drumX, drumY, 88, 4);
+    circleP(drumX, drumY, 112, 3, 0.7);
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+      const r1 = i % 3 === 0 ? 100 : 106;
+      pline(
+        drumX + Math.cos(a) * r1,
+        drumY + Math.sin(a) * r1,
+        drumX + Math.cos(a) * 112,
+        drumY + Math.sin(a) * 112,
+        3,
+        0.75,
+      );
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+      const bx = drumX + Math.cos(a) * 50;
+      const by = drumY + Math.sin(a) * 50;
+      circleP(bx, by, 26, 3, 0.9);
+      if (i === 5) {
+        // The indexed bore, filled — the one under the hammer.
+        g.save();
+        g.globalAlpha = 0.5;
+        g.fillStyle = C.feltLine;
+        g.beginPath();
+        g.arc(bx, by, 20, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+      }
+    }
+    circleP(drumX, drumY, 12, 3, 0.85);
+    // Leader line out of the drum to the field divider
+    pline(drumX + 112, drumY, 300, drumY, 3, 0.6);
+
+    // Tally strip under the drum: five live marks, three blank
+    for (let i = 0; i < 5; i++) pline(96 + i * 26, 430, 96 + i * 26, 466, 6, 0.9);
+    for (let i = 0; i < 3; i++) {
+      pline(96 + i * 26, 486, 96 + i * 26, 508, 6, 0.4);
+    }
+
+    // Centre field — the plate mark, and the corridor the shot travels.
+    const stampX = W / 2;
+    const stampY = 178;
+    circleP(stampX, stampY, 54, 4);
+    circleP(stampX, stampY, 38, 3, 0.8);
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      pline(
+        stampX + Math.cos(a) * 46,
+        stampY + Math.sin(a) * 46,
+        stampX + Math.cos(a) * 54,
+        stampY + Math.sin(a) * 54,
+        3,
+        0.85,
+      );
+    }
+    pline(stampX, stampY - 26, stampX + 22, stampY, 4, 0.9);
+    pline(stampX + 22, stampY, stampX, stampY + 26, 4, 0.9);
+    pline(stampX, stampY + 26, stampX - 22, stampY, 4, 0.9);
+    pline(stampX - 22, stampY, stampX, stampY - 26, 4, 0.9);
+    pline(stampX - 12, stampY + 66, stampX + 12, stampY + 66, 5, 0.9);
+
+    // Line of fire: two rails running from the near rail toward the opponent
+    pline(356, 616, 300, 40, 3, 0.5);
+    pline(668, 616, 724, 40, 3, 0.5);
+    for (const t of [0.28, 0.62]) {
+      const lx = 356 + (300 - 356) * t;
+      const rx = 668 + (724 - 668) * t;
+      const y = 616 + (40 - 616) * t;
+      pline(lx, y, rx, y, 3, 0.3);
+    }
+
+    // Right field — the proof ledger, ruled and ruled again
     line(0.742, 0.57, 0.945, 0.57, 4);
     line(0.742, 0.57, 0.742, 0.9, 4);
     line(0.945, 0.57, 0.945, 0.9, 4);
@@ -606,6 +710,10 @@ function useBaizeTexture() {
       line(0.742, 0.57 + (0.33 / 5) * i, 0.945, 0.57 + (0.33 / 5) * i, 3, 0.8);
     }
     line(0.855, 0.57, 0.855, 0.9, 3, 0.8);
+    // Two rows already struck through
+    pline(0.748 * W, 0.636 * H, 0.851 * W, 0.636 * H, 7, 0.55);
+    pline(0.86 * W, 0.636 * H, 0.939 * W, 0.636 * H, 7, 0.55);
+    pline(0.748 * W, 0.702 * H, 0.851 * W, 0.702 * H, 7, 0.55);
 
     const t = new THREE.CanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -723,27 +831,136 @@ function Magnifier({
   );
 }
 
-function Cassette({
+function ChamberBlock({
   position,
   rotation,
 }: {
   position: [number, number, number];
   rotation: [number, number, number];
 }) {
+  const bores = useMemo(
+    () =>
+      Array.from({ length: 6 }, (_, i) => {
+        const a = (i / 6) * Math.PI * 2;
+        return { x: Math.cos(a) * 0.05, y: Math.sin(a) * 0.05 };
+      }),
+    [],
+  );
+  return (
+    <group position={position} rotation={rotation}>
+      {/* A spare cylinder, lying on its side with the face toward the seat */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.088, 0.088, 0.13, 20]} />
+        <meshStandardMaterial color={C.steel} roughness={0.5} metalness={0.6} />
+      </mesh>
+      <mesh position={[0, 0, 0.068]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.032, 0.032, 0.016, 12]} />
+        <meshStandardMaterial color={C.steelLit} roughness={0.4} metalness={0.7} />
+      </mesh>
+      {bores.map((b, i) => (
+        <mesh
+          key={i}
+          position={[b.x, b.y, 0.066]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <cylinderGeometry args={[0.019, 0.019, 0.116, 10]} />
+          <meshStandardMaterial color="#141210" roughness={0.95} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function SpeedLoader({
+  position,
+  rotation,
+}: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+}) {
+  const rounds = useMemo(
+    () =>
+      Array.from({ length: 6 }, (_, i) => {
+        const a = (i / 6) * Math.PI * 2;
+        return { x: Math.cos(a) * 0.028, z: Math.sin(a) * 0.028, live: i % 3 !== 1 };
+      }),
+    [],
+  );
+  return (
+    <group position={position} rotation={rotation}>
+      {rounds.map((r, i) => (
+        <mesh key={i} position={[r.x, 0.078, r.z]} castShadow>
+          <cylinderGeometry args={[0.011, 0.011, 0.15, 8]} />
+          <meshStandardMaterial
+            color={r.live ? C.cartridge : "#8a8272"}
+            roughness={0.5}
+            metalness={0.2}
+          />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.05, 0]} castShadow>
+        <cylinderGeometry args={[0.052, 0.052, 0.022, 16]} />
+        <meshStandardMaterial color={C.brass} roughness={0.45} metalness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.09, 0]}>
+        <cylinderGeometry args={[0.022, 0.026, 0.036, 12]} />
+        <meshStandardMaterial color="#3a3028" roughness={0.6} metalness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+function TelemetryBox({
+  position,
+  rotation,
+  liveCount,
+  blankCount,
+}: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  liveCount: number;
+  blankCount: number;
+}) {
+  const bars = useMemo(() => {
+    const out: { x: number; live: boolean }[] = [];
+    for (let i = 0; i < 5; i++) {
+      out.push({ x: -0.092 + i * 0.026, live: i < liveCount });
+    }
+    const blanks = Math.min(Math.max(blankCount, 0), 3);
+    for (let i = 0; i < blanks; i++) {
+      out.push({ x: 0.048 + i * 0.026, live: false });
+    }
+    return out;
+  }, [liveCount, blankCount]);
   return (
     <group position={position} rotation={rotation}>
       <mesh castShadow>
-        <boxGeometry args={[0.17, 0.022, 0.11]} />
-        <meshStandardMaterial color="#2b1410" roughness={0.6} />
+        <boxGeometry args={[0.3, 0.15, 0.14]} />
+        <meshStandardMaterial color="#2e2620" roughness={0.6} metalness={0.35} />
       </mesh>
-      <mesh position={[0, 0.012, 0]}>
-        <planeGeometry args={[0.135, 0.055]} />
-        <meshStandardMaterial color="#6f6650" roughness={0.9} />
-      </mesh>
-      {[-0.037, 0.037].map((x) => (
-        <mesh key={x} position={[x, 0.013, 0.018]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.017, 0.017, 0.005, 10]} />
-          <meshStandardMaterial color="#1a0d0a" roughness={0.7} />
+      {/* Slanted read-out panel */}
+      <group position={[0, 0.075, -0.02]} rotation={[-0.62, 0, 0]}>
+        <mesh>
+          <boxGeometry args={[0.27, 0.105, 0.022]} />
+          <meshStandardMaterial color="#0d100c" roughness={0.5} />
+        </mesh>
+        {bars.map((b, i) => (
+          <mesh key={i} position={[b.x, 0, 0.013]}>
+            <planeGeometry args={[0.013, 0.07]} />
+            <meshStandardMaterial
+              color="#0a0d08"
+              emissive="#7fae5c"
+              emissiveIntensity={b.live ? 0.6 : 0.04}
+              toneMapped={false}
+            />
+          </mesh>
+        ))}
+      </group>
+      {/* Two brass knobs on the front face */}
+      {[-0.08, 0.08].map((x) => (
+        <mesh key={x} position={[x, -0.02, 0.075]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.016, 0.016, 0.02, 10]} />
+          <meshStandardMaterial color={C.brass} roughness={0.45} metalness={0.7} />
         </mesh>
       ))}
     </group>
@@ -784,12 +1001,29 @@ function AmmoBox({
       </mesh>
       <mesh position={[0, 0.05, 0]} castShadow>
         <boxGeometry args={[0.31, 0.022, 0.21]} />
-        <meshStandardMaterial color="#6d4a33" roughness={0.8} />
+        <meshStandardMaterial color="#4a3423" roughness={0.85} />
       </mesh>
-      <mesh position={[0, 0.062, 0]}>
-        <planeGeometry args={[0.17, 0.038]} />
-        <meshStandardMaterial color="#6b6250" roughness={0.9} />
+      <mesh position={[0, 0.063, 0]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.045, 0.045, 0.006]} />
+        <meshStandardMaterial color={C.brass} roughness={0.5} metalness={0.6} />
       </mesh>
+    </group>
+  );
+}
+
+function GunStand({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.009, 0]} receiveShadow castShadow>
+        <boxGeometry args={[0.17, 0.018, 0.13]} />
+        <meshStandardMaterial color="#2a1c12" roughness={0.85} />
+      </mesh>
+      {[-0.052, 0.052].map((x) => (
+        <mesh key={x} position={[x, 0.05, 0]} castShadow>
+          <boxGeometry args={[0.015, 0.085, 0.03]} />
+          <meshStandardMaterial color={C.brass} roughness={0.5} metalness={0.65} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -807,9 +1041,9 @@ function Revolver({
   useFrame((_, dt) => {
     if (!g.current) return;
     const k = 1 - Math.pow(0.0015, Math.min(dt, 0.1));
-    const wantY = held ? 0.86 : 0.71;
-    const wantZ = TABLE_Z + (held ? (target === "self" ? 0.34 : 0.08) : 0.4);
-    const wantSpin = held ? (target === "self" ? 2.1 : -0.4) : 1.9;
+    const wantY = held ? 0.99 : 0.83;
+    const wantZ = TABLE_Z + (held ? (target === "self" ? 0.34 : 0.06) : 0.46);
+    const wantSpin = held ? (target === "self" ? 1.9 : -0.55) : 0.26;
     g.current.position.y += (wantY - g.current.position.y) * k;
     g.current.position.z += (wantZ - g.current.position.z) * k;
     g.current.rotation.y += (wantSpin - g.current.rotation.y) * k;
@@ -818,14 +1052,19 @@ function Revolver({
   return (
     <group
       ref={g}
-      position={[0.16, 0.71, TABLE_Z + 0.44]}
-      rotation={[0, 1.9, 0]}
-      scale={1.2}
+      position={[0.16, 0.83, TABLE_Z + 0.46]}
+      rotation={[Math.PI / 2, 0.26, 0]}
+      scale={0.54}
     >
       {/* Barrel */}
       <mesh position={[0, 0.018, -0.2]} rotation={[Math.PI / 2, 0, 0]} castShadow>
         <cylinderGeometry args={[0.026, 0.026, 0.3, 12]} />
         <meshStandardMaterial color={C.steel} roughness={0.45} metalness={0.6} />
+      </mesh>
+      {/* Rib along the top of the barrel, the one edge the lamp catches */}
+      <mesh position={[0, 0.043, -0.2]}>
+        <boxGeometry args={[0.012, 0.006, 0.3]} />
+        <meshStandardMaterial color={C.steelLit} roughness={0.3} metalness={0.75} />
       </mesh>
       <mesh position={[0, 0.018, -0.352]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.027, 0.005, 6, 14]} />
@@ -883,17 +1122,16 @@ function Revolver({
   );
 }
 
-// ── Opponent ───────────────────────────────────────────────────────────────
+// ── The other seat ────────────────────────────────────────────────────────
 
-function Opponent({
-  hp,
-  hitSignal,
-}: {
-  hp: number;
-  hitSignal: number;
-}) {
+// ── The operator across the table ──────────────────────────────────────────
+// Not a face. A survey instrument the other seat left running: a hex shell,
+// a brass objective, an aperture that dims as their lives come off.
+
+function Operator({ hp, hitSignal }: { hp: number; hitSignal: number }) {
   const g = useRef<THREE.Group>(null);
-  const glow = useRef<THREE.MeshStandardMaterial>(null);
+  const iris = useRef<THREE.MeshStandardMaterial>(null);
+  const lens = useRef<THREE.PointLight>(null);
   const hit = useRef(hitSignal);
   const struck = useRef(0);
 
@@ -905,127 +1143,144 @@ function Opponent({
     }
     const since = t - struck.current;
     if (g.current) {
-      const k = since < 0.4 ? Math.sin(since * 60) * 0.012 * (1 - since / 0.4) : 0;
+      const k = since < 0.4 ? Math.sin(since * 60) * 0.014 * (1 - since / 0.4) : 0;
       g.current.position.x = k;
-      g.current.position.y = 1.04 + Math.sin(t * 1.1) * 0.006;
+      g.current.position.y = 1.04 + Math.sin(t * 0.9) * 0.005;
+      g.current.rotation.y = Math.sin(t * 0.37) * 0.022;
     }
-    if (glow.current) {
-      const alive = hp > 0 ? 1 : 0.12;
-      const flicker = 0.85 + Math.sin(t * 3.1) * 0.1 + Math.sin(t * 7.7) * 0.05;
-      glow.current.emissiveIntensity = alive * flicker;
-    }
+    const alive = hp > 0 ? 1 : 0.1;
+    const flicker = 0.9 + Math.sin(t * 2.7) * 0.08 + Math.sin(t * 9.1) * 0.04;
+    if (iris.current) iris.current.emissiveIntensity = alive * flicker;
+    if (lens.current) lens.current.intensity = alive * 0.9 * flicker;
   });
 
-  const teeth = useMemo(() => {
-    const list: { x: number; y: number; z: number; s: number }[] = [];
-    for (let i = -5; i <= 5; i++) {
-      const x = i * 0.045;
-      const y = -0.135 + x * x * 2.2;
-      list.push({ x, y, z: 0.25, s: 1 });
-    }
-    return list;
-  }, []);
+  // Six aperture blades, closed around the iris
+  const blades = useMemo(
+    () =>
+      Array.from({ length: 6 }, (_, i) => {
+        const a = (i / 6) * Math.PI * 2;
+        return { a, x: Math.cos(a) * 0.088, y: Math.sin(a) * 0.088 };
+      }),
+    [],
+  );
 
   return (
     <group
       ref={g}
       position={[0, 1.04, -2.0]}
-      rotation={[0.2, 0, 0]}
-      scale={1.6}
+      rotation={[0.16, 0, 0]}
+      scale={1.15}
     >
-      {/* Cranium */}
-      <mesh scale={[1, 1.06, 0.92]}>
-        <sphereGeometry args={[0.31, 24, 18]} />
-        <meshStandardMaterial color={C.skull} roughness={0.95} />
+      {/* Shell: a hex drum with the axis down the sight line */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.34, 0.3, 0.34, 6]} />
+        <meshStandardMaterial color="#3b3730" roughness={0.6} metalness={0.45} />
       </mesh>
-      {/* Brow ridge, overhanging the sockets */}
-      <mesh position={[0, 0.085, 0.19]} rotation={[0.34, 0, 0]}>
-        <boxGeometry args={[0.46, 0.07, 0.22]} />
-        <meshStandardMaterial color="#2a1a16" roughness={0.98} />
+      <mesh position={[0, 0, -0.19]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.3, 0.25, 0.07, 6]} />
+        <meshStandardMaterial color="#2c2822" roughness={0.7} metalness={0.4} />
       </mesh>
-      {/* Cheeks */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * 0.19, -0.07, 0.14]} rotation={[0, 0, s * 0.4]}>
-          <boxGeometry args={[0.12, 0.14, 0.14]} />
-          <meshStandardMaterial color="#2e1c18" roughness={0.98} />
-        </mesh>
-      ))}
-      {/* Eye sockets */}
-      {[-0.115, 0.115].map((x) => (
-        <mesh key={x} position={[x * 1.06, 0.005, 0.215]} rotation={[0, 0, 0]}>
-          <sphereGeometry args={[0.105, 16, 12]} />
-          <meshStandardMaterial color="#080505" roughness={1} />
-        </mesh>
-      ))}
-      {/* Eyes, deep in the sockets */}
-      {[-0.115, 0.115].map((x) => (
-        <mesh key={`e${x}`} position={[x, 0.012, 0.235]}>
-          <sphereGeometry args={[0.02, 10, 8]} />
+
+      {/* Brass collar and the objective barrel */}
+      <mesh position={[0, 0, 0.16]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.2, 0.245, 0.05, 6]} />
+        <meshStandardMaterial color={C.brassLit} roughness={0.4} metalness={0.75} />
+      </mesh>
+      <mesh position={[0, 0, 0.28]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.175, 0.175, 0.24, 20]} />
+        <meshStandardMaterial color="#4a4640" roughness={0.5} metalness={0.6} />
+      </mesh>
+      {[0.2, 0.3, 0.38].map((z, i) => (
+        <mesh key={z} position={[0, 0, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.178, i === 1 ? 0.014 : 0.009, 8, 20]} />
           <meshStandardMaterial
-            ref={x < 0 ? glow : undefined}
-            color="#200a06"
-            emissive="#ff5a2a"
-            emissiveIntensity={1}
+            color={C.brassLit}
+            roughness={0.35}
+            metalness={0.8}
+          />
+        </mesh>
+      ))}
+
+      {/* Aperture: dark glass, blades, iris */}
+      <mesh position={[0, 0, 0.4]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.168, 0.168, 0.012, 20]} />
+        <meshStandardMaterial
+          color="#08080a"
+          roughness={0.3}
+          metalness={0.4}
+          transparent
+          opacity={0.72}
+        />
+      </mesh>
+      {blades.map((b, i) => (
+        <mesh key={i} position={[b.x, b.y, 0.388]} rotation={[0, 0, b.a]}>
+          <boxGeometry args={[0.095, 0.022, 0.008]} />
+          <meshStandardMaterial color="#16181c" roughness={0.5} metalness={0.5} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0, 0.368]}>
+        <sphereGeometry args={[0.042, 14, 10]} />
+        <meshStandardMaterial
+          ref={iris}
+          color="#2a0f04"
+          emissive="#f07828"
+          emissiveIntensity={0.75}
+          toneMapped={false}
+        />
+      </mesh>
+      <pointLight
+        ref={lens}
+        position={[0, 0, 0.62]}
+        color="#ff9a52"
+        intensity={0.6}
+        distance={1.6}
+        decay={1.7}
+      />
+
+      {/* Vent grille where a mouth would be */}
+      <mesh position={[0, -0.16, 0.26]}>
+        <boxGeometry args={[0.3, 0.13, 0.04]} />
+        <meshStandardMaterial color="#14120f" roughness={0.9} />
+      </mesh>
+      {[-0.04, -0.013, 0.014, 0.041].map((y) => (
+        <mesh key={y} position={[0, -0.16 + y, 0.283]}>
+          <boxGeometry args={[0.27, 0.013, 0.012]} />
+          <meshStandardMaterial color="#5c564c" roughness={0.6} metalness={0.6} />
+        </mesh>
+      ))}
+
+      {/* Life gauge on the cheek: one lit segment per remaining chamber */}
+      <mesh position={[-0.245, -0.03, 0.17]} rotation={[0, -0.42, 0]}>
+        <boxGeometry args={[0.15, 0.085, 0.025]} />
+        <meshStandardMaterial color="#26221c" roughness={0.75} metalness={0.35} />
+      </mesh>
+      {[0, 1, 2, 3].map((i) => (
+        <mesh
+          key={i}
+          position={[-0.302 + i * 0.031, -0.03, 0.178]}
+          rotation={[0, -0.42, 0]}
+        >
+          <boxGeometry args={[0.021, 0.055, 0.01]} />
+          <meshStandardMaterial
+            color="#191510"
+            emissive="#ffa24c"
+            emissiveIntensity={i < Math.max(hp, 0) ? 0.85 : 0.03}
             toneMapped={false}
           />
         </mesh>
       ))}
-      {/* Nose cavity */}
-      <mesh position={[0, -0.055, 0.245]}>
-        <coneGeometry args={[0.036, 0.07, 3]} />
-        <meshStandardMaterial color="#0a0605" roughness={1} />
-      </mesh>
-      {/* Mouth well */}
-      <mesh position={[0, -0.185, 0.13]}>
-        <boxGeometry args={[0.5, 0.2, 0.22]} />
-        <meshStandardMaterial color="#0b0605" roughness={1} />
-      </mesh>
-      {/* Teeth */}
-      {teeth.map((t, i) => (
-        <mesh
-          key={i}
-          position={[t.x, t.y - 0.03, t.z - 0.01]}
-          rotation={[Math.PI, 0, 0]}
-        >
-          <coneGeometry args={[0.023, 0.075, 4]} />
-          <meshStandardMaterial color={C.bone} roughness={0.75} />
-        </mesh>
-      ))}
-      {teeth.map((t, i) => (
-        <mesh key={`l${i}`} position={[t.x, t.y - 0.105, t.z - 0.01]}>
-          <coneGeometry args={[0.021, 0.06, 4]} />
-          <meshStandardMaterial color="#7a6e55" roughness={0.8} />
-        </mesh>
-      ))}
-      {/* Jaw */}
-      <mesh position={[0, -0.265, 0.16]} rotation={[0.35, 0, 0]}>
-        <boxGeometry args={[0.34, 0.1, 0.18]} />
-        <meshStandardMaterial color="#2a1915" roughness={0.98} />
-      </mesh>
 
-      {/* Spine and hand, hanging under the grin */}
-      <group position={[0, -0.44, 0.08]}>
-        {[0, 1, 2].map((i) => (
-          <mesh key={i} position={[0, -i * 0.055, 0]}>
-            <cylinderGeometry args={[0.022, 0.024, 0.05, 8]} />
-            <meshStandardMaterial color="#2a1a16" roughness={0.95} />
-          </mesh>
-        ))}
-        <mesh position={[0, -0.2, 0.02]} rotation={[0.4, 0, 0]}>
-          <boxGeometry args={[0.13, 0.05, 0.11]} />
-          <meshStandardMaterial color="#2a1a16" roughness={0.95} />
+      {/* Side pods and a stub antenna */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * 0.3, 0.1, 0.08]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.05, 0.058, 0.17, 10]} />
+          <meshStandardMaterial color="#33302a" roughness={0.65} metalness={0.5} />
         </mesh>
-        {[-0.045, -0.014, 0.017, 0.048].map((x, i) => (
-          <mesh
-            key={x}
-            position={[x, -0.27 - (i === 1 || i === 2 ? 0.02 : 0), 0.05]}
-            rotation={[0.9, 0, 0]}
-          >
-            <cylinderGeometry args={[0.009, 0.008, 0.075, 6]} />
-            <meshStandardMaterial color="#30201b" roughness={0.95} />
-          </mesh>
-        ))}
-      </group>
+      ))}
+      <mesh position={[0.1, 0.36, -0.05]} rotation={[0, 0, 0.24]}>
+        <cylinderGeometry args={[0.007, 0.007, 0.32, 6]} />
+        <meshStandardMaterial color="#4a453c" roughness={0.6} metalness={0.5} />
+      </mesh>
     </group>
   );
 }
@@ -1132,10 +1387,17 @@ function Scene({
       <Magnifier position={[-0.9, 0.692, TABLE_Z - 0.12]} rotation={[-Math.PI / 2, 0.2, 0.4]} />
       <Magnifier position={[-1.02, 0.692, TABLE_Z + 0.06]} rotation={[-Math.PI / 2, 0.1, -0.3]} />
       <Magnifier position={[-0.5, 0.692, TABLE_Z + 0.72]} rotation={[-Math.PI / 2, 0.2, 0.1]} />
-      <Magnifier position={[0.6, 0.692, TABLE_Z - 0.2]} rotation={[-Math.PI / 2, 0, -0.2]} />
-      <Magnifier position={[0.8, 0.692, TABLE_Z - 0.38]} rotation={[-Math.PI / 2, 0, 0.5]} />
-      <Cassette position={[0.86, 0.694, TABLE_Z + 0.14]} rotation={[0, 0.5, 0]} />
-      <Cassette position={[0.92, 0.694, TABLE_Z + 0.34]} rotation={[0, 0.36, 0]} />
+      <Magnifier position={[0.72, 0.692, TABLE_Z + 0.34]} rotation={[-Math.PI / 2, 0, -0.2]} />
+      <ChamberBlock position={[-0.62, 0.775, TABLE_Z + 0.2]} rotation={[0, 0.42, 0]} />
+      <group position={[0.78, 0, TABLE_Z - 0.12]} scale={0.78}>
+        <SpeedLoader position={[0, 0.682, 0]} rotation={[0, 0.2, 0]} />
+      </group>
+      <TelemetryBox
+        position={[0.82, 0.757, TABLE_Z - 0.45]}
+        rotation={[0, -0.42, 0]}
+        liveCount={liveCount}
+        blankCount={blankCount}
+      />
       <AmmoBox position={[0.95, 0.73, TABLE_Z + 0.6]} rotation={[0, -0.35, 0]} />
       <AmmoBox position={[-0.72, 0.73, TABLE_Z + 0.62]} rotation={[0, 0.22, 0]} />
 
@@ -1143,8 +1405,17 @@ function Scene({
         <Shell key={i} position={s.p} rotation={s.r} live={s.live} />
       ))}
 
+      <GunStand position={[0.16, 0.682, TABLE_Z + 0.46]} />
+      {/* A low warm catch on the piece in its cradle */}
+      <pointLight
+        position={[0.16, 0.95, TABLE_Z + 0.5]}
+        color="#ffd2a2"
+        intensity={0.38}
+        distance={1.1}
+        decay={1.6}
+      />
       <Revolver held={gunHeld} target={target} firing={firing} />
-      <Opponent hp={opponentHp} hitSignal={opponentHitSignal} />
+      <Operator hp={opponentHp} hitSignal={opponentHitSignal} />
 
       {/* Turn cue: the room warms a little when it is your move. */}
       <pointLight

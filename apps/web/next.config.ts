@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   // Without this, Next blocks /_next/webpack-hmr and the page never hydrates.
   allowedDevOrigins: ["*.trycloudflare.com", "127.0.0.1"],
   devIndicators: false,
+  // Keep the dev server off the production build. Sharing .next between
+  // `next dev` and `next start` leaves the running server pointing at chunks
+  // the dev server deleted, which shows up as a black page.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   images: {
     // Landing art uses quality={90} (HD pass); Next 16 only allows listed qualities.
     qualities: [75, 90],
