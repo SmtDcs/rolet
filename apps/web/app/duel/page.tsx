@@ -28,7 +28,7 @@ import {
 import { useSound } from "@/hooks/useSound";
 import { Volume2, VolumeX } from "lucide-react";
 
-const DuelBoard2D = dynamic(() => import("@/components/DuelBoard2D"), { ssr: false });
+const DuelRoom3D = dynamic(() => import("@/components/DuelRoom3D"), { ssr: false });
 const HandRack2D = dynamic(() => import("@/components/HandRack2D"), { ssr: false });
 
 // ============================================================
@@ -462,8 +462,9 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       className="fixed inset-0 overflow-hidden"
       style={{ width: "100vw", height: "100vh" }}
     >
-      {/* 2D duel board — covers entire viewport, behind everything */}
-      <DuelBoard2D
+      {/* The chamber room. Flat-shaded geometry behind a dither pass;
+          it covers the viewport and the HUD layers sit on top of it. */}
+      <DuelRoom3D
         isYourTurn={turnIsYours}
         gunHeld={gunHeld}
         target={target}
