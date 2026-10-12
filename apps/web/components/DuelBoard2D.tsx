@@ -120,49 +120,29 @@ export default function DuelBoard2D({
         }}
       />
 
-{/* Opponent — across the table, further back in Z */}
-      <div className="absolute left-1/2 top-[24%] -translate-x-1/2">
-        <div
-          className="relative"
+      {/* Opponent — a painted figure across the table. The artwork sits on
+          black, so screen blending drops the background into the scene. */}
+      <div className="absolute left-1/2 top-[3%] w-[min(250px,30vw)] -translate-x-1/2">
+        <img
+          src="/art/duel/dealer.png"
+          alt=""
+          className="w-full select-none"
           style={{
-            transform:
-              "translate3d(calc(var(--px, 0) * 6px), calc(var(--py, 0) * 3px), -170px)",
+            mixBlendMode: "screen",
+            opacity: 0.9,
+            filter: "brightness(0.82) contrast(1.05)",
+            maskImage:
+              "radial-gradient(ellipse at 50% 48%, #000 68%, transparent 92%), linear-gradient(to bottom, #000 76%, transparent 94%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse at 50% 48%, #000 68%, transparent 92%), linear-gradient(to bottom, #000 76%, transparent 94%)",
+            maskComposite: "intersect",
+            WebkitMaskComposite: "source-in",
           }}
-        >
-          {/* Warm rim glow behind the silhouette */}
-          <div
-            className="absolute -inset-12 rounded-full opacity-70 blur-3xl"
-            style={{
-              background: "radial-gradient(ellipse, rgba(170,60,18,0.5), transparent 70%)",
-            }}
-          />
-          <div
-            key={`opp-${opponentBeat}`}
-            className={`relative ${opponentBeat > 0 ? "animate-[rolet-jolt_0.5s_ease-out]" : ""}`}
-          >
-            <div
-              className={`relative transition-transform duration-700 ${
-                opponentDead
-                  ? "translate-y-3 rotate-6 opacity-35"
-                  : "animate-[rolet-breathe_3.6s_ease-in-out_infinite]"
-              } ${!opponentDead && !isYourTurn ? "scale-[1.02]" : ""}`}
-            >
-              <OpponentSvg eyeColor={eyeColor} dead={opponentDead} />
-            </div>
-          </div>
-          {/* Target brackets while aiming at the opponent */}
-          {armed && !aimAtSelf && (
-            <div className="absolute -inset-4 animate-[rolet-laser_1.2s_ease-in-out_infinite]">
-              <span className="absolute left-0 top-0 h-4 w-4 border-l-2 border-t-2 border-red-500/80" />
-              <span className="absolute right-0 top-0 h-4 w-4 border-r-2 border-t-2 border-red-500/80" />
-              <span className="absolute bottom-0 left-0 h-4 w-4 border-b-2 border-l-2 border-red-500/80" />
-              <span className="absolute bottom-0 right-0 h-4 w-4 border-b-2 border-r-2 border-red-500/80" />
-            </div>
-          )}
-        </div>
+          draggable={false}
+        />
       </div>
 
-      {/* Table — oval baize slab, tilted back in 2.5D */}
+{/* Table — oval baize slab, tilted back in 2.5D */}
       <div className="absolute left-1/2 top-[33%] -translate-x-1/2">
         <div
           style={{
