@@ -1,8 +1,12 @@
 "use client";
 
-// Temporary tuning route for the chamber room. Not linked from anywhere;
-// it exists so the scene can be graded against the reference frame without
-// an on-chain match. Delete when the room lands in /duel.
+// Temporary tuning route for the chamber room. Not linked from anywhere; it
+// exists so the scene can be graded and its states exercised without an
+// on-chain match. Every prop below can be driven from the query string:
+//
+//   ?held=1&target=self&fire=live&ohp=2&live=3&blank=5&raw=1
+//
+// Delete when the room lands in /duel.
 
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
@@ -12,19 +16,40 @@ const DuelRoom3D = dynamic(() => import("@/components/DuelRoom3D"), {
   ssr: false,
 });
 
+function pick<T extends string>(
+  value: string | null,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+function num(value: string | null, fallback: number, max: number) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(max, Math.round(n)));
+}
+
 function Sketch() {
-  const raw = useSearchParams().get("raw") === "1";
+  const q = useSearchParams();
+  const raw = q.get("raw") === "1";
   return (
     <DuelRoom3D
-      isYourTurn
-      gunHeld={false}
-      target="opponent"
-      firing={null}
+      isYourTurn={q.get("turn") !== "0"}
+      gunHeld={q.get("held") === "1"}
+      target={pick(q.get("target"), ["self", "opponent"] as const, "opponent")}
+      firing={
+        q.get("fire") === "live"
+          ? "live"
+          : q.get("fire") === "blank"
+            ? "blank"
+            : null
+      }
       opponentPubkey=""
-      opponentHp={4}
-      opponentHitSignal={0}
-      liveCount={5}
-      blankCount={3}
+      opponentHp={num(q.get("ohp"), 4, 4)}
+      opponentHitSignal={num(q.get("hit"), 0, 999999)}
+      liveCount={num(q.get("live"), 5, 5)}
+      blankCount={num(q.get("blank"), 3, 3)}
       raw={raw}
     />
   );

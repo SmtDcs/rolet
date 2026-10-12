@@ -1011,23 +1011,6 @@ function AmmoBox({
   );
 }
 
-function GunStand({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.009, 0]} receiveShadow castShadow>
-        <boxGeometry args={[0.17, 0.018, 0.13]} />
-        <meshStandardMaterial color="#2a1c12" roughness={0.85} />
-      </mesh>
-      {[-0.052, 0.052].map((x) => (
-        <mesh key={x} position={[x, 0.05, 0]} castShadow>
-          <boxGeometry args={[0.015, 0.085, 0.03]} />
-          <meshStandardMaterial color={C.brass} roughness={0.5} metalness={0.65} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 function Revolver({
   held,
   target,
@@ -1041,20 +1024,26 @@ function Revolver({
   useFrame((_, dt) => {
     if (!g.current) return;
     const k = 1 - Math.pow(0.0015, Math.min(dt, 0.1));
-    const wantY = held ? 0.99 : 0.83;
-    const wantZ = TABLE_Z + (held ? (target === "self" ? 0.34 : 0.02) : 0.2);
-    const wantSpin = held ? (target === "self" ? 1.9 : -0.55) : 0.26;
+    // Resting: on the baize, muzzle away and left. Held: up off the table and
+    // swung onto the target, the seat's side of the near rail.
+    const wantY = held ? (target === "self" ? 0.88 : 0.92) : 0.74;
+    const wantZ = TABLE_Z + (held ? (target === "self" ? 0.3 : 0.44) : 0.28);
+    const wantX = held ? (target === "self" ? 0.06 : -0.06) : 0.12;
+    const wantSpin = held ? (target === "self" ? 2.95 : -0.5) : 1.5;
+    const wantPitch = held ? (target === "self" ? 0.16 : 0.22) : 0;
+    g.current.position.x += (wantX - g.current.position.x) * k;
     g.current.position.y += (wantY - g.current.position.y) * k;
     g.current.position.z += (wantZ - g.current.position.z) * k;
     g.current.rotation.y += (wantSpin - g.current.rotation.y) * k;
+    g.current.rotation.x += (wantPitch - g.current.rotation.x) * k;
   });
 
   return (
     <group
       ref={g}
-      position={[0.16, 0.83, TABLE_Z + 0.2]}
-      rotation={[Math.PI / 2, 0.26, 0]}
-      scale={0.54}
+      position={[0.12, 0.74, TABLE_Z + 0.28]}
+      rotation={[0, 1.5, 0]}
+      scale={1}
     >
       {/* Barrel */}
       <mesh position={[0, 0.018, -0.2]} rotation={[Math.PI / 2, 0, 0]} castShadow>
@@ -1062,9 +1051,9 @@ function Revolver({
         <meshStandardMaterial color={C.steel} roughness={0.45} metalness={0.6} />
       </mesh>
       {/* Rib along the top of the barrel, the one edge the lamp catches */}
-      <mesh position={[0, 0.043, -0.2]}>
-        <boxGeometry args={[0.012, 0.006, 0.3]} />
-        <meshStandardMaterial color={C.steelLit} roughness={0.3} metalness={0.75} />
+      <mesh position={[0, 0.042, -0.2]}>
+        <boxGeometry args={[0.009, 0.005, 0.3]} />
+        <meshStandardMaterial color="#6e6759" roughness={0.4} metalness={0.65} />
       </mesh>
       <mesh position={[0, 0.018, -0.352]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.027, 0.005, 6, 14]} />
@@ -1110,12 +1099,14 @@ function Revolver({
       </mesh>
 
       {firing === "live" && (
+        // A pop at the muzzle, not a floodlight: the page adds its own
+        // full-screen flash on top of this.
         <pointLight
           position={[0, 0.05, -0.42]}
           color="#ffddae"
-          intensity={9}
-          distance={3.2}
-          decay={1.6}
+          intensity={2.2}
+          distance={1.5}
+          decay={1.7}
         />
       )}
     </group>
@@ -1436,7 +1427,7 @@ function Scene({
         <SpeedLoader position={[0, 0.682, 0]} rotation={[0, 0.2, 0]} />
       </group>
       <Magnifier
-        position={[0.34, 0.692, TABLE_Z + 0.05]}
+        position={[0.62, 0.692, TABLE_Z - 0.06]}
         rotation={[-Math.PI / 2, 0, -0.2]}
       />
       <AmmoBox position={[0.6, 0.7145, TABLE_Z + 0.19]} rotation={[0, -0.3, 0]} />
@@ -1445,13 +1436,12 @@ function Scene({
         <Shell key={i} position={s.p} rotation={s.r} live={s.live} />
       ))}
 
-      <GunStand position={[0.16, 0.682, TABLE_Z + 0.2]} />
-      {/* A low warm catch on the piece in its cradle */}
+      {/* A low warm catch along the piece lying on the baize */}
       <pointLight
-        position={[0.16, 0.95, TABLE_Z + 0.24]}
+        position={[0.26, 0.9, TABLE_Z + 0.24]}
         color="#ffd2a2"
-        intensity={0.3}
-        distance={1.1}
+        intensity={0.26}
+        distance={1.05}
         decay={1.6}
       />
       <Revolver held={gunHeld} target={target} firing={firing} />
