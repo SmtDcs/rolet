@@ -599,37 +599,6 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
         ))}
       </AnimatePresence>
 
-      {/* Room atmosphere overlay — subtle tint above 3D, below UI */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 30%, transparent 0%, rgba(10, 6, 4, 0.4) 75%)",
-          zIndex: 2,
-        }}
-      />
-      {/* Global CRT scanlines — fixed overlay above the 3D, below UI panels */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 3px)",
-          mixBlendMode: "multiply",
-          zIndex: 8,
-        }}
-      />
-      {/* Global film grain — subtle, animated */}
-      <div
-        className="absolute inset-0 pointer-events-none animate-grain"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>\")",
-          opacity: 0.08,
-          mixBlendMode: "overlay",
-          zIndex: 8,
-        }}
-      />
-
       {/* Top bar */}
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-4 py-4 border-b border-rust/40 bg-black/40 sm:px-6">
         <Link href="/" className="shrink-0 text-[10px] tracking-[0.4em] text-rust hover:text-[var(--color-alert)] crt-text">
@@ -661,7 +630,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
         </div>
       </div>
 
-      <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-rows-[auto_1fr_auto] gap-1.5 px-6 pt-12 pb-2 overflow-hidden">
+      <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-rows-[auto_1fr_auto] gap-1.5 px-6 pt-16 pb-2 overflow-hidden lg:pt-12">
         {/* OPPONENT HUD ONLY (HP bar + status) — 3D shows through behind */}
         <section className="relative flex justify-center pt-1">
           <OpponentHud hp={opponentHp} maxHp={4} />
@@ -711,18 +680,23 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
 
           <div className="grid grid-cols-2 gap-3 items-end lg:grid-cols-12">
             {/* Slim player vitals — Buckshot pixelated HP */}
-            <div className="order-2 col-span-1 crt-frame crt-grain border border-rust/60 bg-black/70 p-2 lg:order-1 lg:col-span-2">
-              <div className="flex items-center justify-between text-[8px] tracking-[0.35em] text-rust crt-text">
-                <span>You</span>
-                <span className={turnIsYours ? "text-[var(--color-alert)] animate-pulse" : "text-[var(--color-phosphor-faint)]"}>
+            <div className="order-2 col-span-1 lg:order-1 lg:col-span-2">
+              <div className="flex items-center gap-3">
+                <span className="text-[9px] tracking-[0.5em] text-[var(--color-phosphor-faint)]">
+                  YOU
+                </span>
+                <span
+                  className={
+                    turnIsYours
+                      ? "text-[9px] tracking-[0.4em] text-[var(--color-alert)] animate-pulse"
+                      : "text-[9px] tracking-[0.4em] text-[var(--color-phosphor-faint)]"
+                  }
+                >
                   {turnIsYours ? "TURN" : "WAIT"}
                 </span>
               </div>
-              <div className="mt-2">
-                <HpBar hp={playerHp} maxHp={4} accent="player" />
-              </div>
-              <div className="mt-1 text-center text-[9px] tracking-[0.3em] text-[var(--color-phosphor-dim)] crt-text">
-                HP {playerHp}/4
+              <div className="mt-1.5 w-28 sm:w-36">
+                <HpBar hp={playerHp} maxHp={4} />
               </div>
             </div>
 
@@ -749,7 +723,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
             </div>
 
             {/* The only action panel. Two target choices and one commit. */}
-            <div className="order-3 col-span-1 flex flex-col gap-2 border border-[var(--color-line-strong)] bg-[var(--color-void)] p-2 lg:col-span-3">
+            <div className="order-3 col-span-1 flex flex-col gap-2 lg:col-span-3">
               <div className="grid grid-cols-2 gap-1">
                 <TargetButton label="OPP" active={target === "opponent"} onClick={() => { setTarget("opponent"); play("uiSelect"); }} />
                 <TargetButton label="SELF" active={target === "self"} onClick={() => { setTarget("self"); play("uiSelect"); }} />
@@ -788,8 +762,8 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
           </div>
 
           {/* Compact 1-line log */}
-          <div className="crt-frame crt-grain border border-rust/50 bg-black/70 px-3 py-1.5 flex items-center justify-between">
-            <div className="font-mono text-[10px] leading-none tracking-wide text-[var(--color-phosphor-dim)] truncate crt-text">
+          <div className="flex items-center justify-between px-1 py-0.5">
+            <div className="truncate font-mono text-[10px] leading-none tracking-wide text-[var(--color-phosphor-faint)]">
               {log[0]}
             </div>
           </div>
@@ -826,39 +800,32 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
 // ── CCTV-style viewport — 3D scene shows through this frame ──────────────────
 function OpponentHud({ hp, maxHp }: { hp: number; maxHp: number }) {
   return (
-    <div className="mt-3 flex items-center gap-4 border border-rust/60 bg-black/70 px-4 py-2">
-      <div className="text-[10px] tracking-[0.4em] text-[var(--color-phosphor-faint)]">OPPONENT</div>
-      <HpBar hp={hp} maxHp={maxHp} accent="opponent" />
+    <div className="mt-1 flex items-center gap-3">
+      <div className="text-[9px] tracking-[0.5em] text-[var(--color-phosphor-faint)]">
+        OPPONENT
+      </div>
+      <div className="w-28 sm:w-36">
+        <HpBar hp={hp} maxHp={maxHp} />
+      </div>
     </div>
   );
 }
 
-// Buckshot-style HP bar: chunky pixelated cells, each cell ~3x4 grid of
-// sub-pixels that go dark when that HP unit is gone.
-function HpBar({
-  hp,
-  maxHp,
-  accent,
-}: {
-  hp: number;
-  maxHp: number;
-  accent: "player" | "opponent";
-}) {
+// Life, one plate per unit. Brass while it holds, red on the last one.
+function HpBar({ hp, maxHp }: { hp: number; maxHp: number }) {
   const low = hp <= 1;
   const mid = hp === 2;
-  const aliveColor = low ? "#ff2020" : mid ? "#dd6600" : accent === "player" ? "#cc1a1a" : "#aa1010";
-  const aliveGlow = low ? "#ff5050" : mid ? "#ff9933" : accent === "player" ? "#ff3030" : "#dd2020";
+  const aliveColor = low ? "#e61919" : mid ? "#b8862f" : "#c6a15b";
+  const aliveGlow = low ? "#ff5050" : mid ? "#e0a94a" : "#e8c07a";
 
   return (
     <div className="flex gap-1.5 w-full">
       {Array.from({ length: maxHp }).map((_, i) => {
         const alive = i < hp;
-        const cells = 8; // 4×2 sub-pixel grid inside each cell
         return (
           <motion.div
             key={i}
-            className="relative flex-1 h-6 border border-[var(--color-line)]"
-            style={{ imageRendering: "pixelated" as const }}
+            className="relative h-2.5 flex-1 border border-[var(--color-line-strong)]"
             animate={
               alive && low
                 ? {
@@ -878,21 +845,16 @@ function HpBar({
                 : { duration: 0.3 }
             }
           >
-            {/* Pixelated cell grid */}
-            <div className="absolute inset-0 grid grid-rows-2 grid-cols-4 gap-px p-px">
-              {Array.from({ length: cells }).map((_, j) => (
-                <motion.div
-                  key={j}
-                  initial={false}
-                  animate={{ scale: alive ? 1 : 0, opacity: alive ? 1 : 0 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 24 }}
-                  style={{
-                    backgroundColor: alive ? aliveColor : "#0e0606",
-                    boxShadow: alive ? `inset 0 0 2px ${aliveGlow}` : "none",
-                  }}
-                />
-              ))}
-            </div>
+            <motion.div
+              className="absolute inset-[1px]"
+              initial={false}
+              animate={{ opacity: alive ? 1 : 0, scaleY: alive ? 1 : 0.4 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              style={{
+                backgroundColor: alive ? aliveColor : "transparent",
+                boxShadow: alive ? `0 0 6px ${aliveGlow}55` : "none",
+              }}
+            />
           </motion.div>
         );
       })}

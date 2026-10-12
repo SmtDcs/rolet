@@ -158,9 +158,9 @@ function Card2D({
   onSelect: () => void;
 }) {
   if (!card) {
-    return (
-      <div className="h-[92px] w-[64px] border border-dashed border-rust/30 bg-black/25 sm:h-[118px] sm:w-[82px]" />
-    );
+    // An empty slot keeps its space but draws nothing. A dashed placeholder
+    // over the room only reads as chrome.
+    return <div className="h-[92px] w-[64px] sm:h-[118px] sm:w-[82px]" />;
   }
 
   const rank = CARD_RANK[card];
