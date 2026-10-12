@@ -14,6 +14,7 @@
 
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 export type DuelRoom3DProps = {
@@ -771,6 +772,74 @@ function Table() {
   );
 }
 
+// ── Generated props ────────────────────────────────────────────────────────
+// The piece above all was never going to read as anything hand-built out of
+// boxes; it came out a rod. These three are Meshy meshes with no materials and
+// no textures, which is exactly what this look wants: each is flattened onto a
+// single colour and left faceted, so the display pass is still the only thing
+// putting grain on them.
+
+const PROPS = {
+  revolver: "/models/room/revolver.glb",
+  loader: "/models/room/speed-loader.glb",
+  case: "/models/room/cartridge-case.glb",
+};
+
+type FlatLook = { color: string; roughness: number; metalness: number };
+
+/** Loads a mesh, flattens it to one colour, and normalises its footprint. */
+function useFlatProp(url: string, look: FlatLook, length: number) {
+  const { scene } = useGLTF(url);
+  return useMemo(() => {
+    const root = scene.clone(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const size = new THREE.Vector3();
+    const centre = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(centre);
+
+    const material = new THREE.MeshStandardMaterial({
+      color: look.color,
+      roughness: look.roughness,
+      metalness: look.metalness,
+      flatShading: true,
+    });
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.material = material;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    });
+
+    // Re-centre across the table and drop the base onto y = 0, so a prop can
+    // be placed by its position alone.
+    root.position.set(-centre.x, -box.min.y, -centre.z);
+
+    const wrap = new THREE.Group();
+    wrap.add(root);
+    wrap.scale.setScalar(length / Math.max(size.x, size.y, size.z));
+    return wrap;
+  }, [scene, url, length, look.color, look.roughness, look.metalness]);
+}
+
+function FlatProp({
+  url,
+  look,
+  length,
+  position,
+  rotation = [0, 0, 0],
+}: {
+  url: string;
+  look: FlatLook;
+  length: number;
+  position: [number, number, number];
+  rotation?: [number, number, number];
+}) {
+  const model = useFlatProp(url, look, length);
+  return <primitive object={model} position={position} rotation={rotation} />;
+}
+
 // ── Props ──────────────────────────────────────────────────────────────────
 
 function Shell({
@@ -871,45 +940,6 @@ function ChamberBlock({
   );
 }
 
-function SpeedLoader({
-  position,
-  rotation,
-}: {
-  position: [number, number, number];
-  rotation: [number, number, number];
-}) {
-  const rounds = useMemo(
-    () =>
-      Array.from({ length: 6 }, (_, i) => {
-        const a = (i / 6) * Math.PI * 2;
-        return { x: Math.cos(a) * 0.028, z: Math.sin(a) * 0.028, live: i % 3 !== 1 };
-      }),
-    [],
-  );
-  return (
-    <group position={position} rotation={rotation}>
-      {rounds.map((r, i) => (
-        <mesh key={i} position={[r.x, 0.078, r.z]} castShadow>
-          <cylinderGeometry args={[0.011, 0.011, 0.15, 8]} />
-          <meshStandardMaterial
-            color={r.live ? C.cartridge : "#8a8272"}
-            roughness={0.5}
-            metalness={0.2}
-          />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.036, 0]} castShadow>
-        <cylinderGeometry args={[0.052, 0.052, 0.022, 16]} />
-        <meshStandardMaterial color={C.brass} roughness={0.45} metalness={0.7} />
-      </mesh>
-      <mesh position={[0, 0.09, 0]}>
-        <cylinderGeometry args={[0.022, 0.026, 0.036, 12]} />
-        <meshStandardMaterial color="#3a3028" roughness={0.6} metalness={0.4} />
-      </mesh>
-    </group>
-  );
-}
-
 function TelemetryBox({
   position,
   rotation,
@@ -986,31 +1016,6 @@ function Tin({ position }: { position: [number, number, number] }) {
   );
 }
 
-function AmmoBox({
-  position,
-  rotation,
-}: {
-  position: [number, number, number];
-  rotation: [number, number, number];
-}) {
-  return (
-    <group position={position} rotation={rotation}>
-      <mesh castShadow>
-        <boxGeometry args={[0.2, 0.065, 0.135]} />
-        <meshStandardMaterial color="#33221a" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 0.05, 0]} castShadow>
-        <boxGeometry args={[0.212, 0.018, 0.145]} />
-        <meshStandardMaterial color="#4a3423" roughness={0.85} />
-      </mesh>
-      <mesh position={[0, 0.047, 0]} rotation={[0, 0, Math.PI / 4]}>
-        <boxGeometry args={[0.032, 0.032, 0.005]} />
-        <meshStandardMaterial color={C.brass} roughness={0.5} metalness={0.6} />
-      </mesh>
-    </group>
-  );
-}
-
 function Revolver({
   held,
   target,
@@ -1026,11 +1031,13 @@ function Revolver({
     const k = 1 - Math.pow(0.0015, Math.min(dt, 0.1));
     // Resting: on the baize, muzzle away and left. Held: up off the table and
     // swung onto the target, the seat's side of the near rail.
-    const wantY = held ? (target === "self" ? 0.88 : 0.92) : 0.74;
-    const wantZ = TABLE_Z + (held ? (target === "self" ? 0.3 : 0.44) : 0.28);
-    const wantX = held ? (target === "self" ? 0.06 : -0.06) : 0.12;
-    const wantSpin = held ? (target === "self" ? 2.95 : -0.5) : 1.5;
-    const wantPitch = held ? (target === "self" ? 0.16 : 0.22) : 0;
+    const wantY = held ? (target === "self" ? 0.84 : 0.9) : 0.73;
+    const wantZ = TABLE_Z + (held ? (target === "self" ? 0.3 : 0.44) : 0.22);
+    const wantX = held ? (target === "self" ? 0.06 : -0.06) : 0.2;
+    // The muzzle reads at +X now, so the aim yaws move with it: away is +90,
+    // onto the seat is -90 with a little in hand.
+    const wantSpin = held ? (target === "self" ? -1.07 : 1.85) : 3.05;
+    const wantPitch = held ? (target === "self" ? -0.14 : 0.22) : 0;
     g.current.position.x += (wantX - g.current.position.x) * k;
     g.current.position.y += (wantY - g.current.position.y) * k;
     g.current.position.z += (wantZ - g.current.position.z) * k;
@@ -1038,66 +1045,23 @@ function Revolver({
     g.current.rotation.x += (wantPitch - g.current.rotation.x) * k;
   });
 
+  const model = useFlatProp(
+    PROPS.revolver,
+    { color: "#6d675b", roughness: 0.42, metalness: 0.62 },
+    0.5,
+  );
+
   return (
     <group
       ref={g}
-      position={[0.12, 0.74, TABLE_Z + 0.28]}
-      rotation={[0, 1.5, 0]}
-      scale={1}
+      position={[0.2, 0.73, TABLE_Z + 0.22]}
+      rotation={[0, 3.05, 0]}
     >
-      {/* Barrel */}
-      <mesh position={[0, 0.018, -0.2]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.026, 0.026, 0.3, 12]} />
-        <meshStandardMaterial color={C.steel} roughness={0.45} metalness={0.6} />
-      </mesh>
-      {/* Rib along the top of the barrel, the one edge the lamp catches */}
-      <mesh position={[0, 0.042, -0.2]}>
-        <boxGeometry args={[0.009, 0.005, 0.3]} />
-        <meshStandardMaterial color="#6e6759" roughness={0.4} metalness={0.65} />
-      </mesh>
-      <mesh position={[0, 0.018, -0.352]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.027, 0.005, 6, 14]} />
-        <meshStandardMaterial color={C.steelLit} roughness={0.4} metalness={0.6} />
-      </mesh>
-      {/* Chamber */}
-      <mesh position={[0, 0.018, -0.03]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.056, 0.056, 0.104, 18]} />
-        <meshStandardMaterial color={C.steel} roughness={0.45} metalness={0.6} />
-      </mesh>
-      {[0, 1, 2, 3, 4, 5].map((i) => {
-        const a = (i / 6) * Math.PI * 2;
-        return (
-          <mesh
-            key={i}
-            position={[Math.cos(a) * 0.034, 0.018, -0.085]}
-            rotation={[Math.PI / 2, 0, 0]}
-          >
-            <cylinderGeometry args={[0.011, 0.011, 0.09, 8]} />
-            <meshStandardMaterial color="#151210" roughness={0.9} />
-          </mesh>
-        );
-      })}
-      {/* Frame */}
-      <mesh position={[0, 0.02, 0.06]} castShadow>
-        <boxGeometry args={[0.07, 0.052, 0.16]} />
-        <meshStandardMaterial color={C.steel} roughness={0.5} metalness={0.55} />
-      </mesh>
-      {/* Hammer */}
-      <mesh position={[0, 0.052, 0.115]}>
-        <boxGeometry args={[0.02, 0.028, 0.022]} />
-        <meshStandardMaterial color={C.steelLit} roughness={0.4} metalness={0.6} />
-      </mesh>
-      {/* Trigger guard */}
-      <mesh position={[0, -0.012, 0.105]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.026, 0.005, 6, 14, Math.PI]} />
-        <meshStandardMaterial color={C.steel} roughness={0.5} metalness={0.55} />
-      </mesh>
-      {/* Grip */}
-      <mesh position={[0, 0.022, 0.2]} rotation={[0.12, 0, 0]} castShadow>
-        <boxGeometry args={[0.046, 0.05, 0.15]} />
-        <meshStandardMaterial color="#3a1c0e" roughness={0.85} />
-      </mesh>
-
+      {/* The mesh is exported standing on its feet with the muzzle at +X.
+          Tip it over so it lies on the baize, top toward the seat. */}
+      <group rotation={[Math.PI / 2, 0, 0]}>
+        <primitive object={model} />
+      </group>
       {firing === "live" && (
         // A pop at the muzzle, not a floodlight: the page adds its own
         // full-screen flash on top of this.
@@ -1420,17 +1384,33 @@ function Scene({
         position={[-0.66, 0.692, TABLE_Z + 0.19]}
         rotation={[-Math.PI / 2, 0.2, 0.1]}
       />
-      <AmmoBox position={[-0.56, 0.7145, TABLE_Z + 0.21]} rotation={[0, 0.2, 0]} />
+      <FlatProp
+        url={PROPS.case}
+        look={{ color: "#4a3222", roughness: 0.85, metalness: 0.05 }}
+        length={0.17}
+        position={[-0.56, 0.682, TABLE_Z + 0.21]}
+        rotation={[0, 0.2, 0]}
+      />
 
       {/* Right flank */}
-      <group position={[0.72, 0, TABLE_Z - 0.27]} scale={0.72}>
-        <SpeedLoader position={[0, 0.682, 0]} rotation={[0, 0.2, 0]} />
-      </group>
+      <FlatProp
+        url={PROPS.loader}
+        look={{ color: "#8a7040", roughness: 0.45, metalness: 0.6 }}
+        length={0.2}
+        position={[0.72, 0.682, TABLE_Z - 0.27]}
+        rotation={[0, 0.24, 0]}
+      />
       <Magnifier
         position={[0.62, 0.692, TABLE_Z - 0.06]}
         rotation={[-Math.PI / 2, 0, -0.2]}
       />
-      <AmmoBox position={[0.6, 0.7145, TABLE_Z + 0.19]} rotation={[0, -0.3, 0]} />
+      <FlatProp
+        url={PROPS.case}
+        look={{ color: "#4a3222", roughness: 0.85, metalness: 0.05 }}
+        length={0.17}
+        position={[0.6, 0.682, TABLE_Z + 0.19]}
+        rotation={[0, -0.3, 0]}
+      />
 
       {shells.map((s, i) => (
         <Shell key={i} position={s.p} rotation={s.r} live={s.live} />
@@ -1476,3 +1456,7 @@ export default function DuelRoom3D(props: DuelRoom3DProps) {
     </div>
   );
 }
+
+useGLTF.preload(PROPS.revolver);
+useGLTF.preload(PROPS.loader);
+useGLTF.preload(PROPS.case);
