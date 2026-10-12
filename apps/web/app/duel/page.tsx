@@ -435,15 +435,20 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
     prevGunHeldRef.current = gunHeld;
   }, [gunHeld, play]);
 
-  // ── Turn change banner + auto-pickup gun on your turn ─────────────────────
+  // ── Turn change banner ────────────────────────────────────────────────────
   useEffect(() => {
     if (prevTurnRef.current === null) { prevTurnRef.current = turnIsYours; return; }
     if (prevTurnRef.current === turnIsYours) return;
     prevTurnRef.current = turnIsYours;
     setShowTurnBanner(true);
     setTimeout(() => setShowTurnBanner(false), 2200);
-    // Pick up the gun automatically when it becomes your turn,
-    // put it back on the table when it doesn't.
+  }, [turnIsYours]);
+
+  // ── The piece comes off the baize for as long as the turn is yours ────────
+  // Derived from the turn itself, not from the turn changing: a match opened
+  // on your own turn never sees an edge, so hanging the pickup off the edge
+  // left the piece sitting on the table on the first turn of every match.
+  useEffect(() => {
     setGunHeld(turnIsYours);
   }, [turnIsYours]);
 
