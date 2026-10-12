@@ -110,112 +110,17 @@ export default function DuelBoard2D({
       className="pointer-events-none absolute inset-0 z-[5] select-none overflow-hidden"
       style={{ perspective: "1100px" }}
     >
-      {/* Room backdrop */}
+            {/* Painted scene base — table, room and light in one composition */}
       <div
         className="absolute inset-0"
         style={{
-          background:
-            "radial-gradient(ellipse at 50% 38%, rgba(96, 44, 16, 0.52) 0%, rgba(26, 12, 6, 0.94) 54%, #050302 100%)",
-        }}
-      />
-      {/* Back wall — a dim seam so the room has a far side */}
-      <div className="absolute inset-x-0 top-[34%] h-px bg-[#3a2414]/25" />
-
-      {/* Hanging bulb */}
-      <div className="absolute left-1/2 top-0 -translate-x-1/2">
-        <div className="flex flex-col items-center">
-          <div className="h-7 w-px bg-[#0a0604]" />
-          <div
-            className="h-3 w-3 rounded-full animate-[rolet-cone-flicker_4.2s_ease-in-out_infinite]"
-            style={{
-              background: "#ffdfb0",
-              boxShadow:
-                "0 0 24px 6px rgba(255,176,96,0.6), 0 0 70px 22px rgba(255,140,60,0.24)",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Light cone — from the bulb down onto the table */}
-      <div
-        className="absolute left-1/2 top-[32px] h-[62vh] w-[min(760px,94vw)] animate-[rolet-cone-flicker_4.2s_ease-in-out_infinite]"
-        style={{ transform: "translateX(-50%) translateZ(-80px)" }}
-      >
-        <div
-          className="h-full w-full blur-[6px]"
-          style={{
-            clipPath: "polygon(49.4% 0%, 50.6% 0%, 94% 100%, 6% 100%)",
-            background:
-              "linear-gradient(180deg, rgba(255,184,77,0.20) 0%, rgba(255,150,60,0.07) 52%, rgba(255,150,60,0) 100%)",
-            mixBlendMode: "screen",
-          }}
-        />
-        {/* Dust motes drifting through the light */}
-        <div className="absolute inset-0">
-          {MOTES.map((m, i) => (
-            <span
-              key={i}
-              className="absolute rounded-full"
-              style={{
-                left: m.left,
-                top: m.top,
-                width: m.size,
-                height: m.size,
-                background: "#ffd9a3",
-                opacity: 0.5,
-                filter: "blur(0.5px)",
-                animation: `rolet-mote ${m.dur} linear ${m.delay} infinite`,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Floor shadow under the table */}
-      <div
-        className="absolute left-1/2 top-[56%] h-[6%] w-[min(820px,90vw)] rounded-[50%]"
-        style={{
-          transform: "translateX(-50%) translateZ(-40px)",
-          background: "radial-gradient(ellipse, rgba(0,0,0,0.6), transparent 70%)",
+          backgroundImage: "url(/art/duel/scene-base.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center 42%",
         }}
       />
 
-      {/* Laser to opponent — only while armed and aiming across */}
-      {armed && !aimAtSelf && (
-        <div
-          className="absolute left-1/2 top-[32%] h-[8%] w-[2px] animate-[rolet-laser_0.9s_ease-in-out_infinite]"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(255,70,40,0.15), rgba(255,70,40,0.85))",
-            boxShadow: "0 0 14px rgba(255,60,30,0.5)",
-            transform: "translateX(-50%) translateZ(-60px)",
-          }}
-        />
-      )}
-
-      {/* Laser to self + red warning vignette */}
-      {armed && aimAtSelf && (
-        <>
-          <div
-            className="absolute left-1/2 top-[50%] h-[30vh] w-[2px] animate-[rolet-laser_0.8s_ease-in-out_infinite]"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(255,70,40,0.85), rgba(255,70,40,0))",
-              boxShadow: "0 0 14px rgba(255,60,30,0.6)",
-              transform: "translateX(-50%) translateZ(-60px)",
-            }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse at 50% 100%, rgba(200,20,10,0.3) 0%, transparent 60%)",
-            }}
-          />
-        </>
-      )}
-
-      {/* Opponent — across the table, further back in Z */}
+{/* Opponent — across the table, further back in Z */}
       <div className="absolute left-1/2 top-[24%] -translate-x-1/2">
         <div
           className="relative"
@@ -269,10 +174,9 @@ export default function DuelBoard2D({
           <div
             className="relative h-[340px] w-[min(760px,86vw)] rounded-[50%]"
             style={{
-              background: "#4a2c17",
-              border: "3px solid #1a0d05",
-              boxShadow:
-                "0 14px 0 rgba(0,0,0,0.55), 0 18px 0 rgba(0,0,0,0.28), inset 0 0 0 3px #8a703f",
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
             }}
           >
             {/* Brass rail line */}
@@ -282,18 +186,11 @@ export default function DuelBoard2D({
             <div
               className="absolute inset-[18px] overflow-hidden rounded-[50%]"
               style={{
-                background: "#2a1c12",
-                backgroundImage: "url(/art/duel/bench-grain.png)",
-                backgroundSize: "190px 190px",
-                backgroundPosition: "center",
-                boxShadow: "inset 0 0 0 2px #140d08",
+                background: "transparent",
+                boxShadow: "none",
               }}
             >
-              {/* Grain */}
-              <div
-                className="absolute inset-0 opacity-[0.22] mix-blend-overlay"
-                style={{ filter: "url(#rolet-noise)" }}
-              />
+              
               <div
                 className="absolute inset-0 opacity-[0.10]"
                 style={{
@@ -309,8 +206,7 @@ export default function DuelBoard2D({
                     "radial-gradient(ellipse, rgba(255,205,130,0.26) 0%, rgba(255,190,110,0.16) 60%, rgba(255,190,110,0.06) 78%, transparent 82%)",
                 }}
               />
-              {/* Felt stamp — printer's mark on the baize */}
-              <FeltStamp />
+              
 
               {/* Shells on the baize — live glow, blank steel */}
               <div className="absolute bottom-[34%] left-[16%] flex items-center gap-[6px]">
