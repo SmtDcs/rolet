@@ -640,7 +640,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
         </div>
       </div>
 
-      <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-rows-[auto_1fr_auto] gap-1.5 px-6 pt-16 pb-2 overflow-hidden lg:pt-12">
+      <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-rows-[auto_1fr_auto] gap-2 px-6 pt-16 pb-3 overflow-hidden lg:pt-12">
         {/* OPPONENT HUD ONLY (HP bar + status) — 3D shows through behind */}
         <section className="relative flex justify-center pt-1">
           <OpponentHud hp={opponentHp} maxHp={4} />
@@ -772,7 +772,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
           </div>
 
           {/* Compact 1-line log */}
-          <div className="flex items-center justify-between px-1 py-0.5">
+          <div className="flex items-center justify-between px-1 pb-1 pt-2">
             <div className="truncate font-mono text-[10px] leading-none tracking-wide text-[var(--color-phosphor-faint)]">
               {log[0]}
             </div>

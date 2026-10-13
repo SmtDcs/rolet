@@ -88,7 +88,7 @@ export default function LeaderboardPage() {
 
       <div className="relative mx-auto flex min-h-screen max-w-4xl flex-col items-center px-4 py-28">
         <span className="text-[10px] tracking-[0.6em] text-zinc-600 mb-4">
-          // PROTOCOL_ID 0x0C — KILL REGISTRY
+          // PROTOCOL_ID 0x0C — MATCH REGISTRY
         </span>
 
         <h1

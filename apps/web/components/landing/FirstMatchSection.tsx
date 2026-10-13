@@ -14,7 +14,7 @@ const STEPS = [
   {
     index: "02",
     title: "Take a character",
-    body: "One Metaplex Core asset — free on devnet, 0.1 SOL at launch — good for ten matches. Durability burns one per match.",
+    body: "One Metaplex Core asset. Free on devnet, 0.1 SOL at launch. Good for ten matches, one burned per lobby.",
   },
   {
     index: "03",
@@ -49,7 +49,7 @@ export function FirstMatchSection() {
           ))}
         </ol>
 
-        <div className="mt-8 flex flex-wrap gap-px bg-[var(--color-line)]">
+        <div className="mt-8 flex w-fit flex-wrap gap-px bg-[var(--color-line)]">
           <Link href="/profile" className="btn bg-[var(--color-void)]">
             Take a character
           </Link>

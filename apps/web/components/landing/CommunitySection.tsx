@@ -31,7 +31,7 @@ export function CommunitySection() {
               There is no hidden server state and no private scoreboard. Bring a
               wallet, take a seat.
             </p>
-            <div className="mt-8 flex flex-wrap gap-px bg-[var(--color-line)]">
+            <div className="mt-8 flex w-fit flex-wrap gap-px bg-[var(--color-line)]">
               <Link href="/duel" className="btn btn-primary bg-[var(--color-void)]">
                 Enter the duel
               </Link>
