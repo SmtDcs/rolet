@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ROLET — pitch</title>
+<style>
+  :root {
+    --void: #080706;
+    --surface: #0f0d0b;
+    --line: #262019;
+    --phosphor: #ece5d8;
+    --dim: #9a917f;
+    --faint: #5e5749;
+    --brass: #c6a15b;
+    --brass-dim: #8a6f3c;
+    --alert: #e61919;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: "Helvetica Neue", Inter, system-ui, sans-serif;
+    --display: "Arial Narrow", "Helvetica Neue", Impact, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--void);
+    color: var(--phosphor);
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+  /* the same blueprint grid and grain the app paints on its dark ground */
+  .ground {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(to right, rgba(198,161,91,0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(198,161,91,0.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse at 50% 40%, #000 20%, transparent 85%);
+  }
+  .grain {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0.035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+  .deck { position: relative; z-index: 2; height: 100%; }
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    padding: clamp(28px, 5vw, 80px);
+    flex-direction: column;
+    justify-content: center;
+  }
+  .slide.on { display: flex; }
+  .label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.42em;
+    text-transform: uppercase; color: var(--brass);
+  }
+  .kicker {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.42em;
+    text-transform: uppercase; color: var(--faint); margin-bottom: 18px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 700; letter-spacing: 0.02em;
+    font-size: clamp(48px, 11vw, 150px); line-height: 0.9; text-transform: uppercase;
+  }
+  h2 {
+    font-family: var(--display); font-weight: 700; letter-spacing: 0.01em;
+    font-size: clamp(32px, 5.4vw, 76px); line-height: 0.98; text-transform: uppercase;
+    max-width: 22ch;
+  }
+  h3 { font-family: var(--mono); font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--brass); margin-bottom: 12px; }
+  p { font-size: clamp(15px, 1.55vw, 21px); line-height: 1.6; color: var(--dim); max-width: 68ch; }
+  strong { color: var(--phosphor); font-weight: 600; }
+  em { color: var(--brass); font-style: normal; }
+  ul { list-style: none; margin-top: clamp(20px, 3vw, 40px); display: grid; gap: 14px; max-width: 74ch; }
+  li {
+    position: relative; padding-left: 28px;
+    font-size: clamp(15px, 1.5vw, 20px); line-height: 1.5; color: var(--dim);
+  }
+  li::before {
+    content: ""; position: absolute; left: 0; top: 0.62em;
+    width: 12px; height: 1px; background: var(--brass-dim);
+  }
+  li strong { color: var(--phosphor); }
+  .rule { height: 1px; background: var(--line); margin: clamp(18px, 2.5vw, 34px) 0; max-width: 74ch; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 4vw, 64px); margin-top: clamp(18px, 2.5vw, 32px); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); margin-top: clamp(22px, 3vw, 40px); max-width: 90ch; }
+  .stat { background: var(--surface); padding: clamp(14px, 1.7vw, 22px); }
+  .stat .k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.3em; color: var(--faint); text-transform: uppercase; }
+  .stat .v { font-family: var(--mono); font-size: clamp(22px, 2.6vw, 38px); color: var(--phosphor); margin-top: 10px; }
+  .stat .n { font-size: 12px; color: var(--faint); margin-top: 6px; }
+
+  /* the architecture, drawn rather than rendered */
+  .arch { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); margin-top: clamp(18px, 2.4vw, 30px); }
+  .arch .box { background: var(--surface); padding: 18px 20px; }
+  .arch .box h4 { font-family: var(--mono); font-size: 10px; letter-spacing: 0.3em; color: var(--brass); text-transform: uppercase; margin-bottom: 10px; }
+  .arch .box span { display: block; font-family: var(--mono); font-size: 13px; color: var(--dim); line-height: 1.9; }
+  .arch .box span b { color: var(--phosphor); font-weight: 500; }
+  .flow { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+  .flow i { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--brass-dim); }
+  .flow span { font-family: var(--mono); font-size: 12px; color: var(--dim); border: 1px solid var(--line); padding: 6px 10px; }
+
+  .hook { border-left: 1px solid var(--brass-dim); padding-left: clamp(18px, 2.5vw, 34px); max-width: 60ch; }
+  .hook p { font-size: clamp(19px, 2.3vw, 34px); line-height: 1.35; color: var(--phosphor); font-weight: 300; }
+  .cta { margin-top: clamp(22px, 3vw, 40px); border-top: 1px solid var(--line); padding-top: clamp(18px, 2.4vw, 30px); max-width: 60ch; }
+  .cta p { font-family: var(--display); font-size: clamp(22px, 3vw, 46px); line-height: 1.1; color: var(--brass); text-transform: uppercase; }
+
+  .hud {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px clamp(28px, 5vw, 80px);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--faint);
+  }
+  .hud .mark { color: var(--phosphor); letter-spacing: 0.36em; }
+  .hud .spacer { flex: 1; }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 22px; height: 2px; background: var(--line); display: block; }
+  .dots i.on { background: var(--brass); }
+  .nav { position: fixed; inset: 0; z-index: 4; cursor: pointer; }
+  .nav .hot { position: absolute; top: 0; bottom: 0; width: 22%; }
+  .nav .hot.l { left: 0; }
+  .nav .hot.r { right: 0; }
+  @media (max-width: 760px) {
+    .cols, .stats, .arch { grid-template-columns: 1fr; }
+    .slide { padding: 24px; justify-content: flex-start; padding-top: 56px; }
+  }
+  @media print {
+    body { overflow: visible; background: #080706; }
+    .ground, .grain, .hud, .nav { display: none; }
+    .slide { display: flex !important; position: static; page-break-after: always; height: 100vh; }
+  }
+</style>
+</head>
+<body>
+<div class="ground"></div>
+<div class="grain"></div>
+<div class="nav" id="nav"><div class="hot l" data-dir="-1"></div><div class="hot r" data-dir="1"></div></div>
+
+<div class="deck" id="deck">
+
+  <section class="slide on">
+    <div class="kicker">The bench · devnet</div>
+    <h1>Rolet</h1>
+    <p style="margin-top:24px;max-width:52ch">
+      Two wallets, one revolver, eight chambers, twelve cards.<br />
+      Turn-based, fully on-chain, settled in SOL.
+    </p>
+    <div class="stats" style="margin-top:40px">
+      <div class="stat"><div class="k">Delegated accounts</div><div class="v">1</div><div class="n">MatchState, on the rollup</div></div>
+      <div class="stat"><div class="k">Wallet prompts</div><div class="v">1</div><div class="n">per player per match</div></div>
+      <div class="stat"><div class="k">Reward</div><div class="v">0.02</div><div class="n">SOL, fixed, from treasury</div></div>
+      <div class="stat"><div class="k">Unit tests</div><div class="v">36</div><div class="n">pure rules, all passing</div></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">01 — the problem</div>
+    <h2>Web3 games are slot machines with a wallet</h2>
+    <div class="rule"></div>
+    <ul>
+      <li>Play-to-earn died because the fun was never real — <strong>the draw was the token</strong>, not the game</li>
+      <li>And when the draw <em>is</em> the draw — loot boxes, gacha, spin-to-win — <strong>skill has nowhere to sit</strong></li>
+      <li>Players can feel the difference between a game that rewards them and a game that harvests them</li>
+    </ul>
+    <div class="hook" style="margin-top:34px">
+      <p>“I wanted the opposite: a game where the money is real and the outcome is yours.”</p>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">02 — the game</div>
+    <h2>Read the table, or pull the trigger</h2>
+    <div class="rule"></div>
+    <div class="cols">
+      <div>
+        <h3>The chamber</h3>
+        <ul style="margin-top:0">
+          <li><strong>8 chambers</strong> — 5 live, 3 blank</li>
+          <li><strong>4 lives</strong> each; first to zero loses</li>
+          <li><strong>4 cards in hand</strong>, drawn from 12</li>
+        </ul>
+      </div>
+      <div>
+        <h3>The guarantee</h3>
+        <ul style="margin-top:0">
+          <li><strong>Commit-reveal</strong>: your secret is hashed before the deal</li>
+          <li><strong>Seed from a future Solana slot</strong> — nobody, including us, can grind it</li>
+          <li>The chambers are hidden, <em>provably</em></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">03 — live</div>
+    <h2>One prompt, then the whole match</h2>
+    <div class="rule"></div>
+    <ul>
+      <li><strong>Take a character</strong> — a Metaplex Core asset, free on devnet, ten matches of durability</li>
+      <li><strong>Open a bench</strong> — the queue introduces two wallets</li>
+      <li><strong>Approve once</strong> — a session key funds and registers itself; lobby, reveal, launch, every turn and the payout all sign with it</li>
+      <li><strong>Play</strong> — pull the trigger, or play <em>HawkEye</em> and see the next chamber before you commit</li>
+      <li><strong>Settle</strong> — 0.02 SOL from the program's treasury PDA to the winner</li>
+    </ul>
+    <p style="margin-top:30px">Live: <strong>web-production-40a6c.up.railway.app</strong></p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">04 — how it runs</div>
+    <h2>The hot path leaves L1. The money never does.</h2>
+    <div class="arch">
+      <div class="box">
+        <h4>Solana L1 · devnet</h4>
+        <span><b>LobbyState</b> — commit, seat, reveal</span>
+        <span><b>GameVault</b> + SOL treasury</span>
+        <span><b>PlayerProfile</b> — identity, durability</span>
+      </div>
+      <div class="box">
+        <h4>MagicBlock ephemeral rollup · EU</h4>
+        <span><b>MatchState</b> — delegated, and only this</span>
+        <span>every turn settles here, sub-second</span>
+      </div>
+    </div>
+    <div class="flow">
+      <span>1 prompt</span><i>→</i><span>fund + register session key</span><i>→</i><span>open · join</span><i>→</i><span>reveal</span><i>→</i><span>seed</span><i>→</i><span>delegate</span><i>→</i><span>turns</span><i>→</i><span>commit + undelegate</span><i>→</i><span>settle</span>
+    </div>
+    <p style="margin-top:26px">Anchor 1.0.2 · Solana 3.1.9 · ephemeral-rollups-sdk 0.17.3 · Next.js 16 · React 19 · Metaplex Core</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">05 — the economy</div>
+    <h2>An economy that cannot inflate away</h2>
+    <div class="rule"></div>
+    <ul>
+      <li><strong>No token.</strong> Rewards are paid in SOL from a program-owned treasury PDA</li>
+      <li><strong>A fixed reward</strong> — 0.02 SOL per match, the same whether the pot is rich or empty</li>
+      <li><strong>Sinks are the game,</strong> not a decay curve: a character carries ten matches of durability and every bench spends one</li>
+      <li>The treasury pays out <em>what players put in</em> — nothing is minted to pay a winner</li>
+    </ul>
+    <div class="stats" style="margin-top:30px">
+      <div class="stat"><div class="k">Characters minted</div><div class="v">4</div><div class="n">Core assets on devnet</div></div>
+      <div class="stat"><div class="k">Benches</div><div class="v">6</div><div class="n">lobby accounts</div></div>
+      <div class="stat"><div class="k">Treasury</div><div class="v">0.420</div><div class="n">SOL, program-owned</div></div>
+      <div class="stat"><div class="k">Paid out</div><div class="v">0.12</div><div class="n">SOL across 6 matches</div></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">06 — what is real</div>
+    <h2>What works, and what does not</h2>
+    <div class="rule"></div>
+    <div class="cols">
+      <div>
+        <h3>Verified on devnet</h3>
+        <ul style="margin-top:0">
+          <li>A full match end to end: lobby, reveal, launch, turns on the rollup, settlement</li>
+          <li>36 unit tests over the pure rules</li>
+          <li>One prompt per player per match, from a scripted two-wallet run</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Not finished — and we say so first</h3>
+        <ul style="margin-top:0">
+          <li>The queue is a single in-memory process</li>
+          <li><code>claim_timeout</code> cannot run while a match is delegated</li>
+          <li>Character ownership is self-attested at mint</li>
+          <li>Devnet only</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">07 — next</div>
+    <h2>Where this goes</h2>
+    <div class="rule"></div>
+    <ul>
+      <li><strong>Next:</strong> mainnet, one queue store, a program-signed character mint, a timeout path that works on the rollup</li>
+      <li><strong>Then:</strong> ranked seasons and a spectator view — the cards already make this a game people will watch</li>
+      <li><strong>The bet:</strong> web2 proved a tight turn-based duel can hold millions of players. Nobody has moved that genre on-chain with the money handled honestly</li>
+    </ul>
+    <div class="cta">
+      <p>You do not have to trust our dice. You can read them.</p>
+    </div>
+  </section>
+
+</div>
+
+<div class="hud">
+  <span class="mark">ROLET</span>
+  <span>devnet</span>
+  <span class="spacer"></span>
+  <span class="dots" id="dots"></span>
+  <span id="count">01 / 08</span>
+  <span>← →</span>
+</div>
+
+<script>
+  const slides = [...document.querySelectorAll(".slide")];
+  const dots = document.getElementById("dots");
+  const count = document.getElementById("count");
+  let i = 0;
+
+  slides.forEach(() => dots.appendChild(document.createElement("i")));
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle("on", k === i));
+    [...dots.children].forEach((d, k) => d.classList.toggle("on", k === i));
+    count.textContent = String(i + 1).padStart(2, "0") + " / " + String(slides.length).padStart(2, "0");
+    location.hash = String(i + 1);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (["ArrowRight", " ", "PageDown", "Enter"].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    if (e.key === "Home") show(0);
+    if (e.key === "End") show(slides.length - 1);
+  });
+
+  document.getElementById("nav").addEventListener("click", (e) => {
+    show(i + Number(e.target.dataset.dir || 1));
+  });
+
+  // Deep links: a URL can point at a single slide, and the back button works.
+  window.addEventListener("hashchange", () => {
+    const n = Number((location.hash || "").replace("#", ""));
+    if (Number.isFinite(n) && n > 0 && n - 1 !== i) show(n - 1);
+  });
+
+  const fromHash = Number((location.hash || "").replace("#", ""));
+  show(Number.isFinite(fromHash) && fromHash > 0 ? fromHash - 1 : 0);
+</script>
+</body>
+</html>
