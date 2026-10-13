@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const LINES = [
-  { label: "Character", value: "0.1 SOL", note: "Ten matches of durability. Burns one per match." },
+  { label: "Character", value: "Free on devnet", note: "Ten matches of durability. Burns one per match." },
   { label: "Match reward", value: "0.02 SOL", note: "Paid from the treasury to the winner." },
   { label: "Purchase split", value: "5 / 95", note: "Five to operations, ninety-five to the reward pool." },
 ];

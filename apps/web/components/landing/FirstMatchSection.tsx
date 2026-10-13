@@ -14,7 +14,7 @@ const STEPS = [
   {
     index: "02",
     title: "Take a character",
-    body: "One Metaplex Core asset, 0.1 SOL, good for ten matches. Durability burns one per match.",
+    body: "One Metaplex Core asset — free on devnet, 0.1 SOL at launch — good for ten matches. Durability burns one per match.",
   },
   {
     index: "03",
