@@ -26,6 +26,7 @@ import {
   LobbyWallet,
 } from "@/components/duel/WorkshopLobby";
 import { useSound } from "@/hooks/useSound";
+import { SceneBoundary } from "@/components/ui/SceneBoundary";
 import { Volume2, VolumeX } from "lucide-react";
 
 const DuelRoom3D = dynamic(() => import("@/components/DuelRoom3D"), { ssr: false });
@@ -467,25 +468,29 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
       className="fixed inset-0 overflow-hidden"
       style={{ width: "100vw", height: "100vh" }}
     >
-      {/* The chamber room. Flat-shaded geometry behind a dither pass;
-          it covers the viewport and the HUD layers sit on top of it. */}
-      <DuelRoom3D
-        isYourTurn={turnIsYours}
-        gunHeld={gunHeld}
-        target={target}
-        firing={firing}
-        opponentPubkey={
-          decoded && youKey
-            ? youKey === decoded.playerOne
-              ? decoded.playerTwo
-              : decoded.playerOne
-            : ""
-        }
-        opponentHp={opponentHp}
-        opponentHitSignal={opponentHitSignal}
-        liveCount={decoded?.liveCount ?? 0}
-        blankCount={decoded?.blankCount ?? 0}
-      />
+      {/* The chamber room. Flat-shaded geometry behind a dither pass; it
+          covers the viewport and the HUD layers sit on top of it. If WebGL
+          dies, the boundary swaps in the room's own dark ground so the match
+          stays playable instead of falling to the error page. */}
+      <SceneBoundary>
+        <DuelRoom3D
+          isYourTurn={turnIsYours}
+          gunHeld={gunHeld}
+          target={target}
+          firing={firing}
+          opponentPubkey={
+            decoded && youKey
+              ? youKey === decoded.playerOne
+                ? decoded.playerTwo
+                : decoded.playerOne
+              : ""
+          }
+          opponentHp={opponentHp}
+          opponentHitSignal={opponentHitSignal}
+          liveCount={decoded?.liveCount ?? 0}
+          blankCount={decoded?.blankCount ?? 0}
+        />
+      </SceneBoundary>
 
       {/* Hit flash overlay (red, when player takes damage) */}
       <AnimatePresence>

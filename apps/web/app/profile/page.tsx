@@ -68,8 +68,9 @@ export default function ProfilePage() {
 
     setLoading(true);
     try {
-      // SNS verification — optional. If domain doesn't exist or isn't owned
-      // by this wallet, warn but allow enrollment anyway for the hackathon demo.
+      // SNS verification is a courtesy check against mainnet. A handle that
+      // cannot be verified is still accepted; the profile records it as
+      // unverified rather than blocking enrollment.
       try {
         const mainnetConn = new Connection("https://api.mainnet-beta.solana.com");
         const owner = await resolve(mainnetConn, cleanDomain);
@@ -82,17 +83,20 @@ export default function ProfilePage() {
         emitToast("info", `Could not verify ${cleanDomain} on mainnet — enrolling with unverified handle`);
       }
 
-      // Mint + paid purchase (purchase_character charges the vault price
-      // and splits it 70/30 inside the program) in one transaction.
+      // The vault decides the path. A priced character goes through
+      // purchase_character, which charges and splits inside the program; at
+      // price zero that instruction rejects the call outright, so enrollment
+      // takes set_character_nft instead. Same asset, same profile link.
       const umi = createRoletUmi(wallet as never);
       const vault = await rolet.fetchVault();
+      const price = Number(vault?.characterPriceSol ?? 0);
       const { tx } = await mintCharacterAsset({
         umi,
         buyer: wallet.publicKey,
         programId: ROLET_PROGRAM_ID,
         snsDomain: cleanDomain,
         durabilityMax: CHARACTER_DURABILITY,
-        paid: true,
+        paid: price > 0,
         opsWallet: vault?.opsWallet,
       });
       const conn = new Connection(
@@ -120,9 +124,10 @@ export default function ProfilePage() {
           return;
         }
       }
-      // If we got here, the profile never showed up — surface a hint.
-      // eslint-disable-next-line no-console
-      console.warn("[rolet] profile not found after 8s — check tx logs");
+      emitToast(
+        "error",
+        "The transaction landed but the profile did not appear. Reload in a moment.",
+      );
     } finally {
       setLoading(false);
     }
@@ -228,7 +233,7 @@ function SetupForm({
         value={snsDomain}
         onChange={(e) => onChange(e.target.value.slice(0, 32))}
         maxLength={32}
-        placeholder="arda.sol"
+        placeholder="yourname.sol"
         className="w-full bg-black border border-rust/60 px-3 py-2 text-zinc-200 tracking-[0.2em] text-sm focus:outline-none focus:border-red-600"
       />
       <div className="mt-1 text-[9px] tracking-[0.3em] text-zinc-700">

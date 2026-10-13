@@ -1,0 +1,17 @@
+{
+  "name": "ROLET — Chamber Seat",
+  "symbol": "ROLET",
+  "description": "A seat at the chamber table. Carries a player profile and ten matches of durability; one burns per lobby opened or joined, and a lobby closed before launch refunds it. Fully on-chain 1v1 on Solana: no server holds your chamber, your hand or the result.",
+  "image": "/character/seat.webp",
+  "external_url": "/duel",
+  "attributes": [
+    { "trait_type": "Game", "value": "ROLET" },
+    { "trait_type": "Network", "value": "Solana devnet" },
+    { "trait_type": "Durability", "value": 10, "max_value": 10 },
+    { "trait_type": "Fuel", "value": "1 match per lobby" }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [{ "uri": "/character/seat.webp", "type": "image/webp" }]
+  }
+}

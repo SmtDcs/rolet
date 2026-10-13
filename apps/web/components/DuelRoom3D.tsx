@@ -1452,8 +1452,17 @@ export default function DuelRoom3D(props: DuelRoom3DProps) {
       <Canvas
         shadows
         dpr={1}
-        gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
+        // No powerPreference here on purpose: asking for the discrete GPU gets
+        // the context dropped outright on a machine that only exposes a shared
+        // one, and the whole screen then falls to the error boundary.
+        gl={{ antialias: false, alpha: false }}
         camera={{ position: CAM }}
+        fallback={
+          // Without WebGL the table cannot be drawn. The match still has to be
+          // playable, so the room is replaced by its own dark ground and the
+          // interface carries on above it.
+          <div className="absolute inset-0 bg-[#050404]" />
+        }
       >
         <LookAt position={CAM} target={CAM_AIM} baseFov={CAM_FOV} />
         <Scene {...scene} />

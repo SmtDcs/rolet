@@ -12,16 +12,24 @@ import {
 } from "@metaplex-foundation/umi-web3js-adapters";
 import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
 
-const DEFAULT_METADATA_URI =
-  "https://arweave.net/PLACEHOLDER_ROLET_CHARACTER_METADATA.json";
+/**
+ * The asset's metadata has to be reachable by wallets and explorers, so it is
+ * served from this app rather than written inline. Resolving it against the
+ * page's own origin keeps devnet, a preview deploy and production honest.
+ */
+function defaultMetadataUri(): string {
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return `${origin}/character/metadata.json`;
+}
 
 /**
  * Mints a ROLET character as a Metaplex Core asset whose update authority is
  * the ROLET program ID, and bundles the profile-linking instruction into the
  * SAME transaction:
  *   - paid path (default): purchase_character — charges the vault price and
- *     splits it 70/30 between treasury and ops inside the program.
- *   - free path (paid=false): set_character_nft — used for demos/tests only.
+ *     splits it inside the program (95% treasury, 5% ops).
+ *   - free path (paid=false): set_character_nft. The program rejects a priced
+ *     purchase at price zero, so an unpriced character enrols this way.
  *
  * The Core asset account is signed by the generated keypair via partialSign;
  * the returned transaction still needs the buyer wallet's signature.
@@ -37,7 +45,7 @@ export async function mintCharacterAsset(opts: {
   opsWallet?: PublicKey;
 }): Promise<{ mint: PublicKey; tx: Transaction }> {
   const { umi, buyer, programId, snsDomain, durabilityMax } = opts;
-  const metadataUri = opts.metadataUri ?? DEFAULT_METADATA_URI;
+  const metadataUri = opts.metadataUri ?? defaultMetadataUri();
   const paid = opts.paid ?? true;
 
   const assetSigner = generateSigner(umi);
@@ -46,7 +54,7 @@ export async function mintCharacterAsset(opts: {
 
   const builder = createV1(umi, {
     asset: assetSigner,
-    name: `ROLET Character #${Date.now().toString(36)}`,
+    name: `ROLET · ${snsDomain}`,
     uri: metadataUri,
     owner: buyerUmi,
     updateAuthority: programUmi,

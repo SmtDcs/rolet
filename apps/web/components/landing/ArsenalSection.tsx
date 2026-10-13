@@ -49,7 +49,7 @@ export function ArsenalSection() {
                   src={`/art/landing/card-${card.id}-hd.webp`}
                   alt={`${card.name} card`}
                   fill
-                  quality={88}
+                  quality={90}
                   sizes="(max-width: 640px) 90vw, 320px"
                   className="object-contain"
                 />

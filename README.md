@@ -38,7 +38,7 @@ Chambers, cards, hits and payouts are Solana instructions and account state. The
 ```
 Player A                                Player B
 ────────                                ────────
-/profile  → buy a character (0.1 SOL)   /profile  → buy a character (0.1 SOL)
+/profile  → take a character           /profile  → take a character
 /duel     → FIND MATCH                  /duel     → FIND MATCH
   └─ each wallet signs one queue message
   └─ the server names one of them host
@@ -133,7 +133,7 @@ Why the rollup: turns are the hot path. Delegating `MatchState` puts them on a s
 
 | Parameter | Value |
 |---|---|
-| Character price | 0.1 SOL, 10 durability; each match burns 1 |
+| Character price | free on devnet (0.1 SOL at launch); 10 durability, each match burns 1 |
 | Purchase split | 5% ops wallet / 95% treasury |
 | Match reward | fixed 0.02 SOL from the treasury PDA |
 | Session funding | 0.02 SOL moved from the wallet into the session key, returned at the end |
@@ -177,7 +177,7 @@ cd apps/web
 pnpm build && pnpm start --port 3001
 ```
 
-Open `http://localhost:3001`, set the wallet to **Devnet**, and buy a character at `/profile` before your first match.
+Open `http://localhost:3001`, set the wallet to **Devnet**, and take a character at `/profile` before your first match. Devnet characters are free; the vault price is what gates them at launch.
 
 Both players need a character and some devnet SOL. The queue lives in one Node process, so run a single instance — it will not work behind a platform that spreads requests across isolates.
 
@@ -217,12 +217,14 @@ rolet/
 │       ├── app/                          # routes: /, /duel, /profile, /leaderboard
 │       ├── app/api/rpc/route.ts          # RPC proxy, rate limited per IP
 │       ├── app/api/matchmaking/route.ts  # the in-memory queue
-│       ├── components/                   # duel bench, landing scroll, nav
+│       ├── components/DuelRoom3D.tsx     # the chamber room: geometry, lights, display pass
+│       ├── components/                   # landing sections, duel HUD, nav
+│       ├── public/character/             # Core metadata + seat image
+│       ├── public/sounds/                # match cues
 │       ├── hooks/useRolet.ts             # Anchor client, session keys, all game calls
 │       ├── lib/chainPace.ts              # pure rules (seat, launch gate, turns, limits)
 │       ├── lib/chainPace.test.ts         # node:test unit suite
 │       └── idl/rolet.json                # IDL the client loads
-├── docs/design/                          # landing and art direction
 ├── Dockerfile                            # single-replica image for Railway
 └── railway.json                          # deploy config
 ```
@@ -239,6 +241,12 @@ cd apps/web
 ```
 
 Covered: queue states, seat decisions, reveal gating, launch readiness, session funding and sweeping, RPC backoff, payout protection against a fresh match, and the rollup routing decision.
+
+---
+
+## Rendering
+
+The duel is not a picture of a table. `DuelRoom3D.tsx` builds the room from flat-shaded primitives behind two barn-door reflectors, renders it into a 0.72× buffer, and passes the result through one display shader: ordered Bayer dither, posterise to seven levels, grain, vignette and a two-tone grade that lifts the shadows cold and leaves the highlights brass. Nothing in the room carries a photo texture on purpose — the banding and the grain are added, so surfaces cannot go mushy the way generated maps do.
 
 ---
 
@@ -259,6 +267,7 @@ MIT
 
 ## Asset Credits
 
-- **Character & card art** — paper-card workshop assets made for this project.
-- **Table, revolver, lantern, bullet models** — Quaternius (CC0).
+- **Revolver, speed loader, cartridge case** — meshes generated with Meshy AI, retopologised to ~20k triangles each and rendered untextured: the look's grain comes from the display pass, not from maps.
+- **The chamber room** — geometry written in `DuelRoom3D.tsx`: table, rails, reflector lamps, the operator's housing, and the marks painted on the baize.
+- **Seat image** — made for this project.
 - **Sound effects** — CC0/free-license sources bundled in `public/sounds/`.

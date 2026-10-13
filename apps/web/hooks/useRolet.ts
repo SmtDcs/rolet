@@ -100,10 +100,6 @@ const toastListeners = new Set<(t: Toast) => void>();
 export function emitToast(level: Toast["level"], message: string) {
   const t: Toast = { id: ++toastSeq, level, message };
   toastListeners.forEach((l) => l(t));
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line no-console
-    console.log(`[rolet:${level}] ${message}`);
-  }
 }
 
 export function useToasts() {
