@@ -51,6 +51,7 @@ function Sketch() {
       liveCount={num(q.get("live"), 5, 5)}
       blankCount={num(q.get("blank"), 3, 3)}
       raw={raw}
+      restYaw={q.get("yaw") === null ? undefined : Number(q.get("yaw"))}
     />
   );
 }

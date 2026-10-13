@@ -29,6 +29,8 @@ export type DuelRoom3DProps = {
   blankCount: number;
   /** Bypass the display grade. Tuning aid only. */
   raw?: boolean;
+  /** Forces the resting muzzle yaw, in radians. Tuning aid only. */
+  restYaw?: number;
 };
 
 // ── Palette ────────────────────────────────────────────────────────────────
@@ -1020,10 +1022,12 @@ function Revolver({
   held,
   target,
   firing,
+  restYaw,
 }: {
   held: boolean;
   target: "self" | "opponent";
   firing: "live" | "blank" | null;
+  restYaw?: number;
 }) {
   const g = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
@@ -1031,13 +1035,14 @@ function Revolver({
     const k = 1 - Math.pow(0.0015, Math.min(dt, 0.1));
     // Resting: on the baize, muzzle away and left. Held: up off the table and
     // swung onto the target, the seat's side of the near rail.
-    const wantY = held ? (target === "self" ? 0.84 : 0.9) : 0.73;
-    const wantZ = TABLE_Z + (held ? (target === "self" ? 0.3 : 0.44) : 0.22);
-    const wantX = held ? (target === "self" ? 0.06 : -0.06) : 0.2;
-    // The muzzle reads at +X now, so the aim yaws move with it: away is +90,
-    // onto the seat is -90 with a little in hand.
-    const wantSpin = held ? (target === "self" ? -1.07 : 1.85) : 3.05;
-    const wantPitch = held ? (target === "self" ? -0.14 : 0.22) : 0;
+    const wantY = held ? (target === "self" ? 0.88 : 0.9) : 0.73;
+    const wantZ = TABLE_Z + (held ? (target === "self" ? 0.34 : 0.36) : 0.22);
+    const wantX = held ? (target === "self" ? 0.02 : 0.04) : 0.2;
+    // Yaws measured off the mesh, not guessed: the muzzle sits at -X and the
+    // grip at +X, so 0 lies the piece in clean profile on the baize pointing
+    // left, +1.35 turns it muzzle-on onto the seat, and -1.15 sends it away.
+    const wantSpin = held ? (target === "self" ? 1.35 : -1.15) : (restYaw ?? 0.25);
+    const wantPitch = held ? (target === "self" ? -0.1 : 0.12) : 0;
     g.current.position.x += (wantX - g.current.position.x) * k;
     g.current.position.y += (wantY - g.current.position.y) * k;
     g.current.position.z += (wantZ - g.current.position.z) * k;
@@ -1055,7 +1060,7 @@ function Revolver({
     <group
       ref={g}
       position={[0.2, 0.73, TABLE_Z + 0.22]}
-      rotation={[0, 3.05, 0]}
+      rotation={[0, restYaw ?? 0.25, 0]}
     >
       {/* The mesh is exported standing on its feet with the muzzle at +X.
           Tip it over so it lies on the baize, top toward the seat. */}
@@ -1287,6 +1292,7 @@ function Scene({
   opponentHitSignal,
   liveCount,
   blankCount,
+  restYaw,
 }: Omit<DuelRoom3DProps, "opponentPubkey">) {
   const shells = useMemo(() => {
     const live = Math.min(liveCount, 6);
@@ -1424,7 +1430,7 @@ function Scene({
         distance={1.05}
         decay={1.6}
       />
-      <Revolver held={gunHeld} target={target} firing={firing} />
+      <Revolver held={gunHeld} target={target} firing={firing} restYaw={restYaw} />
       <Operator hp={opponentHp} hitSignal={opponentHitSignal} />
 
       {/* Turn cue: the room warms a little when it is your move. */}
