@@ -1,0 +1,117 @@
+[gd_scene load_steps=6 format=3 uid="uid://roletroom"]
+
+[ext_resource type="Script" path="res://scripts/room.gd" id="1_room"]
+
+[sub_resource type="BoxMesh" id="Box_unit"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="CylinderMesh" id="Cyl_spot"]
+top_radius = 0.04
+bottom_radius = 0.28
+height = 1.6
+
+[sub_resource type="StandardMaterial3D" id="Mat_void"]
+shading_mode = 0
+albedo_color = Color(0.07, 0.07, 0.07, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_mid"]
+shading_mode = 0
+albedo_color = Color(0.13, 0.13, 0.14, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_spot"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.55, 0.48, 0.36, 0.14)
+
+[node name="Room" type="Node3D"]
+script = ExtResource("1_room")
+
+[node name="Floor" type="MeshInstance3D" parent="."]
+transform = Transform3D(14, 0, 0, 0, 0.04, 0, 0, 0, 14, 0, -0.02, 0)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_void")
+
+[node name="BackWall" type="MeshInstance3D" parent="."]
+transform = Transform3D(12, 0, 0, 0, 4.6, 0, 0, 0, 0.08, 0, 2.3, -4.4)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_void")
+
+[node name="SpeakerL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.55, 0, 0, 0, 2.3, 0, 0, 0, 0.4, -3.15, 1.15, -2.5)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="SpeakerR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.55, 0, 0, 0, 2.3, 0, 0, 0, 0.4, 3.15, 1.15, -2.5)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="Booth" type="MeshInstance3D" parent="."]
+transform = Transform3D(1.5, 0, 0, 0, 0.7, 0, 0, 0, 0.55, 2.15, 0.55, -3.15)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="BeamA" type="MeshInstance3D" parent="."]
+transform = Transform3D(8, 0, 0, 0, 0.04, 0, 0, 0, 0.04, 0, 3.15, -2.2)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="BeamB" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.04, 0, 0, 0, 0.04, 0, 0, 0, 3.2, -1.8, 3.15, -2.6)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="BeamC" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.04, 0, 0, 0, 0.04, 0, 0, 0, 3.2, 1.6, 3.15, -2.6)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="CrowdA" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.2, 0, 0, 0, 1.25, 0, 0, 0, 0.16, -0.95, 0.62, -1.48)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="CrowdB" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.18, 0, 0, 0, 1.15, 0, 0, 0, 0.16, -1.28, 0.58, -1.7)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="CrowdC" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.18, 0, 0, 0, 1.05, 0, 0, 0, 0.16, -1.58, 0.52, -1.9)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="CrowdD" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.2, 0, 0, 0, 1.2, 0, 0, 0, 0.16, 1.15, 0.6, -1.7)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="CrowdE" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.22, 0, 0, 0, 1.4, 0, 0, 0, 0.16, 1.55, 0.7, -1.95)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_void")
+
+[node name="CrowdF" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.2, 0, 0, 0, 1.1, 0, 0, 0, 0.16, 1.95, 0.55, -2.1)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_mid")
+
+[node name="SpotL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.55, 2.35, -1.7)
+mesh = SubResource("Cyl_spot")
+surface_material_override/0 = SubResource("Mat_spot")
+
+[node name="SpotCL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.8, 0, 0, 0, 1, 0, 0, 0, 0.8, -0.55, 2.55, -2.15)
+mesh = SubResource("Cyl_spot")
+surface_material_override/0 = SubResource("Mat_spot")
+
+[node name="SpotCR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.8, 0, 0, 0, 1, 0, 0, 0, 0.8, 0.7, 2.55, -2.15)
+mesh = SubResource("Cyl_spot")
+surface_material_override/0 = SubResource("Mat_spot")
+
+[node name="SpotR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.7, 2.35, -1.55)
+mesh = SubResource("Cyl_spot")
+surface_material_override/0 = SubResource("Mat_spot")

@@ -2,7 +2,6 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "motion/react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -26,11 +25,7 @@ import {
   LobbyWallet,
 } from "@/components/duel/WorkshopLobby";
 import { useSound } from "@/hooks/useSound";
-import { SceneBoundary } from "@/components/ui/SceneBoundary";
-import { Volume2, VolumeX } from "lucide-react";
-
-const DuelRoom3D = dynamic(() => import("@/components/DuelRoom3D"), { ssr: false });
-const HandRack2D = dynamic(() => import("@/components/HandRack2D"), { ssr: false });
+import { PixelDuelStage, type PixelBeat } from "@/components/duel/PixelDuelStage";
 
 // ============================================================
 // Domain types
@@ -73,6 +68,7 @@ type DecodedMatch = {
   silencedYou: boolean;
   blockerOnYou: boolean;
   lastActionSlot: number;
+  revealedIndex: number | null;
 };
 
 const ANCHOR_CARD_KEYS: RoletCard[] = [
@@ -134,7 +130,17 @@ function decodeMatch(state: any, you: string | null): DecodedMatch | null {
       typeof state.lastActionSlot?.toNumber === "function"
         ? state.lastActionSlot.toNumber()
         : Number(state.lastActionSlot ?? 0),
+    revealedIndex: readU8(state.revealedChamber ?? state.revealed_chamber),
   };
+}
+
+function readU8(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (value && typeof value === "object" && "toNumber" in value) {
+    const n = (value as { toNumber: () => number }).toNumber();
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
 }
 
 // ============================================================
@@ -177,6 +183,15 @@ function DuelRouter() {
     try { return new BN(hex, 16); } catch { return null; }
   }, [lobbyHex, joinHex]);
 
+  if (search.get("preview") === "pixel") {
+    return (
+      <iframe
+        src="/godot/index.html"
+        title="ROLET"
+        className="fixed inset-0 h-full w-full border-0 bg-[#141414]"
+      />
+    );
+  }
   if (matchId) return <ActiveDuel matchId={matchId} />;
   if (lobbyMatchId && lobbyHex) return <HostWaiting matchId={lobbyMatchId} />;
   if (lobbyMatchId && joinHex) return <GuestLobby matchId={lobbyMatchId} autoJoin={autoJoin} />;
@@ -192,6 +207,7 @@ let dmgSeq = 0;
 
 function ActiveDuel({ matchId }: { matchId: BN }) {
   const wallet = useWallet();
+  const router = useRouter();
   const rolet = useRolet({ ephemeral: false });
   const toasts = useToasts();
   const roletRef = useRef(rolet);
@@ -350,14 +366,17 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
     if (fresh) setState(fresh);
   };
 
-  const handlePullTrigger = async () => {
+  const shotTarget = useRef<Target>("opponent");
+
+  const handlePullTrigger = async (which: Target) => {
     if (!decoded) return;
+    shotTarget.current = which;
     // Read the chamber that's about to fire so we can play the right effect
     // BEFORE the on-chain tx resolves (snappier UX).
     const chamberType = decoded.chambers[decoded.currentChamber] ?? "live";
     const isLive = chamberType === "live";
     setLog((l) => [
-      `> trigger → ${target.toUpperCase()} · ${isLive ? "LIVE" : "BLANK"}`,
+      `> trigger → ${which.toUpperCase()} · ${isLive ? "LIVE" : "BLANK"}`,
       ...l,
     ].slice(0, 24));
 
@@ -376,7 +395,7 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
 
     await rolet.pullTrigger({
       matchId,
-      targetSelf: target === "self",
+      targetSelf: which === "self",
       currentTurnAuthority: new PublicKey(decoded.currentTurn),
     });
     // Re-fetch so the on-chain state (HP, current chamber, turn) updates the
@@ -462,196 +481,61 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
     return "watching";
   }, [decoded, youKey]);
 
+  const beat: PixelBeat =
+    hitFlash === "player" ? "hit-you"
+    : hitFlash === "opponent" ? "hit-rival"
+    : firing === "live" ? (shotTarget.current === "self" ? "hit-you" : "hit-rival")
+    : firing === "blank" ? "click"
+    : null;
+  const revealed = decoded?.revealedIndex;
+  const revealedHole = revealed != null ? decoded?.chambers[revealed] : null;
+  const nextLabel =
+    revealedHole === "live" || revealedHole === "blank"
+      ? `NEXT: ${revealedHole === "live" ? "LIVE" : "BLANK"}`
+      : null;
+  const claimable = timeoutClaimable({
+    status: decoded?.status ?? "",
+    yourTurn: turnIsYours,
+    currentSlot,
+    lastActionSlot: decoded?.lastActionSlot ?? 0,
+  });
+
   return (
-    <main
-      ref={containerRef}
-      className="fixed inset-0 overflow-hidden"
-      style={{ width: "100vw", height: "100vh" }}
-    >
-      {/* The chamber room. Flat-shaded geometry behind a dither pass; it
-          covers the viewport and the HUD layers sit on top of it. If WebGL
-          dies, the boundary swaps in the room's own dark ground so the match
-          stays playable instead of falling to the error page. */}
-      <SceneBoundary>
-        <DuelRoom3D
-          isYourTurn={turnIsYours}
-          gunHeld={gunHeld}
-          target={target}
-          firing={firing}
-          opponentPubkey={
-            decoded && youKey
-              ? youKey === decoded.playerOne
-                ? decoded.playerTwo
-                : decoded.playerOne
-              : ""
-          }
-          opponentHp={opponentHp}
-          opponentHitSignal={opponentHitSignal}
-          liveCount={decoded?.liveCount ?? 0}
-          blankCount={decoded?.blankCount ?? 0}
-        />
-      </SceneBoundary>
+    <main ref={containerRef} className="fixed inset-0 overflow-hidden bg-[#141414]">
+      <PixelDuelStage
+        chambers={decoded?.chambers ?? []}
+        chamberIndex={decoded?.currentChamber ?? 0}
+        revealedIndex={decoded?.revealedIndex ?? null}
+        yourLives={playerHp}
+        rivalLives={opponentHp}
+        hand={decoded?.yourHand ?? [null, null, null, null]}
+        selectedSlot={selectedSlot}
+        onSelect={(i) => {
+          setSelectedSlot(i);
+          if (i !== null) play("uiSelect");
+        }}
+        yourTurn={turnIsYours && decoded?.status === "active"}
+        busy={rolet.busy}
+        silenced={!!decoded?.silencedYou}
+        onShootSelf={() => { void handlePullTrigger("self"); }}
+        onShootRival={() => { void handlePullTrigger("opponent"); }}
+        onPlayCard={() => { void handlePlayCard(); }}
+        beat={beat}
+        nextLabel={nextLabel}
+        notice={
+          decoded?.status === "completed"
+            ? null
+            : !rolet.sessionKey && rolet.busy
+              ? "ARMING SESSION KEY"
+              : null
+        }
+        onLeave={() => router.push("/duel")}
+        muted={muted}
+        onToggleMute={toggleMute}
+      />
 
-      {/* Hit flash overlay (red, when player takes damage) */}
-      <AnimatePresence>
-        {hitFlash === "player" && (
-          <motion.div
-            key="hit-flash"
-            className="pointer-events-none fixed inset-0 z-[100]"
-            initial={{ opacity: 0.65 }}
-            animate={{ opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-            style={{ background: "radial-gradient(ellipse at 50% 90%, rgba(255,0,0,0.55) 0%, rgba(140,0,0,0.35) 40%, transparent 70%)" }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Opponent damage flash (red, when opponent takes damage) */}
-      <AnimatePresence>
-        {hitFlash === "opponent" && (
-          <motion.div
-            key="opponent-hit-flash"
-            className="pointer-events-none fixed inset-0 z-[100]"
-            initial={{ opacity: 0.3 }}
-            animate={{ opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            style={{ background: "radial-gradient(ellipse at 50% 10%, rgba(180,30,30,0.5) 0%, rgba(90,0,0,0.3) 40%, transparent 70%)" }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Muzzle FLASH overlay — only fires for LIVE chambers */}
-      <AnimatePresence>
-        {firing === "live" && (
-          <motion.div
-            key="fire-flash"
-            className="pointer-events-none fixed inset-0 z-[99] mix-blend-screen"
-            initial={{ opacity: 0.85 }}
-            animate={{ opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            style={{ background: "radial-gradient(circle at 50% 55%, rgba(255,240,180,0.85) 0%, rgba(255,140,40,0.45) 25%, transparent 60%)" }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Death beat overlay */}
-      <AnimatePresence>
-        {deathBeat && (
-          <motion.div
-            key="death-beat"
-            className="pointer-events-none fixed inset-0 z-[97] mix-blend-multiply"
-            initial={{ opacity: 0.7 }}
-            animate={{ opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            style={{ background: "radial-gradient(ellipse at 50% 60%, rgba(120,0,0,0.8) 0%, rgba(40,0,0,0.55) 45%, transparent 75%)" }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Turn banner */}
-      <AnimatePresence>
-        {showTurnBanner && (
-          <motion.div
-            key={turnIsYours ? "your-turn" : "enemy-turn"}
-            className="pointer-events-none fixed inset-x-0 top-1/3 z-[90] flex flex-col items-center"
-            initial={{ opacity: 0, y: -32, scaleX: 1.1 }}
-            animate={{ opacity: 1, y: 0, scaleX: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.95 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div className={`px-12 py-4 border-2 ${
-              turnIsYours
-                ? "border-[var(--color-alert)]/70 bg-black/70"
-                : "border-[var(--color-line-strong)] bg-black/60"
-            }`}>
-              <div className={`font-display tracking-[0.5em] text-4xl ${
-                turnIsYours ? "text-[var(--color-alert)] text-bleed" : "text-[var(--color-phosphor-dim)]"
-              }`}>
-                {turnIsYours ? "YOUR TURN" : "ENEMY TURN"}
-              </div>
-              <div className={`mt-1 text-center text-[9px] tracking-[0.6em] ${
-                turnIsYours ? "text-rust" : "text-[var(--color-phosphor-faint)]"
-              }`}>
-                {turnIsYours ? "// WEAPON ARMED — CHOOSE ACTION" : "// OPPONENT IS DECIDING"}
-              </div>
-            </div>
-            {/* Scan line effect across banner */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-              <div className="w-full h-px bg-white animate-scan-line" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Floating damage numbers */}
-      <AnimatePresence>
-        {damageNums.map((d) => (
-          <motion.div
-            key={d.id}
-            className="pointer-events-none fixed z-[95] font-display font-bold select-none"
-            style={{ left: `${d.x}%`, top: "45%", color: d.value < 0 ? "var(--color-alert)" : "var(--color-patina)" }}
-            initial={{ opacity: 1, y: 0, scale: 1.4 }}
-            animate={{ opacity: 0, y: -90, scale: 0.8 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.6, ease: "easeOut" }}
-            onAnimationComplete={() =>
-              setDamageNums((prev) => prev.filter((x) => x.id !== d.id))
-            }
-          >
-            <span className="text-5xl" style={{ textShadow: "0 0 20px currentColor, 0 0 40px currentColor" }}>
-              {d.value < 0 ? d.value : `+${d.value}`}
-            </span>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-
-      {/* Top bar */}
-      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-4 py-4 border-b border-rust/40 bg-black/40 sm:px-6">
-        <Link href="/" className="shrink-0 text-[10px] tracking-[0.4em] text-rust hover:text-[var(--color-alert)] crt-text">
-          ◄ Leave the table
-        </Link>
-        <span className="min-w-0 truncate px-2 text-[9px] tracking-[0.35em] text-[var(--color-phosphor-dim)] crt-text sm:text-[10px]">
-          0x{matchId.toString(16).toUpperCase()} · devnet
-        </span>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={toggleMute}
-            className="flex items-center gap-1.5 text-[10px] tracking-[0.4em] text-rust hover:text-[var(--color-alert)] crt-text"
-          >
-            {muted ? (
-              <>
-                <VolumeX className="h-3.5 w-3.5" aria-hidden />
-                MUTED
-              </>
-            ) : (
-              <>
-                <Volume2 className="h-3.5 w-3.5" aria-hidden />
-                ON
-              </>
-            )}
-          </button>
-          <span className="text-[10px] tracking-[0.4em] text-[var(--color-alert)] animate-pulse crt-text">
-            ● {decoded?.status?.toUpperCase() ?? "AWAITING"}
-          </span>
-        </div>
-      </div>
-
-      <div className="relative z-10 mx-auto grid h-full max-w-7xl grid-rows-[auto_1fr_auto] gap-2 px-6 pt-16 pb-3 overflow-hidden lg:pt-12">
-        {/* OPPONENT HUD ONLY (HP bar + status) — 3D shows through behind */}
-        <section className="relative flex justify-center pt-1">
-          <OpponentHud hp={opponentHp} maxHp={4} />
-        </section>
-
-        {/* CCTV VIEWPORT — 3D scene shows through this framed window */}
-        <section className="relative flex items-stretch justify-center">
-        </section>
-
-        {/* PLAYER HUD */}
-        <section className="relative flex flex-col gap-2 pt-1">
+      {(decoded?.status === "completed" && !settled) || settled || claimable ? (
+        <div className="fixed bottom-4 left-1/2 z-50 w-[min(680px,94vw)] -translate-x-1/2">
           {decoded?.status === "completed" && !settled && (
             <CompletedBanner
               decoded={decoded}
@@ -659,150 +543,64 @@ function ActiveDuel({ matchId }: { matchId: BN }) {
               busy={rolet.busy}
               rewardSol={vaultRewardSol}
               onSettle={async () => {
-                // "already-settled" = the match account is closed (someone
-                // settled first) — reward is paid either way, dismiss banner.
                 const result = await rolet.settleMatch(matchId);
                 if (result) setSettled(true);
               }}
             />
           )}
           {settled && (
-            <div className="border-2 border-rust bg-black/70 px-4 py-3 flex items-center justify-between">
+            <div className="border-2 border-rust bg-black/80 px-4 py-3 flex items-center justify-between">
               <div className="text-[11px] tracking-[0.4em] text-rust">
-                // MATCH ARCHIVED · REWARD CLAIMED
+                MATCH ARCHIVED
               </div>
               <Link
                 href="/duel"
-                className="border border-[var(--color-alert)]/50 bg-[var(--color-void)] px-4 py-2 text-[10px] tracking-[0.3em] text-[var(--color-alert)] hover:bg-[var(--color-alert)]/25"
+                className="border border-[var(--color-alert)]/50 bg-[var(--color-void)] px-4 py-2 text-[10px] tracking-[0.3em] text-[var(--color-alert)]"
               >
-                ► NEW MATCH
+                NEW MATCH
               </Link>
             </div>
           )}
-          {decoded?.status !== "completed" && !rolet.sessionKey && rolet.busy && (
-            <div className="border border-rust/40 bg-black/60 px-4 py-3 flex items-center gap-3">
-              <span className="h-2 w-2 bg-[var(--color-alert)] animate-pulse" />
-              <span className="text-[10px] tracking-[0.3em] text-[var(--color-phosphor-faint)]">
-                // ARMING SESSION KEY…
-              </span>
-            </div>
+          {claimable && (
+            <button
+              onClick={async () => {
+                const sig = await rolet.claimTimeout(matchId);
+                if (sig) {
+                  const fresh = await rolet.fetchMatch(matchId);
+                  if (fresh) setState(fresh);
+                }
+              }}
+              disabled={rolet.busy}
+              className="mt-2 w-full border border-yellow-700/60 bg-black/80 px-2 py-2 text-[10px] tracking-[0.3em] text-yellow-400 disabled:opacity-40"
+            >
+              CLAIM TIMEOUT
+            </button>
           )}
+        </div>
+      ) : null}
 
-          <div className="grid grid-cols-2 gap-3 items-end lg:grid-cols-12">
-            {/* Slim player vitals — Buckshot pixelated HP */}
-            <div className="order-2 col-span-1 lg:order-1 lg:col-span-2">
-              <div className="flex items-center gap-3">
-                <span className="text-[9px] tracking-[0.5em] text-[var(--color-phosphor-faint)]">
-                  YOU
-                </span>
-                <span
-                  className={
-                    turnIsYours
-                      ? "text-[9px] tracking-[0.4em] text-[var(--color-alert)] animate-pulse"
-                      : "text-[9px] tracking-[0.4em] text-[var(--color-phosphor-faint)]"
-                  }
-                >
-                  {turnIsYours ? "TURN" : "WAIT"}
-                </span>
-              </div>
-              <div className="mt-1.5 w-28 sm:w-36">
-                <HpBar hp={playerHp} maxHp={4} />
-              </div>
+      {toasts.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              className={`border px-4 py-2 bg-black/80 text-[10px] tracking-[0.3em] ${
+                t.level === "error"
+                  ? "border-[var(--color-alert)]/50 text-[var(--color-alert)]"
+                  : t.level === "success"
+                  ? "border-rust text-[var(--color-alert)]"
+                  : "border-[var(--color-line-strong)] text-[var(--color-phosphor-dim)]"
+              }`}
+            >
+              {t.message}
             </div>
-
-            {/* 2D card hand — shorter container so the action panel stays on-screen */}
-            <div className="order-1 col-span-2 lg:order-2 lg:col-span-7 relative h-36">
-              <HandRack2D
-                hand={decoded?.yourHand ?? [null, null, null, null]}
-                selectedSlot={selectedSlot}
-                onSelect={(i) => { setSelectedSlot(i); if (i !== null) play("uiSelect"); }}
-                disabled={!turnIsYours || !!decoded?.silencedYou || rolet.busy}
-                playedSlot={lastPlayedSlot}
-                playSignal={lastPlayedSignal}
-              />
-              {/* Floating PLAY button — appears when a card is selected */}
-              {selectedSlot !== null && decoded?.yourHand[selectedSlot] && (
-                <button
-                  onClick={handlePlayCard}
-                  disabled={rolet.busy || !turnIsYours}
-                  className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 border border-[var(--color-alert)]/70 bg-black/85 px-4 py-1.5 text-[10px] tracking-[0.4em] text-[var(--color-alert)] font-bold shadow-[0_0_18px_rgba(220,30,30,0.6)] hover:bg-[var(--color-void)] disabled:opacity-40 crt-text"
-                >
-                  ▶ PLAY {CARD_LABEL[decoded.yourHand[selectedSlot]!].toUpperCase()}
-                </button>
-              )}
-            </div>
-
-            {/* The only action panel. Two target choices and one commit. */}
-            <div className="order-3 col-span-1 flex flex-col gap-2 lg:col-span-3">
-              <div className="grid grid-cols-2 gap-1">
-                <TargetButton label="OPP" active={target === "opponent"} onClick={() => { setTarget("opponent"); play("uiSelect"); }} />
-                <TargetButton label="SELF" active={target === "self"} onClick={() => { setTarget("self"); play("uiSelect"); }} />
-              </div>
-              <button
-                onClick={handlePullTrigger}
-                disabled={!turnIsYours || rolet.busy}
-                className={`btn w-full ${
-                  turnIsYours && !rolet.busy ? "btn-primary" : ""
-                }`}
-              >
-                Pull the trigger
-              </button>
-              {timeoutClaimable({
-                status: decoded?.status ?? "",
-                yourTurn: turnIsYours,
-                currentSlot,
-                lastActionSlot: decoded?.lastActionSlot ?? 0,
-              }) && (
-                <button
-                  onClick={async () => {
-                    const sig = await rolet.claimTimeout(matchId);
-                    if (sig) {
-                      const fresh = await rolet.fetchMatch(matchId);
-                      if (fresh) setState(fresh);
-                    }
-                  }}
-                  disabled={rolet.busy}
-                  className="mt-1 border border-yellow-700/60 bg-yellow-950/30 px-2 py-1 text-[8px] tracking-[0.3em] text-yellow-400 hover:bg-yellow-900/50 disabled:opacity-40 crt-text text-center transition-colors"
-                  title="Claim win by forfeit if opponent has stalled for 150+ slots"
-                >
-                  ⏱ CLAIM TIMEOUT (IF STALLED)
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Compact 1-line log */}
-          <div className="flex items-center justify-between px-1 pb-1 pt-2">
-            <div className="truncate font-mono text-[10px] leading-none tracking-wide text-[var(--color-phosphor-faint)]">
-              {log[0]}
-            </div>
-          </div>
-
-          {/* Floating toast stack */}
-          {toasts.length > 0 && (
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
-              {toasts.map((t) => (
-                <div
-                  key={t.id}
-                  className={`border px-4 py-2 bg-black/80 text-[10px] tracking-[0.3em] ${
-                    t.level === "error"
-                      ? "border-[var(--color-alert)]/50 text-[var(--color-alert)]"
-                      : t.level === "success"
-                      ? "border-rust text-[var(--color-alert)]"
-                      : "border-[var(--color-line-strong)] text-[var(--color-phosphor-dim)]"
-                  }`}
-                >
-                  {t.level === "error" ? "!! " : t.level === "success" ? ">> " : ".. "}
-                  {t.message}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }
+
 
 // ============================================================
 // PRESENTATIONAL COMPONENTS — visuals from Task 5, unchanged

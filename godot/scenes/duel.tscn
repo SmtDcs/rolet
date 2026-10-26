@@ -1,0 +1,30 @@
+[gd_scene load_steps=6 format=3 uid="uid://roletduel"]
+
+[ext_resource type="Script" path="res://scripts/duel.gd" id="1_duel"]
+[ext_resource type="PackedScene" path="res://scenes/room.tscn" id="2_room"]
+[ext_resource type="PackedScene" path="res://scenes/table.tscn" id="3_table"]
+[ext_resource type="PackedScene" path="res://scenes/rival.tscn" id="4_rival"]
+[ext_resource type="PackedScene" path="res://scenes/gun.tscn" id="5_gun"]
+
+[sub_resource type="Environment" id="Env_black"]
+background_mode = 1
+background_color = Color(0.06, 0.06, 0.06, 1)
+
+[node name="Duel" type="Node3D"]
+script = ExtResource("1_duel")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_black")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 1.78)
+current = true
+fov = 50.0
+
+[node name="Room" parent="." instance=ExtResource("2_room")]
+
+[node name="Table" parent="." instance=ExtResource("3_table")]
+
+[node name="Rival" parent="." instance=ExtResource("4_rival")]
+
+[node name="Gun" parent="." instance=ExtResource("5_gun")]

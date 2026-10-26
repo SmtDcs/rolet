@@ -1,0 +1,33 @@
+[gd_scene load_steps=5 format=3 uid="uid://roletrival"]
+
+[ext_resource type="Script" path="res://scripts/rival.gd" id="1_rival"]
+
+[sub_resource type="BoxMesh" id="Box_coat"]
+size = Vector3(0.72, 1.2, 0.36)
+
+[sub_resource type="CylinderMesh" id="Cyl_head"]
+top_radius = 0.24
+bottom_radius = 0.24
+height = 0.12
+
+[sub_resource type="StandardMaterial3D" id="Mat_coat"]
+shading_mode = 0
+albedo_color = Color(0.1, 0.1, 0.11, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_head"]
+shading_mode = 0
+albedo_color = Color(0.22, 0.22, 0.24, 1)
+
+[node name="Rival" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.22)
+script = ExtResource("1_rival")
+
+[node name="Coat" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.82, 0)
+mesh = SubResource("Box_coat")
+surface_material_override/0 = SubResource("Mat_coat")
+
+[node name="Head" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)
+mesh = SubResource("Cyl_head")
+surface_material_override/0 = SubResource("Mat_head")

@@ -1,0 +1,120 @@
+[gd_scene load_steps=7 format=3 uid="uid://rolettable"]
+
+[ext_resource type="Script" path="res://scripts/table.gd" id="1_table"]
+
+[sub_resource type="BoxMesh" id="Box_unit"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="CylinderMesh" id="Cyl_drum"]
+top_radius = 0.13
+bottom_radius = 0.13
+height = 0.045
+
+[sub_resource type="StandardMaterial3D" id="Mat_wood"]
+shading_mode = 0
+albedo_color = Color(0.28, 0.25, 0.21, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_metal"]
+shading_mode = 0
+albedo_color = Color(0.2, 0.2, 0.22, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_paper"]
+shading_mode = 0
+albedo_color = Color(0.62, 0.58, 0.5, 1)
+
+[sub_resource type="StandardMaterial3D" id="Mat_lamp"]
+shading_mode = 0
+albedo_color = Color(0.45, 0.42, 0.36, 1)
+
+[node name="Table" type="Node3D"]
+script = ExtResource("1_table")
+
+[node name="Top" type="MeshInstance3D" parent="."]
+transform = Transform3D(1.9, 0, 0, 0, 0.07, 0, 0, 0, 1.5, 0, 0.7, 0.05)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_wood")
+
+[node name="LegFL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.08, 0, 0, 0, 0.66, 0, 0, 0, 0.08, -0.82, 0.33, 0.68)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_wood")
+
+[node name="LegFR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.08, 0, 0, 0, 0.66, 0, 0, 0, 0.08, 0.82, 0.33, 0.68)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_wood")
+
+[node name="LegBL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.08, 0, 0, 0, 0.66, 0, 0, 0, 0.08, -0.82, 0.33, -0.58)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_wood")
+
+[node name="LegBR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.08, 0, 0, 0, 0.66, 0, 0, 0, 0.08, 0.82, 0.33, -0.58)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_wood")
+
+[node name="Cylinder" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.76, -0.28)
+mesh = SubResource("Cyl_drum")
+surface_material_override/0 = SubResource("Mat_metal")
+
+[node name="Card0" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.11, 0, 0, 0, 0.008, 0, 0, 0, 0.16, -0.24, 0.748, 0.38)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_paper")
+
+[node name="Card1" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.11, 0, 0, 0, 0.008, 0, 0, 0, 0.16, -0.08, 0.752, 0.42)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_paper")
+
+[node name="Card2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.11, 0, 0, 0, 0.008, 0, 0, 0, 0.16, 0.08, 0.752, 0.42)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_paper")
+
+[node name="Card3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.11, 0, 0, 0, 0.008, 0, 0, 0, 0.16, 0.24, 0.748, 0.38)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_paper")
+
+[node name="LampNear0" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.06, 0, 0, 0, 0.08, 0, 0, 0, 0.06, -0.36, 0.79, 0.66)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_lamp")
+
+[node name="LampNear1" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.06, 0, 0, 0, 0.08, 0, 0, 0, 0.06, -0.12, 0.79, 0.66)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_lamp")
+
+[node name="LampNear2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.06, 0, 0, 0, 0.08, 0, 0, 0, 0.06, 0.12, 0.79, 0.66)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_lamp")
+
+[node name="LampNear3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.06, 0, 0, 0, 0.08, 0, 0, 0, 0.06, 0.36, 0.79, 0.66)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_lamp")
+
+[node name="LampFar0" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.055, 0, 0, 0, 0.045, 0, 0, 0, 0.055, -0.3, 0.755, -0.55)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_lamp")
+
+[node name="LampFar1" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.055, 0, 0, 0, 0.045, 0, 0, 0, 0.055, -0.1, 0.755, -0.55)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_lamp")
+
+[node name="LampFar2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.055, 0, 0, 0, 0.045, 0, 0, 0, 0.055, 0.1, 0.755, -0.55)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_lamp")
+
+[node name="LampFar3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.055, 0, 0, 0, 0.045, 0, 0, 0, 0.055, 0.3, 0.755, -0.55)
+mesh = SubResource("Box_unit")
+surface_material_override/0 = SubResource("Mat_lamp")
